@@ -70,8 +70,17 @@ if ($action === 'import_hosxp') {
   try {
     // ---- Query HOSxP ----
     $place = implode(',', array_fill(0, count($icodeArr), '?'));
+    /*
+     * Query HOSxP — ปรับให้เหมือน Query เดิมที่ทำงานได้:
+     *   - JOIN ovst ด้วย hn+vstdate (ไม่ใช่ vn เพราะ opitemrece.vn อาจเป็น NULL)
+     *   - สร้าง visit_vn แบบ synthetic key = hn-YYYYMMDD-icode เมื่อ opi.vn ว่าง
+     *   - GROUP BY hn, vstdate, icode เพื่อ deduplicate
+     */
     $sql = "SELECT
-              opi.vn                                                        AS visit_vn,
+              COALESCE(
+                NULLIF(TRIM(opi.vn), ''),
+                CONCAT(opi.hn, '-', DATE_FORMAT(opi.vstdate,'%Y%m%d'), '-', opi.icode)
+              )                                                             AS visit_vn,
               opi.hn,
               CONCAT(pt.pname, pt.fname, ' ', pt.lname)                    AS fullname,
               pt.cid,
@@ -87,16 +96,16 @@ if ($action === 'import_hosxp') {
               ''                                                            AS mainstation
             FROM   opitemrece opi
             LEFT JOIN patient        pt  ON pt.hn        = opi.hn
-            LEFT JOIN drugitems      d   ON d.icode       = opi.icode
-            LEFT JOIN ovst           ov  ON ov.vn         = opi.vn
-            LEFT JOIN ovstost        ost ON ost.ovstost   = ov.ovstost
-            LEFT JOIN kskdepartment  dep ON dep.depcode   = ov.cur_dep
+            LEFT JOIN drugitems      d   ON d.icode      = opi.icode
+            LEFT JOIN ovst           ov  ON ov.hn        = opi.hn
+                                        AND ov.vstdate   = opi.vstdate
+            LEFT JOIN ovstost        ost ON ost.ovstost  = ov.ovstost
+            LEFT JOIN kskdepartment  dep ON dep.depcode  = ov.cur_dep
             WHERE  opi.vstdate BETWEEN ? AND ?
             AND    opi.icode   IN ($place)
-            AND    opi.vn      IS NOT NULL
-            AND    opi.vn      != ''
             AND    opi.hn      IS NOT NULL
-            GROUP  BY opi.vn
+            AND    opi.hn      != ''
+            GROUP  BY opi.hn, opi.vstdate, opi.icode
             ORDER  BY opi.vstdate DESC
             LIMIT  2000";
 
