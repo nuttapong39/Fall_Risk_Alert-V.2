@@ -83,7 +83,7 @@ if ($action === 'import_hosxp') {
               opi.icode                                                     AS drug_code,
               d.name                                                        AS drug_name,
               opi.vstdate,
-              CONCAT(ost.name, ' : ', dep.department)                      AS department,
+              CONCAT(COALESCE(ost.name,''), ' : ', COALESCE(dep.department,'')) AS department,
               ''                                                            AS mainstation
             FROM   opitemrece opi
             LEFT JOIN patient        pt  ON pt.hn        = opi.hn
@@ -93,6 +93,9 @@ if ($action === 'import_hosxp') {
             LEFT JOIN kskdepartment  dep ON dep.depcode   = ov.cur_dep
             WHERE  opi.vstdate BETWEEN ? AND ?
             AND    opi.icode   IN ($place)
+            AND    opi.vn      IS NOT NULL
+            AND    opi.vn      != ''
+            AND    opi.hn      IS NOT NULL
             GROUP  BY opi.vn
             ORDER  BY opi.vstdate DESC
             LIMIT  2000";
@@ -113,28 +116,43 @@ if ($action === 'import_hosxp') {
          drug_name=VALUES(drug_name), department=VALUES(department)"
     );
 
-    $imported = 0; $newRows = 0;
+    $imported = 0; $newRows = 0; $skipped = 0;
+    // เตรียม stmt ตรวจ exist ครั้งเดียว (ประสิทธิภาพดีกว่า prepare ใน loop)
+    $existStmt = $dbcon->prepare("SELECT id FROM drug_queue WHERE visit_vn=?");
+
     foreach ($hosxpRows as $hr) {
       $hr = row_to_utf8($hr);
-      $existBefore = $dbcon->prepare("SELECT id FROM drug_queue WHERE visit_vn=?");
-      $existBefore->execute([$hr['visit_vn']]);
-      $isNew = !$existBefore->fetch();
+
+      // ── Guard: ข้ามแถวที่ vn หรือ hn ว่าง ──
+      $vn = trim((string)($hr['visit_vn'] ?? ''));
+      $hn = trim((string)($hr['hn']       ?? ''));
+      if ($vn === '' || $hn === '') { $skipped++; continue; }
+
+      $existStmt->execute([$vn]);
+      $isNew = !$existStmt->fetch();
 
       $ins->execute([
-        ':vn'  => $hr['visit_vn'],  ':hn'   => $hr['hn'],
-        ':fn'  => $hr['fullname'],  ':cid'  => $hr['cid'],
-        ':tel' => $hr['hometel'],   ':age'  => $hr['age'],
-        ':sex' => $hr['sex'],       ':addr' => $hr['address'],
-        ':dc'  => $hr['drug_code'], ':dn'   => $hr['drug_name'],
-        ':vd'  => $hr['vstdate'],   ':dept' => $hr['department'],
-        ':ms'  => $hr['mainstation'],
+        ':vn'  => $vn,
+        ':hn'  => $hn,
+        ':fn'  => $hr['fullname']   ?? '',
+        ':cid' => $hr['cid']        ?? '',
+        ':tel' => $hr['hometel']    ?? '',
+        ':age' => is_numeric($hr['age']) ? (int)$hr['age'] : null,
+        ':sex' => $hr['sex']        ?? '',
+        ':addr'=> $hr['address']    ?? '',
+        ':dc'  => $hr['drug_code']  ?? '',
+        ':dn'  => $hr['drug_name']  ?? '',
+        ':vd'  => $hr['vstdate']    ?: null,
+        ':dept'=> $hr['department'] ?? '',
+        ':ms'  => $hr['mainstation']?? '',
       ]);
       $imported++;
       if ($isNew) $newRows++;
     }
 
-    echo json_encode(['ok'=>true, 'imported'=>$imported, 'new'=>$newRows,
-      'msg'=>"นำเข้าสำเร็จ {$imported} รายการ (ใหม่ {$newRows} รายการ)"]);
+    $skipNote = $skipped > 0 ? " (ข้าม {$skipped} แถวที่ไม่มี VN)" : '';
+    echo json_encode(['ok'=>true, 'imported'=>$imported, 'new'=>$newRows, 'skipped'=>$skipped,
+      'msg'=>"นำเข้าสำเร็จ {$imported} รายการ (ใหม่ {$newRows} รายการ){$skipNote}"]);
 
   } catch (Throwable $e) {
     echo json_encode(['ok'=>false, 'msg'=>'เกิดข้อผิดพลาด: '.$e->getMessage()]);
