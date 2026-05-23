@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview · หน้าหลักใหม่ — Fall Risk Alert</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --shadow: 0 10px 30px rgba(15,23,42,.18);
+      --shadow-lg: 0 20px 50px rgba(15,23,42,.28);
+      --txt:#0b253a; --txt-muted:#475569;
+      --overlay-1: rgba(255,255,255,.78); --overlay-2: rgba(255,255,255,.58);
+      --search-bg: rgba(255,255,255,.96); --search-border: rgba(15,23,42,.12);
+      --divider:#e2e8f0; --focus:#2563eb;
+    }
+    [data-theme="dark"]{
+      --txt:#eaf2ff; --txt-muted:#94a3b8;
+      --overlay-1: rgba(2,6,23,.80); --overlay-2: rgba(2,6,23,.60);
+      --search-bg: rgba(17,24,39,.92); --search-border: rgba(226,232,240,.22);
+      --divider: rgba(226,232,240,.15); --focus:#60a5fa;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      font-family:'Prompt',system-ui,sans-serif;
+      background: #0e1726 linear-gradient(135deg,#0ea5e9,#0f172a 70%) center/cover no-repeat fixed;
+      color:var(--txt);
+      -webkit-font-smoothing: antialiased;
+    }
+    .bg-overlay{position:fixed; inset:0; backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, var(--overlay-1), var(--overlay-2)); pointer-events:none; z-index:0}
+    .app-header{
+      background: rgba(255,255,255,.12); border-radius: 18px; padding: 12px 16px;
+      display:flex; align-items:center; gap:.75rem; position:relative; z-index:5;
+      color:#fff; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.20);
+      backdrop-filter: blur(8px);
+    }
+    .brand-title{font-weight:700; margin:0; line-height:1.25}
+    .brand-sub{opacity:.85; font-size:.78rem}
+    .user-chip{
+      display:flex; align-items:center; gap:.5rem;
+      background: rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.20);
+      padding:.4rem .75rem; border-radius:999px; color:#fff; text-decoration:none;
+    }
+    .user-chip .avatar{
+      width:30px; height:30px; border-radius:50%; display:grid; place-items:center;
+      background: linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700;
+    }
+    .header-actions{margin-left:auto; display:flex; gap:.5rem; align-items:center}
+    .theme-btn{
+      background: rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.20);
+      color:#fff; border-radius:999px; width:40px; height:40px; display:grid; place-items:center; cursor:pointer;
+    }
+    .search-wrap{
+      background: var(--search-bg); border:1px solid var(--search-border);
+      border-radius: 16px; padding:10px 14px; box-shadow: var(--shadow);
+      display:flex; align-items:center; gap:.5rem; color:var(--txt);
+    }
+    .search-input{background:transparent; border:0; outline:0; width:100%; color:var(--txt); font-family:inherit; font-size:1rem}
+    .kbd{font-family:ui-monospace,monospace; font-size:.72rem; padding:.15rem .4rem; border-radius:.4rem;
+      background:rgba(15,23,42,.08); color:var(--txt-muted); border:1px solid var(--divider)}
+    .cat-head{display:flex; align-items:center; gap:.6rem; color:#fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4); margin: 1.5rem 0 .75rem; font-weight:700}
+    .cat-head .line{flex:1; height:1px; background: linear-gradient(90deg, rgba(255,255,255,.35), transparent)}
+    .tile{display:block; text-decoration:none; border-radius:20px; padding:20px; color:#fff;
+      box-shadow: var(--shadow); min-height:170px; border:1px solid rgba(255,255,255,.20);
+      position:relative; isolation:isolate; overflow:hidden;
+      transition: transform .2s, box-shadow .2s, filter .2s}
+    .tile .icon-wrap{width:62px; height:62px; border-radius:14px; display:grid; place-items:center;
+      background: rgba(255,255,255,.22); margin-bottom:12px}
+    .tile h5{margin:0; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.28); font-size:1.05rem}
+    .tile small{opacity:.95; text-shadow:0 1px 2px rgba(0,0,0,.25)}
+    .tile:hover{transform:translateY(-3px); box-shadow: var(--shadow-lg); filter: saturate(1.06); color:#fff}
+    .tile:focus-visible{outline:none; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--focus), var(--shadow-lg)}
+    .tile::before{content:""; position:absolute; top:-40%; right:-20%; width:220px; height:220px; border-radius:50%;
+      background: radial-gradient(circle, rgba(255,255,255,.22), transparent 60%); pointer-events:none; z-index:-1}
+    .tile.red{background:linear-gradient(135deg,#ff5a5f,#e11d48)}
+    .tile.orange{background:linear-gradient(135deg,#ffb02e,#ea580c)}
+    .tile.green{background:linear-gradient(135deg,#27d17b,#0fb870)}
+    .tile.blue{background:linear-gradient(135deg,#4da3ff,#1d4ed8)}
+    .tile.teal{background:linear-gradient(135deg,#38e1d9,#0e8e8f)}
+    .app-footer{color:#e2e8f0; text-shadow:0 1px 2px rgba(0,0,0,.3)}
+    @media (max-width:575.98px){.tile{min-height:150px; padding:16px}}
+  </style>
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <main class="container py-4 py-lg-5">
+    <header class="app-header">
+      <div style="width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; color:#059669; font-weight:800">CK</div>
+      <div class="d-none d-md-block">
+        <h1 class="h6 brand-title">ระบบแจ้งเตือนข้อมูลคนไข้</h1>
+        <div class="brand-sub">โรงพยาบาลเชียงกลาง · Fall Risk &amp; Alert Portal</div>
+      </div>
+      <div class="header-actions">
+        <button class="theme-btn" id="themeBtn" aria-label="สลับธีม"><span id="themeIcon" class="msi">dark_mode</span></button>
+        <a class="user-chip" href="#">
+          <span class="avatar">ณ</span>
+          <span class="d-none d-md-inline">
+            <div style="line-height:1.05">ณัฐพงษ์ นิลคง</div>
+            <small style="opacity:.85">นักวิชาการคอมพิวเตอร์</small>
+          </span>
+          <span class="msi">expand_more</span>
+        </a>
+      </div>
+    </header>
+
+    <section class="mt-3">
+      <div class="search-wrap">
+        <span class="msi" style="color:#64748b">search</span>
+        <input class="search-input" type="search" placeholder="พิมพ์เพื่อค้นหา เช่น จิตเวช, พ.ร.บ., Covid, พลัดตก, ไข้เลือดออก…">
+        <span class="kbd d-none d-md-inline-flex"><kbd>/</kbd></span>
+        <button class="btn btn-sm btn-outline-secondary"><span class="msi">close</span></button>
+      </div>
+    </section>
+
+    <h2 class="cat-head h6"><span class="msi">warning</span><span>กลุ่มเสี่ยง / เร่งด่วน</span><span class="line"></span></h2>
+    <div class="row g-3 g-sm-4">
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile red" href="#"><div class="icon-wrap"><span class="msi msi-2x">stethoscope</span></div><h5>กลุ่มเสี่ยงจิตเวช</h5><small>ติดตาม · เฝ้าระวัง</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile red" href="#"><div class="icon-wrap"><span class="msi msi-2x">medical_services</span></div><h5>กลุ่มเสี่ยงกินยาอันตราย</h5><small>ตรวจสอบรายการยา</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile red" href="#"><div class="icon-wrap"><span class="msi msi-2x">shield_person</span></div><h5>ผู้ถูกข่มขืน / ทำร้ายร่างกาย</h5><small>เร่งด่วน · ละเอียดอ่อน</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile orange" href="#"><div class="icon-wrap"><span class="msi msi-2x">car_crash</span></div><h5>คนไข้ พ.ร.บ.</h5><small>อุบัติเหตุ · สิทธิประกัน</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile green" href="#"><div class="icon-wrap"><span class="msi msi-2x">falling</span></div><h5>พลัดตก / หกล้ม</h5><small>ป้องกันซ้ำ · ติดตามผล</small></a></div>
+    </div>
+
+    <h2 class="cat-head h6"><span class="msi">coronavirus</span><span>เฝ้าระวังโรคติดต่อ</span><span class="line"></span></h2>
+    <div class="row g-3 g-sm-4">
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile orange" href="#"><div class="icon-wrap"><span class="msi msi-2x">coronavirus</span></div><h5>ผู้ติดเชื้อ Covid-19</h5><small>อัปเดตเคสล่าสุด</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile blue" href="#"><div class="icon-wrap"><span class="msi msi-2x">pest_control</span></div><h5>โรคไข้เลือดออก</h5><small>Dengue Surveillance</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile blue" href="#"><div class="icon-wrap"><span class="msi msi-2x">bug_report</span></div><h5>โรคสครับไทฟัส</h5><small>ติดตามพื้นที่เสี่ยง</small></a></div>
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile blue" href="#"><div class="icon-wrap"><span class="msi msi-2x">pets</span></div><h5>โรคเลปโตสไปโรสิส</h5><small>เฝ้าระวังช่วงหน้าฝน</small></a></div>
+    </div>
+
+    <h2 class="cat-head h6"><span class="msi">medical_services</span><span>งานสนับสนุน</span><span class="line"></span></h2>
+    <div class="row g-3 g-sm-4">
+      <div class="col-12 col-sm-6 col-xl-4"><a class="tile teal" href="#"><div class="icon-wrap"><span class="msi msi-2x">medication</span></div><h5>งานเภสัชกรรม</h5><small>คลังยา · จ่ายยา · ตรวจสอบ</small></a></div>
+    </div>
+
+    <footer class="app-footer text-center mt-5 small">© 2026 ChiangKang Hospital · ระบบแจ้งเตือนข้อมูลคนไข้</footer>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const btn = document.getElementById('themeBtn');
+    const icon = document.getElementById('themeIcon');
+    btn.addEventListener('click', ()=>{
+      const dark = root.getAttribute('data-theme') === 'dark';
+      if(dark){ root.removeAttribute('data-theme'); icon.textContent='dark_mode'; }
+      else { root.setAttribute('data-theme','dark'); icon.textContent='light_mode'; }
+    });
+  </script>
+</body>
+</html>

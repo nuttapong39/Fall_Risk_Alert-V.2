@@ -1,0 +1,197 @@
+<?php
+require_once __DIR__ . '/config.php';
+// require_once __DIR__ . '/auth_guard.php';
+require_once('index1.html');  // ถ้าหน้านี้มี header()/redirect อย่าเรียกหลังจากบรรทัดนี้
+date_default_timezone_set('Asia/Bangkok');
+
+// ---------------- Filters ----------------
+$start  = isset($_GET['start']) && $_GET['start'] ? $_GET['start'] : date('Y-m-d', strtotime('-7 days'));
+$end    = isset($_GET['end'])   && $_GET['end']   ? $_GET['end']   : date('Y-m-d');
+$status = isset($_GET['status']) ? $_GET['status'] : 'all'; // all | 0 | 1
+
+$w = ["created_at BETWEEN :s AND :e"];
+$p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
+if ($status==='0') { $w[] = "status=0"; }
+if ($status==='1') { $w[] = "status=1"; }
+
+/* ---- เกณฑ์เดียวกับ fracture.php (เวอร์ชันล่าสุด) ---- */
+$w[] = "age >= 60"; // อายุ ≥ 60
+
+// กรองรหัสโรค: W00–W19 และ S-codes ตามที่กำหนด
+$dx = [];
+$dx[] = "(UPPER(pdx_code) BETWEEN 'W00' AND 'W19')";
+foreach (['S720','S721','S722','S525','S526','S422','S220','S221','S320','S327'] as $prefix) {
+  $dx[] = "UPPER(pdx_code) LIKE '{$prefix}%'";
+}
+$w[] = '(' . implode(' OR ', $dx) . ')';
+
+// ---------------- Query ----------------
+$sql = "SELECT id, visit_vn, hn, fullname, cid, hometel, age, sex, address,
+               pdx_code, pdx_name, vstdate, mainstation,
+               status, attempt, last_attempt_at, out_ref, last_error,
+               created_at, sent_at, line_message_id
+        FROM fracture_queue
+        WHERE ".implode(' AND ', $w)."
+        ORDER BY id DESC
+        LIMIT 2000";
+$stmt = $dbcon->prepare($sql);
+$stmt->execute($p);
+$rows = $stmt->fetchAll();
+
+/* UTF-8 helper (กันตัวหนังสือเพี้ยน) */
+function to_utf8($s){
+  if(!is_string($s)) return $s;
+  if(mb_check_encoding($s,'UTF-8')) return $s;
+  foreach(['TIS-620','TIS620','Windows-874','CP874','ISO-8859-11','ISO-8859-1'] as $enc){
+    $t=@iconv($enc,'UTF-8//IGNORE',$s); if($t!==false && $t!=='') return $t;
+    $t=@mb_convert_encoding($s,'UTF-8',$enc); if($t!==false && $t!=='') return $t;
+  }
+  return @iconv('UTF-8','UTF-8//IGNORE',$s);
+}
+
+// // ป้องกันกรณีไม่ได้กำหนดใน config.php
+// if(!defined('UI_ACTION_TOKEN')){
+//   define('UI_ACTION_TOKEN', hash('sha256', __FILE__ . php_uname() . date('Y-m-d')));
+// }
+// ป้องกันกรณีไม่ได้กำหนดใน config.php
+if (!defined('UI_ACTION_TOKEN')) {
+  // ใช้ __DIR__ . '/fracture_queue_ui.php' เป็น seed ให้ทั้ง UI/Action ตรงกัน
+  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/fracture_queue_ui.php' . php_uname() . date('Y-m-d')));
+}
+
+?>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Fracture Queue Monitor</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Kanit",sans-serif}
+  td.small{font-size:.92rem}
+  .badge-pending{background:#ffc107}
+  .badge-ok{background:#28a745}
+  .table-responsive{overflow-x:auto}
+</style>  
+</head>
+<body class="bg-light">
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Fracture Queue Monitor</h3>
+
+    <a href="fracture_dashboard.php" class="btn btn-outline-success">
+      <i class="fas fa-chart-line me-1"></i> Dashboard
+    </a>
+  </div>
+
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-auto">
+      <label class="form-label">ตั้งแต่</label>
+      <input type="date" class="form-control" name="start" value="<?=htmlspecialchars($start)?>">
+    </div>
+    <div class="col-auto">
+      <label class="form-label">ถึง</label>
+      <input type="date" class="form-control" name="end" value="<?=htmlspecialchars($end)?>">
+    </div>
+    <div class="col-auto">
+      <label class="form-label">สถานะ</label>
+      <select class="form-select" name="status">
+        <option value="all" <?=$status==='all'?'selected':''?>>ทั้งหมด</option>
+        <option value="0"   <?=$status==='0'?'selected':''?>>ค้างส่ง (0)</option>
+        <option value="1"   <?=$status==='1'?'selected':''?>>ส่งแล้ว (1)</option>
+      </select>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-primary">ค้นหา</button>
+      <a class="btn btn-outline-secondary" href="fracture_queue_ui.php">รีเซ็ต</a>
+    </div>
+  </form>
+
+  <form method="post" action="fracture_queue_action.php" onsubmit="return confirm('ยืนยันดำเนินการกับรายการที่เลือก?');">
+    <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+    <div class="mb-2">
+      <button class="btn btn-sm btn-success" name="action" value="send_now">ส่งซ้ำทันที</button>
+      <button class="btn btn-sm btn-warning" name="action" value="requeue">Requeue (ตั้งสถานะเป็น 0)</button>
+      <button class="btn btn-sm btn-outline-danger" name="action" value="clear_error">ล้าง error</button>
+    </div>
+
+    <div class="table-responsive">
+      <table id="tbl" class="table table-striped table-hover nowrap" style="width:100%">
+        <thead class="table-light">
+          <tr>
+            <th><input type="checkbox" onclick="document.querySelectorAll('.chk').forEach(c=>c.checked=this.checked)"></th>
+            <th>ID</th>
+            <th>สถานะ</th>
+            <th>HN</th>
+            <th>ชื่อ-สกุล</th>
+            <th>อายุ</th>
+            <th>เพศ</th>
+            <th>ที่อยู่</th>
+            <th>ICD10</th>
+            <th>ชื่อโรค</th>
+            <th>vstdate</th>
+            <th>สถานบริการหลัก</th>
+            <th>attempt</th>
+            <th>last_attempt</th>
+            <th>out_ref</th>
+            <th>error</th>
+            <th>created_at</th>
+            <th>sent_at</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach($rows as $r): ?>
+          <tr>
+            <td><input type="checkbox" class="chk" name="ids[]" value="<?=$r['id']?>"></td>
+            <td><?=$r['id']?></td>
+            <td><?= $r['status'] ? '<span class="badge badge-ok">1</span>' : '<span class="badge badge-pending">0</span>' ?></td>
+            <td><?=htmlspecialchars($r['hn'])?></td>
+            <td><?=htmlspecialchars(to_utf8($r['fullname']))?></td>
+            <td><?=$r['age']?></td>
+            <td><?=htmlspecialchars(to_utf8($r['sex']))?></td>
+            <td class="small"><?=htmlspecialchars(to_utf8($r['address']))?></td>
+            <td><?=$r['pdx_code']?></td>
+            <td class="small"><?=htmlspecialchars(to_utf8($r['pdx_name']))?></td>
+            <td><?=$r['vstdate']?></td>
+            <td><?=htmlspecialchars(to_utf8($r['mainstation']))?></td>
+            <td><?=$r['attempt']?></td>
+            <td><?=$r['last_attempt_at']?></td>
+            <td><?=htmlspecialchars($r['out_ref'])?></td>
+            <td class="small"><?=htmlspecialchars($r['last_error'])?></td>
+            <td><?=$r['created_at']?></td>
+            <td><?=$r['sent_at']?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script>
+$(function(){
+  $('#tbl').DataTable({
+    responsive: true,
+    autoWidth: false,
+    pageLength: 25,
+    order: [[1,'desc']],
+    language: {
+      search: "ค้นหา:", lengthMenu: "แสดง _MENU_ รายการ",
+      info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+      paginate: { first:"หน้าแรก", last:"หน้าสุดท้าย", next:"ถัดไป", previous:"ก่อนหน้า" }
+    },
+    columnDefs: [
+      { targets: [0,1,2,10,12,13,16,17], className: 'text-nowrap' }
+    ]
+  });
+});
+</script>
+</body>
+</html>

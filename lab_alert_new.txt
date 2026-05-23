@@ -1,0 +1,372 @@
+<?php
+/**
+ * pharm_lab.php — แจ้งเตือน LAB วิกฤตห้องยา (INR / Depakin / Lithium / Phenytoin)
+ * STEP 1: Ingest → pharm_lab_queue
+ * STEP 2: Send → MOPH Alert (Flex)
+ */
+require_once __DIR__ . '/config.php';
+date_default_timezone_set('Asia/Bangkok');
+
+/* ===== Defaults / Keys ===== */
+if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
+if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
+if (!defined('DEFAULT_LOOKBACK_DAYS')) define('DEFAULT_LOOKBACK_DAYS', 7);
+
+if (!defined('PHARM_CLIENT_KEY')) {
+  if (defined('MOPH_CLIENT_KEY')) define('PHARM_CLIENT_KEY', MOPH_CLIENT_KEY);
+  elseif (defined('FRACTURE_CLIENT_KEY')) define('PHARM_CLIENT_KEY', FRACTURE_CLIENT_KEY);
+  else define('PHARM_CLIENT_KEY', '');
+}
+if (!defined('PHARM_SECRET_KEY')) {
+  if (defined('MOPH_SECRET_KEY')) define('PHARM_SECRET_KEY', MOPH_SECRET_KEY);
+  elseif (defined('FRACTURE_SECRET_KEY')) define('PHARM_SECRET_KEY', FRACTURE_SECRET_KEY);
+  else define('PHARM_SECRET_KEY', '');
+}
+
+/* ===== Policy ===== */
+if (!defined('PHARM_RESEND_COOLDOWN_MIN')) define('PHARM_RESEND_COOLDOWN_MIN', 1);
+if (!defined('PHARM_MAX_ATTEMPTS'))        define('PHARM_MAX_ATTEMPTS', 8);
+if (!defined('PHARM_BATCH_LIMIT'))         define('PHARM_BATCH_LIMIT', 50);
+
+/* ===== Logs ===== */
+$LOG_DIR = __DIR__ . '/logs';
+if (!is_dir($LOG_DIR)) @mkdir($LOG_DIR, 0775, true);
+$RUN_LOG  = $LOG_DIR . '/pharm_lab_task_run.log';
+$SEND_LOG = $LOG_DIR . '/moph_alert_pharm_lab.log';
+function runlog($t){ global $RUN_LOG; @file_put_contents($RUN_LOG,'['.date('Y-m-d H:i:s')."] $t\n",FILE_APPEND); if(PHP_SAPI==='cli') echo '['.date('Y-m-d H:i:s')."] $t\n"; }
+function log_send($row,$code,$resp,$err=null){ global $SEND_LOG; $line=sprintf("[%s] id=%s hn=%s http=%s err=%s resp=%s\n",date('Y-m-d H:i:s'),$row['id']??'-',$row['hn']??'-',$code,$err?:'-',mb_substr($resp??'',0,2000)); @file_put_contents($SEND_LOG,$line,FILE_APPEND); if(PHP_SAPI==='cli') echo $line; }
+
+/* ===== Utils ===== */
+function to_utf8($s){ if($s===null||$s===''||!is_string($s)) return $s; if(mb_check_encoding($s,'UTF-8')) return $s;
+  foreach(['TIS-620','TIS620','Windows-874','CP874','ISO-8859-11','ISO-8859-1'] as $enc){
+    $t=@iconv($enc,'UTF-8//IGNORE',$s); if($t!==false && $t!==''){ if(mb_check_encoding($t,'UTF-8')) return $t; }
+    $t=@mb_convert_encoding($s,'UTF-8',$enc); if($t!==false && $t!==''){ if(mb_check_encoding($t,'UTF-8')) return $t; }
+  } $t=@iconv('UTF-8','UTF-8//IGNORE',$s); return $t!==false?$t:$s;
+}
+function row_to_utf8(array $r){ foreach($r as $k=>$v){ if(is_string($v)) $r[$k]=to_utf8($v); } return $r; }
+function readParam($k,$d=null){
+  if(PHP_SAPI==='cli'){ static $a; if($a===null) $a=getopt('',['start::','end::','dry-run','mode::']);
+    if($k==='dry-run') return array_key_exists('dry-run',$a);
+    return $a[$k]??$d;
+  } else { if($k==='dry-run') return isset($_GET['dry-run']); return $_GET[$k]??$d; }
+}
+function normalize_date_ymd($d,$fb){
+  if(!is_string($d)||$d==='') return $fb;
+  if(preg_match('/^\s*(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\s*$/',$d,$m)){
+    $y=(int)$m[1]; $mo=(int)$m[2]; $da=(int)$m[3]; if($y>2400) $y-=543;
+    if($y<1900||$y>2100||$mo<1||$mo>12||$da<1||$da>31) return $fb;
+    return sprintf('%04d-%02d-%02d',$y,$mo,$da);
+  } return $fb;
+}
+function extract_moph_message_id($json){
+  if(!is_array($json)) return null;
+  foreach([['messageId'],['data','messageId'],['result','messageId'],['messages',0,'messageId'],['messages',0,'id']] as $p){
+    $t=$json; foreach($p as $k){ if(is_array($t)&&array_key_exists($k,$t)) $t=$t[$k]; else { $t=null; break; } }
+    if(is_scalar($t)&&$t!=='') return (string)$t;
+  } return null;
+}
+
+/* ===== Flex payload ===== */
+if (!defined('PHARM_TITLE'))      define('PHARM_TITLE', 'Lab Alert ห้องยา');
+if (!defined('PHARM_HEADER_URL')) define('PHARM_HEADER_URL','https://www.ckhospital.net/home/PDF/moph-flex-header-2.jpg');
+if (!defined('PHARM_ICON_URL'))   define('PHARM_ICON_URL','https://www.ckhospital.net/home/PDF/Logo_ck.png');
+
+// === Report Button Config (กรอกของจริง) ===
+if (!defined('PHARM_REPORT_URL_BASE')) define('PHARM_REPORT_URL_BASE', 'http://192.168.1.25:8080/HOSxLine/pharm_lab_report.php');
+if (!defined('PHARM_REPORT_SIGN_KEY')) define('PHARM_REPORT_SIGN_KEY', 'put_a_random_secret_here');
+  // ใช้ IP/พอร์ตภายในของคุณ
+
+
+  // สร้าง URL พร้อมลายเซ็นป้องกันแก้ไขพารามิเตอร์
+  function build_report_signed_url(array $r): string {
+    // ใช้ id จากคิวเป็นหลัก; ถ้าไม่มี ให้พยายามใช้ lab_order_number + hn เป็น fallback
+    $id  = isset($r['id']) ? (string)$r['id'] : '';
+    $hn  = (string)($r['hn'] ?? '');
+    $lab = (string)($r['lab_order_number'] ?? '');
+    $ts  = time();
+  
+    $payload = http_build_query(['id'=>$id,'hn'=>$hn,'lab'=>$lab,'ts'=>$ts], '', '&', PHP_QUERY_RFC3986);
+    $sig = hash_hmac('sha256', $payload, PHARM_REPORT_SIGN_KEY);
+    return PHARM_REPORT_URL_BASE . '?' . $payload . '&sig=' . $sig . '&openExternalBrowser=1';
+  }
+  
+
+function iconRow(string $emoji, string $label, $value){
+  $text = $emoji.' '.$label.' : '.(string)$value;
+  return [
+    "type"=>"box","layout"=>"baseline","spacing"=>"sm",
+    "contents"=>[[ "type"=>"text","text"=>$text,"wrap"=>true,"size"=>"sm","color"=>"#1F2937" ]]
+  ];
+}
+function toNumberOrNull($s){
+  if ($s===null) return null;
+  if (is_numeric($s)) return (float)$s;
+  if (preg_match('/-?\d+(?:\.\d+)?/u', (string)$s, $m)) return (float)$m[0];
+  return null;
+}
+function pharmRisk(string $labName, $rawResult): array {
+  $x = toNumberOrNull($rawResult);
+  $lab = mb_strtolower($labName, 'UTF-8');
+  $ret = ['level'=>'ok','chip'=>'ปกติ','color'=>'#10B981'];
+  if (strpos($lab,'inr') !== false) {
+    if ($x === null) return ['level'=>'mid','chip'=>'INR (ตรวจสอบ)', 'color'=>'#F59E0B'];
+    if ($x >= 5.0)   return ['level'=>'high','chip'=>'INR สูงมาก','color'=>'#EF4444'];
+    if ($x >= 3.5)   return ['level'=>'mid','chip'=>'INR สูง','color'=>'#F59E0B'];
+    return $ret;
+  }
+  if (strpos($lab,'depakin') !== false) {
+    if ($x === null) return ['level'=>'mid','chip'=>'Depakin (ตรวจสอบ)', 'color'=>'#F59E0B'];
+    if ($x > 150)    return ['level'=>'high','chip'=>'Depakin สูง','color'=>'#EF4444'];
+    return $ret;
+  }
+  if (strpos($lab,'lithium') !== false) {
+    if ($x === null) return ['level'=>'mid','chip'=>'Lithium (ตรวจสอบ)', 'color'=>'#F59E0B'];
+    if ($x > 1.2)    return ['level'=>'high','chip'=>'Lithium สูง','color'=>'#EF4444'];
+    return $ret;
+  }
+  if (strpos($lab,'phenytoin') !== false || strpos($lab,'dilantin') !== false) {
+    if ($x === null) return ['level'=>'mid','chip'=>'Phenytoin (ตรวจสอบ)', 'color'=>'#F59E0B'];
+    if ($x > 20)     return ['level'=>'high','chip'=>'Phenytoin สูง','color'=>'#EF4444'];
+    return $ret;
+  }
+  return ['level'=>'mid','chip'=>'ตรวจสอบผล','color'=>'#F59E0B'];
+}
+function riskChip(string $text, string $hex){
+  return [
+    "type"=>"box","layout"=>"vertical","cornerRadius"=>"12px",
+    "backgroundColor"=>$hex,"paddingAll"=>"6px",
+    "contents"=>[["type"=>"text","text"=>$text,"weight"=>"bold","size"=>"xs","align"=>"center","color"=>"#FFFFFF"]]
+  ];
+}
+function buildPharmPayload(array $r): array {
+  $r = row_to_utf8($r);
+  $risk = pharmRisk($r['lab_name'] ?? '', $r['result'] ?? null);
+
+  $lines = [
+    iconRow("🏥","HN", $r['hn'] ?? '-'),
+    iconRow("👤","ชื่อ-สกุล", ($r['fullname'] ?? '-') . (isset($r['age']) ? " ({$r['age']} ปี)" : "")),
+    iconRow("🧪","Lab", $r['lab_name'] ?? '-'),
+    iconRow("📊","ผลตรวจ", $r['result'] ?? '-'),
+    iconRow("🗓️","วันที่ออกผล", $r['lab_date'] ?? '-'),
+    iconRow("⏰","เวลาออกผล", $r['lab_time'] ?? '-'),
+    iconRow("🩺","แพทย์", $r['doctor'] ?? '-'),
+    iconRow("🏷️","ประเภทผู้ป่วย", $r['patient_type'] ?? '-'),
+  ];
+
+  $headerBadge = [
+    "type"=>"box","layout"=>"horizontal","justifyContent"=>"center","spacing"=>"sm",
+    "contents"=>[ riskChip($risk['chip'], $risk['color']) ]
+  ];
+
+  // --- ปุ่มรายงาน ---
+  $reportUrl = build_report_signed_url($r);
+  $footer = [
+    "type"=>"box","layout"=>"vertical","spacing"=>"sm","paddingTop"=>"0px",
+    "contents"=>[
+      ["type"=>"button","style"=>"primary","height"=>"sm",
+        "action"=>["type"=>"uri","label"=>"รายงานการแจ้งเตือน","uri"=>$reportUrl]
+      ],
+      ["type"=>"button","style"=>"link","height"=>"sm",
+        "action"=>["type"=>"uri","label"=>"เปิดในเบราว์เซอร์","uri"=>$reportUrl]
+      ]
+    ]
+  ];
+
+  return [
+    "messages" => [[
+      "type" => "flex",
+      "altText" => "Pharm Lab Alert",
+      "contents" => [
+        "type" => "bubble",
+        "size" => "mega",
+        "header" => [
+          "type" => "box","layout" => "vertical","paddingAll" => "0px",
+          "contents" => [[ "type" => "image", "url" => PHARM_HEADER_URL, "size" => "full", "aspectRatio" => "3120:885", "aspectMode" => "cover" ]]
+        ],
+        "body" => [
+          "type" => "box","layout" => "vertical","spacing" => "sm",
+          "contents" => array_merge([
+            [
+              "type"=>"box","layout"=>"horizontal","contents"=>[
+                ["type"=>"box","layout"=>"vertical","contents"=>[
+                  ["type"=>"image","url"=>PHARM_ICON_URL,"size"=>"full","aspectMode"=>"cover"]
+                ],"cornerRadius"=>"100px","maxWidth"=>"72px"],
+                ["type"=>"box","layout"=>"vertical","paddingStart"=>"12px","contents"=>[
+                  ["type"=>"text","text"=>"Lab Alert ห้องยา","weight"=>"bold","size"=>"lg","color"=>"#111827"],
+                  $headerBadge
+                ]]
+              ]
+            ],
+            ["type"=>"separator","margin"=>"md"],
+          ], $lines, [
+            ["type"=>"separator","margin"=>"md"],
+            ["type"=>"box","layout"=>"vertical","contents"=>[
+              ["type"=>"text","text"=>"กรุณาทบทวนการปรับยา/เฝ้าระวังอาการไม่พึงประสงค์","size"=>"xs","color"=>"#6B7280","align"=>"center"]
+            ],"margin"=>"sm"]
+          ])
+        ],
+        "footer" => $footer
+      ]
+    ]]
+  ];
+}
+
+function send_via_moph_alert_pharm(array $row): array {
+  $payload = buildPharmPayload($row);
+  $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+  if ($body === false){ $e=json_last_error_msg(); log_send($row,0,null,"JSON_ENCODE_FAIL: $e"); return [false,null,"JSON encode failed: $e"]; }
+  $ch = curl_init();
+  curl_setopt_array($ch,[
+    CURLOPT_URL => MOPH_API_URL,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => MOPH_TIMEOUT,
+    CURLOPT_CUSTOMREQUEST => 'POST',
+    CURLOPT_POSTFIELDS => $body,
+    CURLOPT_HTTPHEADER => [
+      'client-key: ' . PHARM_CLIENT_KEY,
+      'secret-key: ' . PHARM_SECRET_KEY,
+      'Content-Type: application/json; charset=UTF-8',
+      'Accept: application/json',
+    ],
+  ]);
+  $resp = curl_exec($ch);
+  $err  = curl_error($ch);
+  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  log_send($row,$code,$resp,$err);
+  if ($err) return [false,null,"CURL: $err"];
+  $json = @json_decode($resp,true);
+  $mid  = extract_moph_message_id($json);
+  $st   = is_array($json)&&array_key_exists('status',$json)?$json['status']:null;
+  $msg  = is_array($json)&&array_key_exists('message',$json)?(string)$json['message']:null;
+  $ok   = ($mid) || (is_numeric($st)&&(int)$st===200) || ($msg && preg_match('/succ(e|)ss/i',$msg));
+  if (($code>=200 && $code<300) && $ok){
+    $ref = $mid ?: ($st ? "status:$st" : 'HTTP'.$code);
+    return [true,$ref,null];
+  }
+  $detail="HTTP=$code"; if($st!==null) $detail.=" status=$st"; if($msg) $detail.=" msg=$msg";
+  return [false,null,"MOPH error: $detail"];
+}
+
+/* ===== Main (run only when executed directly) ===== */
+if (!defined('PHARM_LIB_ONLY')) {
+
+  $mode  = strtolower((string)readParam('mode','both')); // ingest|send|both
+  $start = readParam('start', date('Y-m-d', strtotime('-'.DEFAULT_LOOKBACK_DAYS.' days')));
+  $end   = readParam('end', date('Y-m-d'));
+  $dry   = readParam('dry-run', false);
+
+  $today = date('Y-m-d');
+  $defS  = date('Y-m-d', strtotime('-'.DEFAULT_LOOKBACK_DAYS.' days'));
+  $start = normalize_date_ymd($start,$defS);
+  $end   = normalize_date_ymd($end,$today);
+  if(strtotime($start)===false || strtotime($end)===false || $start>$end){ $start=$defS; $end=$today; }
+
+  runlog("Effective range: $start -> $end");
+
+  /* ========== STEP 1: Ingest ========== */
+  if ($mode==='ingest' || $mode==='both'){
+    $sql = $dbcon->prepare("
+      SELECT 
+        pt.hn,
+        CONCAT(COALESCE(pt.pname,''),' ',COALESCE(pt.fname,''),' ',COALESCE(pt.lname,'')) AS fullname,
+        TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
+        COALESCE(h.report_date, h1.report_date) AS lab_date,
+        COALESCE(h.report_time, h1.report_time) AS lab_time,
+        d.name AS doctor,
+        CASE 
+          WHEN l.lab_items_code='539' OR l1.lab_items_code='539' THEN 'INR'
+          WHEN l.lab_items_code='2368' OR l1.lab_items_code='2368' THEN 'Depakin level'
+          WHEN (l.lab_items_code IN ('697','2388')) OR (l1.lab_items_code IN ('697','2388')) THEN 'Lithium level'
+          WHEN l.lab_items_code='2370' OR l1.lab_items_code='2370' THEN 'Phenytoin level'
+          ELSE 'Lab Alert'
+        END AS lab_name,
+        COALESCE(l.lab_order_result, l1.lab_order_result) AS result,
+        CASE 
+          WHEN l.lab_order_result IS NOT NULL THEN 'OPD'
+          WHEN l1.lab_order_result IS NOT NULL THEN 'IPD'
+          ELSE '-'
+        END AS patient_type,
+        COALESCE(l.lab_order_number, l1.lab_order_number) AS lab_order_number
+      FROM ovst s
+        LEFT JOIN vn_stat ov ON ov.vn = s.vn
+        INNER JOIN patient pt ON pt.hn = s.hn
+        LEFT JOIN doctor d    ON d.code = ov.dx_doctor
+        LEFT JOIN lab_head  h  ON h.vn  = ov.vn
+        LEFT JOIN lab_order l  ON l.lab_order_number  = h.lab_order_number
+        LEFT JOIN lab_head  h1 ON h1.vn = s.an
+        LEFT JOIN lab_order l1 ON l1.lab_order_number = h1.lab_order_number
+      WHERE ov.vstdate BETWEEN :s AND :e
+        AND (
+          (l.lab_items_code='539'  AND CAST(l.lab_order_result  AS DECIMAL(10,3)) >= 5)
+          OR (l1.lab_items_code='539' AND CAST(l1.lab_order_result AS DECIMAL(10,3)) >= 5)
+          OR (l.lab_items_code='2368'  AND CAST(l.lab_order_result  AS DECIMAL(10,3)) > 150)
+          OR (l1.lab_items_code='2368' AND CAST(l1.lab_order_result AS DECIMAL(10,3)) > 150)
+          OR (l.lab_items_code IN ('697','2388')  AND CAST(l.lab_order_result  AS DECIMAL(10,3)) > 1.2)
+          OR (l1.lab_items_code IN ('697','2388') AND CAST(l1.lab_order_result AS DECIMAL(10,3)) > 1.2)
+          OR (l.lab_items_code='2370'  AND CAST(l.lab_order_result  AS DECIMAL(10,3)) > 20)
+          OR (l1.lab_items_code='2370' AND CAST(l1.lab_order_result AS DECIMAL(10,3)) > 20)
+        )
+      ORDER BY lab_date DESC, lab_time DESC
+    ");
+    $sql->execute([':s'=>$start, ':e'=>$end]);
+    $rows = $sql->fetchAll();
+    runlog("Ingest: found ".count($rows)." rows.");
+
+    if(!$dry && $rows){
+      $ins = $dbcon->prepare("
+        INSERT INTO pharm_lab_queue
+          (hn, fullname, age, lab_date, lab_time, doctor, lab_name, result, patient_type, lab_order_number, status, attempt, created_at)
+        VALUES
+          (:hn,:fullname,:age,:lab_date,:lab_time,:doctor,:lab_name,:result,:patient_type,:lab_order_number,0,0,NOW())
+        ON DUPLICATE KEY UPDATE lab_order_number=lab_order_number
+      ");
+      foreach($rows as $r){
+        $ins->execute([
+          ':hn'               => $r['hn'],
+          ':fullname'         => $r['fullname'],
+          ':age'              => (int)$r['age'],
+          ':lab_date'         => $r['lab_date'],
+          ':lab_time'         => $r['lab_time'],
+          ':doctor'           => $r['doctor'],
+          ':lab_name'         => $r['lab_name'],
+          ':result'           => $r['result'],
+          ':patient_type'     => $r['patient_type'],
+          ':lab_order_number' => $r['lab_order_number'],
+        ]);
+      }
+    }
+    if ($mode==='ingest' && PHP_SAPI!=='cli'){ echo "<pre>Done (ingest-only): $start -> $end</pre>"; return; }
+  }
+
+  /* ========== STEP 2: Send ========== */
+  if ($mode==='send' || $mode==='both'){
+    $cool = (int)PHARM_RESEND_COOLDOWN_MIN;
+    $maxT = (int)PHARM_MAX_ATTEMPTS;
+    $lim  = (int)PHARM_BATCH_LIMIT;
+
+    $getQ=$dbcon->prepare("
+      SELECT * FROM pharm_lab_queue
+      WHERE status=0
+        AND (last_attempt_at IS NULL OR TIMESTAMPDIFF(MINUTE,last_attempt_at,NOW()) >= :cd)
+        AND attempt < :mx
+      ORDER BY (last_attempt_at IS NULL) DESC, last_attempt_at ASC, created_at ASC
+      LIMIT $lim
+    ");
+    $getQ->execute([':cd'=>$cool, ':mx'=>$maxT]);
+    $q=$getQ->fetchAll();
+    runlog("Send: to process ".count($q)." rows (cooldown={$cool}m, maxTry={$maxT}).");
+
+    $okU=$dbcon->prepare("UPDATE pharm_lab_queue SET status=1,sent_at=NOW(),last_attempt_at=NOW(),attempt=attempt+1,last_error=NULL,out_ref=:r,line_message_id=:r WHERE id=:id");
+    $ngU=$dbcon->prepare("UPDATE pharm_lab_queue SET last_attempt_at=NOW(),attempt=attempt+1,last_error=:e WHERE id=:id");
+
+    foreach($q as $row){
+      if($dry){ runlog("DRY-RUN: would send id={$row['id']} hn={$row['hn']}"); continue; }
+      usleep(random_int(10,80)*1000);
+      [$ok,$ref,$err] = send_via_moph_alert_pharm($row);
+      if($ok){ $okU->execute([':r'=>$ref,':id'=>$row['id']]); runlog("OK id={$row['id']} ref=".($ref??'-'));
+      } else { $ngU->execute([':e'=>$err,':id'=>$row['id']]); runlog("FAIL id={$row['id']} err=$err"); }
+    }
+    if (PHP_SAPI!=='cli'){ echo "<pre>Done: start={$start} end={$end}</pre>"; }
+  }
+}

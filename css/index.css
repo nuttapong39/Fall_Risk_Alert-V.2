@@ -1,0 +1,45 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Kanit', sans-serif;
+}
+
+.card-title {
+    font-family: 'Kanit', sans-serif;
+    font-style: italic;
+    
+}
+    
+
+.error {
+    background-image: url("img/ERROR404.png");
+    height: 700px;
+    position: relative;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.nav-item index {
+    text-align: center;
+}
+table .table-dark {
+    text-align: center;
+}
+
+/* .form-test {
+    background: #b9f7d4;
+    background: -webkit-linear-gradient(0deg, #b9f7d4 0%, #e0e4cc 100%);
+    background: linear-gradient(0deg, #b9f7d4 0%, #e0e4cc 100%);
+} */
+
+/* .bg-light text-dark {
+    width: 2000px;
+    height: 700;
+    font-style: italic;
+} */
+

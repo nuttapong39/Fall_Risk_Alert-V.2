@@ -1,0 +1,17 @@
+# --- Secrets / credentials ---
+secrets/
+*.env
+.env
+.env.* 
+
+# --- Logs ---
+logs/
+*.log
+
+# --- PHP Composer vendor ---
+vendor/
+
+# --- OS / Editor junk (optional but recommended) ---
+.DS_Store
+Thumbs.db
+.vscode/
