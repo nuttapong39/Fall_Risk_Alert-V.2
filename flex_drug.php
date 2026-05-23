@@ -58,8 +58,8 @@ if (!function_exists('dr_info_row')) {
     return [
       "type"=>"box", "layout"=>"baseline", "spacing"=>"sm", "margin"=>"sm",
       "contents"=>[
-        ["type"=>"text","text"=>$label,"size"=>"sm","color"=>"#6B7280","flex"=>3,"weight"=>"regular"],
-        ["type"=>"text","text"=>$v,"size"=>$opts['value_size']??"sm","color"=>$opts['value_color']??"#111827",
+        ["type"=>"text","text"=>$label,"size"=>"md","color"=>"#6B7280","flex"=>3,"weight"=>"regular"],
+        ["type"=>"text","text"=>$v,"size"=>$opts['value_size']??"md","color"=>$opts['value_color']??"#111827",
          "weight"=>$opts['value_weight']??"regular","flex"=>5,"wrap"=>true,"align"=>"end"],
       ]
     ];
@@ -77,7 +77,7 @@ if (!function_exists('dr_section')) {
       "type"=>"box","layout"=>"baseline","spacing"=>"sm",
       "contents"=>[
         ["type"=>"text","text"=>($icon?"$icon  ":'').$title,
-         "size"=>"xs","color"=>$acc,"weight"=>"bold","flex"=>1],
+         "size"=>"sm","color"=>$acc,"weight"=>"bold","flex"=>1],
       ]
     ];
     return [
@@ -137,14 +137,14 @@ function buildDrugPayload(array $row): array {
     "contents"=>[
       ["type"=>"box","layout"=>"horizontal","contents"=>[
         ["type"=>"text","text"=>"💊  แจ้งเตือนยาอันตราย",
-         "size"=>"xs","color"=>"#FDE68A","weight"=>"bold","flex"=>1],
+         "size"=>"sm","color"=>"#FDE68A","weight"=>"bold","flex"=>1],
         ["type"=>"text","text"=>"High-Alert Drug",
-         "size"=>"xs","color"=>"#FECACA","align"=>"end","flex"=>0],
+         "size"=>"sm","color"=>"#FECACA","align"=>"end","flex"=>0],
       ]],
       ["type"=>"text","text"=>DRUG_TITLE,
-       "size"=>"xl","color"=>"#FFFFFF","weight"=>"bold","wrap"=>true,"margin"=>"sm"],
+       "size"=>"xxl","color"=>"#FFFFFF","weight"=>"bold","wrap"=>true,"margin"=>"sm"],
       ["type"=>"text","text"=>DRUG_SUBTITLE,
-       "size"=>"xs","color"=>"#FCA5A5","wrap"=>true,"margin"=>"xs"],
+       "size"=>"sm","color"=>"#FCA5A5","wrap"=>true,"margin"=>"xs"],
     ],
   ];
 
@@ -153,15 +153,15 @@ function buildDrugPayload(array $row): array {
     "type"=>"box","layout"=>"baseline","spacing"=>"sm",
     "paddingAll"=>"10px","backgroundColor"=>"#FEE2E2","cornerRadius"=>"8px","margin"=>"md",
     "contents"=>[
-      ["type"=>"text","text"=>"⚠","size"=>"md","flex"=>0,"color"=>"#B91C1C"],
+      ["type"=>"text","text"=>"⚠","size"=>"lg","flex"=>0,"color"=>"#B91C1C"],
       ["type"=>"text","text"=>"ผู้ป่วยได้รับยาในกลุ่มยาอันตราย (High-Alert Medication) ที่ต้องติดตามอย่างใกล้ชิด",
-       "size"=>"xs","color"=>"#991B1B","weight"=>"bold","wrap"=>true,"flex"=>1],
+       "size"=>"sm","color"=>"#991B1B","weight"=>"bold","wrap"=>true,"flex"=>1],
     ],
   ];
 
   /* ---------- SECTION: ข้อมูลผู้ป่วย ---------- */
   $sPatient = dr_section('ข้อมูลผู้ป่วย', [
-    dr_info_row('HN', $hn, ['value_weight'=>'bold','value_color'=>'#111827','value_size'=>'md']),
+    dr_info_row('HN', $hn, ['value_weight'=>'bold','value_color'=>'#111827','value_size'=>'lg']),
     ["type"=>"separator","margin"=>"sm","color"=>"#F3F4F6"],
     dr_info_row('ชื่อ-สกุล', $fullname, ['value_weight'=>'bold']),
     ["type"=>"separator","margin"=>"sm","color"=>"#F3F4F6"],
@@ -172,15 +172,15 @@ function buildDrugPayload(array $row): array {
   $drugCodeBox = [
     "type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"sm",
     "contents"=>[
-      ["type"=>"text","text"=>"รหัสยา","size"=>"xs","color"=>"#92400E","weight"=>"bold","flex"=>0],
-      ["type"=>"text","text"=>$drugCode,"size"=>"lg","color"=>"#78350F",
+      ["type"=>"text","text"=>"รหัสยา","size"=>"sm","color"=>"#92400E","weight"=>"bold","flex"=>0],
+      ["type"=>"text","text"=>$drugCode,"size"=>"xl","color"=>"#78350F",
        "weight"=>"bold","flex"=>1,"align"=>"end"],
     ]
   ];
   $sDrug = dr_section('รายการยาที่ได้รับ', [
     $drugCodeBox,
     ["type"=>"separator","margin"=>"sm","color"=>"#FDE68A"],
-    dr_info_row('ชื่อยา', $drugName, ['value_weight'=>'bold','value_color'=>'#78350F']),
+    dr_info_row('ชื่อยา', $drugName, ['value_weight'=>'bold','value_color'=>'#78350F','value_size'=>'md']),
     dr_info_row('วันที่รับบริการ', $vstdate),
     dr_info_row('แผนก / สถานะ', $dept),
     dr_info_row('สถานบริการหลัก', $station),
@@ -191,15 +191,15 @@ function buildDrugPayload(array $row): array {
     [
       "type"=>"box","layout"=>"vertical","spacing"=>"xs","margin"=>"sm",
       "contents"=>[
-        ["type"=>"text","text"=>"📍 ที่อยู่","size"=>"xs","color"=>"#6B7280","weight"=>"bold"],
-        ["type"=>"text","text"=>$address,"size"=>"sm","color"=>"#111827","wrap"=>true],
+        ["type"=>"text","text"=>"📍 ที่อยู่","size"=>"sm","color"=>"#6B7280","weight"=>"bold"],
+        ["type"=>"text","text"=>$address,"size"=>"md","color"=>"#111827","wrap"=>true],
       ]
     ],
     [
       "type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"md",
       "contents"=>[
-        ["type"=>"text","text"=>"📞 เบอร์โทร","size"=>"xs","color"=>"#6B7280","weight"=>"bold","flex"=>3],
-        ["type"=>"text","text"=>($tel?:'-'),"size"=>"md","color"=>"#065F46",
+        ["type"=>"text","text"=>"📞 เบอร์โทร","size"=>"sm","color"=>"#6B7280","weight"=>"bold","flex"=>3],
+        ["type"=>"text","text"=>($tel?:'-'),"size"=>"lg","color"=>"#065F46",
          "weight"=>"bold","flex"=>5,"align"=>"end","wrap"=>true],
       ]
     ],
@@ -208,15 +208,15 @@ function buildDrugPayload(array $row): array {
   /* ---------- SECTION: คำแนะนำ (blue) ---------- */
   $sAction = dr_section('คำแนะนำสำหรับเจ้าหน้าที่', [
     ["type"=>"text","text"=>"โปรดติดตามผู้ป่วยภายใน 7 วัน",
-     "size"=>"sm","color"=>"#1E3A8A","weight"=>"bold","margin"=>"sm"],
+     "size"=>"md","color"=>"#1E3A8A","weight"=>"bold","margin"=>"sm"],
     ["type"=>"text","text"=>"• ตรวจสอบประวัติการใช้ยาและผลข้างเคียง",
-     "size"=>"xs","color"=>"#1F2937","wrap"=>true,"margin"=>"sm"],
+     "size"=>"sm","color"=>"#1F2937","wrap"=>true,"margin"=>"sm"],
     ["type"=>"text","text"=>"• ประเมินความสามารถในการใช้ยาด้วยตนเองของผู้ป่วย",
-     "size"=>"xs","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
+     "size"=>"sm","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
     ["type"=>"text","text"=>"• ให้ความรู้เกี่ยวกับยาและการสังเกตอาการผิดปกติ",
-     "size"=>"xs","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
+     "size"=>"sm","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
     ["type"=>"text","text"=>"• บันทึกผลการเยี่ยมในระบบ HDC / JHCIS",
-     "size"=>"xs","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
+     "size"=>"sm","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"],
   ], ['icon'=>'📋','accent'=>'#1E3A8A','bg'=>'#EFF6FF','bd'=>'#BFDBFE']);
 
   /* ---------- BODY ---------- */
@@ -240,10 +240,10 @@ function buildDrugPayload(array $row): array {
     "contents"=>[
       ["type"=>"separator","color"=>"#E5E7EB"],
       ["type"=>"box","layout"=>"horizontal","margin"=>"md","contents"=>[
-        ["type"=>"text","text"=>DRUG_SYSTEM_NAME,"size"=>"xxs","color"=>"#6B7280","flex"=>3,"wrap"=>true],
-        ["type"=>"text","text"=>date('j M Y H:i'),"size"=>"xxs","color"=>"#6B7280","align"=>"end","flex"=>2],
+        ["type"=>"text","text"=>DRUG_SYSTEM_NAME,"size"=>"xs","color"=>"#6B7280","flex"=>3,"wrap"=>true],
+        ["type"=>"text","text"=>date('j M Y H:i'),"size"=>"xs","color"=>"#6B7280","align"=>"end","flex"=>2],
       ]],
-      $refId ? ["type"=>"text","text"=>"Ref: ".(string)$refId,"size"=>"xxs","color"=>"#9CA3AF","margin"=>"xs"]
+      $refId ? ["type"=>"text","text"=>"Ref: ".(string)$refId,"size"=>"xs","color"=>"#9CA3AF","margin"=>"xs"]
              : ["type"=>"filler"],
     ],
   ];
