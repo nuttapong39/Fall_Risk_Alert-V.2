@@ -1,191 +1,419 @@
-﻿
 <?php
+/**
+ * Leptospira.php
+ * แจ้งเตือนผู้ป่วยเลปโตสไปโรสิส — HR-CENTER 4.0
+ * — Query ตรงจาก HOSxP (vn_stat + lab_order + patient)
+ * — ส่ง LINE Flex ผ่าน MOPH Alert ด้วย lepto_action.php
+ */
 
-require_once ('server.php');
-require_once ('index1.html');
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/auth_guard.php';
+date_default_timezone_set('Asia/Bangkok');
 
+// ── Date filter ───────────────────────────────────────────────────────────────
+$start = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-30 days'));
+$end   = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-d');
+
+// ── Query HOSxP ───────────────────────────────────────────────────────────────
+$rows       = [];
+$queryError = null;
+try {
+  $stmt = $dbcon->prepare(
+    "SELECT
+       ov.vn,
+       ov.hn,
+       CONCAT(pt.pname, pt.fname, ' ', pt.lname)            AS fullname,
+       TIMESTAMPDIFF(YEAR, pt.birthday, ov.vstdate)          AS age,
+       CASE WHEN pt.sex='1' THEN 'ชาย'
+            WHEN pt.sex='2' THEN 'หญิง' ELSE '' END          AS sex,
+       ov.cid,
+       pt.hometel,
+       ov.vstdate,
+       d.name                                                 AS doctor,
+       i.name                                                 AS disease,
+       ov.pdx                                                 AS icd10,
+       l.lab_order_result                                     AS result
+     FROM   vn_stat ov
+     LEFT  JOIN patient pt ON pt.hn  = ov.hn
+     LEFT  JOIN icd101  i  ON i.code = ov.pdx
+     LEFT  JOIN doctor  d  ON d.code = ov.dx_doctor
+     INNER JOIN lab_head  h ON h.vn              = ov.vn
+     INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
+     WHERE  ov.vstdate        BETWEEN ? AND ?
+       AND  l.lab_items_code  = '290'
+       AND  ov.pdx            IN ('A270','A278','A279','A418')
+     GROUP BY ov.vn
+     ORDER BY ov.vstdate DESC
+     LIMIT 500"
+  );
+  $stmt->execute([$start, $end]);
+  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+  $queryError = $e->getMessage();
+}
+
+// ── KPI ───────────────────────────────────────────────────────────────────────
+$today  = date('Y-m-d');
+$kpi    = ['total'=>0, 'today'=>0, 'unique_hn'=>0];
+$hnSeen = [];
+foreach ($rows as $r) {
+  $kpi['total']++;
+  if (substr((string)$r['vstdate'], 0, 10) === $today) $kpi['today']++;
+  $hnSeen[$r['hn']] = true;
+}
+$kpi['unique_hn'] = count($hnSeen);
+
+// ── UTF-8 helper ──────────────────────────────────────────────────────────────
+function to_utf8_lepto($s) {
+  if (!is_string($s)) return $s;
+  if (mb_check_encoding($s, 'UTF-8')) return $s;
+  foreach (['TIS-620','TIS620','Windows-874','CP874','ISO-8859-11','ISO-8859-1'] as $enc) {
+    $t = @iconv($enc, 'UTF-8//IGNORE', $s); if ($t !== false && $t !== '') return $t;
+    $t = @mb_convert_encoding($s, 'UTF-8', $enc); if ($t !== false && $t !== '') return $t;
+  }
+  return @iconv('UTF-8', 'UTF-8//IGNORE', $s);
+}
+
+// ── Page variables ────────────────────────────────────────────────────────────
+$PAGE_TITLE = 'เลปโตสไปโรสิส (Leptospirosis)';
+$PAGE_KEY   = 'lepto';
+$EXTRA_HEAD = '
+<link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+<style>
+  .filter-card  { padding:1rem 1.15rem; margin-bottom:1rem }
+  .filter-card label { font-size:.82rem; color:#64748b; margin-bottom:.25rem }
+
+  .table thead th { white-space:nowrap; font-size:.82rem; color:#475569;
+                    background:#f8fafc; border-bottom:1px solid #e2e8f0 }
+  .table td { font-size:.88rem; vertical-align:middle }
+
+  /* Send button — teal lepto theme */
+  .btn-send-disease {
+    background: linear-gradient(135deg,#22d3ee,#0891b2);
+    border:none; color:#fff; border-radius:8px;
+    font-size:.82rem; padding:.3rem .75rem;
+    display:inline-flex; align-items:center; gap:.3rem;
+    transition:opacity .2s, transform .1s; white-space:nowrap;
+  }
+  .btn-send-disease:hover  { opacity:.88; color:#fff }
+  .btn-send-disease:active { transform:scale(.97) }
+  .btn-send-disease:disabled {
+    background:#d1fae5; color:#065f46;
+    border:1px solid #a7f3d0; cursor:not-allowed; opacity:1
+  }
+
+  .setup-alert {
+    background:linear-gradient(135deg,#0891b2,#164e63);
+    color:#fff; border-radius:14px; padding:20px 24px;
+    display:flex; align-items:flex-start; gap:16px;
+  }
+  .setup-alert-icon { font-size:2rem; flex-shrink:0 }
+  .setup-alert h5 { font-size:1rem; font-weight:700; margin:0 0 4px }
+  .setup-alert p  { font-size:.83rem; margin:0; opacity:.9 }
+</style>
+';
+
+require_once __DIR__ . '/partials/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/bootstrap.min.css">
-<link rel="stylesheet" href="css/index.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+<!-- ═══════════════════════════════════════════════
+     PAGE CONTENT
+═══════════════════════════════════════════════ -->
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.2/css/jquery.dataTables.min.css">
-<!-- <link href="https://fonts.googleapis.com/css2?family=Niramit:wght@500&display=swap" rel="stylesheet"> -->
-<!-- <link href="https://fonts.googleapis.com/css2?family=K2D:wght@300&display=swap" rel="stylesheet"> -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300&display=swap" rel="stylesheet">
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<title>คนไข้โรค Leptospira</title>
-</head>
-<body>
-<style>    
-    .alert-date {
-        /* font-size: large; */
-        color: red;
-    }
-</style>
-<div class="container">
-    <div class="row mt-2">
-            <div class="heading mt-2 mb-2" role="alert" style="text-align:center">
-                <h3>คนไข้โรค Leptospira!</h3>
-            </div>
-        <table id="table">
-                <thead class="table-dark">
-                    <tr>
-                        <th>#</th>
-                        <th>HN</th>
-                        <th>ชื่อ - สกุล</th>
-                        <th>อายุ</th>
-                        <th>เลขบัตรประชาชน</th>
-                        <th>ที่อยู่</th>
-                        <th>เบอร์โทรติดต่อ</th>
-                        <th>วันที่รับบริการ</th>
-                        <th>แพทย์ผู้ตรวจ</th>
-                        <th>ชื่อโรค</th>
-                        <th>ICD10</th>
-                        <th>ผลตรวจ</th>
-                    </tr>
-                </thead>
-                <tbody>
-            <?php
-                
-                $hosxp = $dbcon->query("SELECT  ov.hn,
-                                    CONCAT( pt.pname, pt.fname, '  ', pt.lname ) AS 'fullname',
-                                    timestampdiff(
-                                    YEAR,
-                                    birthday,
-                                    curdate()) AS age,
-                                    ov.cid,
-                                    pt.informaddr,
-                                    pt.hometel,
-                                    ov.vstdate,
-                                    d.NAME AS 'doctor',
-                                    i.NAME AS 'disease',
-                                    ov.pdx AS 'icd10',
-                                    l.lab_order_result as 'result'
-
-                                    FROM  ovst ovst
-
-
-                                    LEFT OUTER JOIN vn_stat ov ON ovst.vn = ov.vn
-                                    LEFT OUTER JOIN patient pt ON pt.hn = ovst.hn
-                                    LEFT OUTER JOIN icd101 i ON i.CODE = ov.pdx
-                                    LEFT OUTER JOIN icd101 i1 ON i1.CODE = ov.dx0
-                                    LEFT OUTER JOIN doctor d ON d.CODE = ov.dx_doctor
-                                    LEFT OUTER JOIN lab_head h ON h.vn = ov.vn
-                                    LEFT OUTER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-                                    LEFT OUTER JOIN lab_head h1 ON h1.vn = ovst.an
-                                    LEFT OUTER JOIN lab_order l1 ON l1.lab_order_number = h1.lab_order_number
-                                    WHERE
-                                    ov.pdx IN ( 'A270', 'A278', 'A279', 'A418' ) 
-                                    AND ov.vstdate BETWEEN '2025-06-01' AND curdate()
-                                    AND ( l.lab_items_code = '290'     or    l1.lab_items_code = '290' )
-
-                                    GROUP BY pt.hn
-                                    ORDER BY
-                                    ov.vstdate DESC");                             
-                $hosxp->execute();
-
-                $user = $hosxp->fetchAll();
-                for ($x = 0 ; $x < count($user) ; $x++) {
-                    $hn = "'".$user[$x]['hn']."'";
-                    $fullname = "'".$user[$x]['fullname']."'";
-                    $age = "'".$user[$x]['age']."'";
-                    $cid = "'".$user[$x]['cid']."'";        
-                    $informaddr = "'".$user[$x]['informaddr']."'";
-                    $hometel = "'".$user[$x]['hometel']."'";
-                    $vstdate = "'".$user[$x]['vstdate']."'";                  
-                    $doctor = "'".$user[$x]['doctor']."'";                  
-                    $disease = "'".$user[$x]['disease']."'";                  
-                    $icd10 = "'".$user[$x]['icd10']."'";                  
-                    $result = "'".$user[$x]['result']."'";                  
-            ?>
-                <tr >
-                    <td><button class="btn btn-success btn-lg" onclick="Sentdata(<?php echo $hn ?>, <?php echo $fullname ?>, <?php echo $age ?>,  <?php echo $cid ?> , <?php echo $informaddr ?>, <?php echo $hometel ?> , <?php echo $vstdate ?> , <?php echo $disease ?> , <?php echo $icd10 ?> , <?php echo $doctor ?> , <?php echo $result ?>)">
-                    <span class='msi' style='font-size:36px;'>chat</span></button></td> 
-
-                    <td><?php echo $user[$x]['hn'] ?></td>
-                    <td><?php echo $user[$x]['fullname'] ?></td>
-                    <td><?php echo $user[$x]['age'] ?></td>
-                    <td><?php echo $user[$x]['cid'] ?></td>
-                    <td><?php echo $user[$x]['informaddr'] ?></td>
-                    <td><?php echo $user[$x]['hometel'] ?></td>
-                    <td class="alert-date"><?php echo $user[$x]['vstdate'] ?></td>
-                    <td><?php echo $user[$x]['doctor'] ?></td>
-                    <td><?php echo $user[$x]['disease'] ?></td>
-                    <td><?php echo $user[$x]['icd10'] ?></td>
-                    <td><?php echo $user[$x]['result'] ?></td>
-                </tr>
-            <?php
-                } 
-            ?>   
-                    </tbody>
-        </table>
-    </div>
+<!-- Page header -->
+<div class="page-header">
+  <h1>
+    <span class="msi me-2" style="color:#0891b2">pets</span>
+    <?= htmlspecialchars($PAGE_TITLE) ?>
+  </h1>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge rounded-pill"
+          style="background:#ecfeff;color:#164e63;border:1px solid #a5f3fc;font-size:.78rem;padding:.35rem .75rem">
+      <span class="msi me-1" style="font-size:.9em">science</span>
+      Lab code: 290
+    </span>
+    <span class="badge rounded-pill"
+          style="background:#ecfeff;color:#164e63;border:1px solid #a5f3fc;font-size:.78rem;padding:.35rem .75rem">
+      ICD-10: A270, A278, A279, A418
+    </span>
+    <a href="Leptospira.php" class="btn btn-outline-secondary btn-sm">
+      <span class="msi me-1">refresh</span> รีเซ็ต
+    </a>
+  </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.6.4.js"></script>
-<script src="https://cdn.datatables.net/1.13.2/js/jquery.dataTables.min.js"></script>
-<script src="js/bootstrap.min.js"></script>
+
+<?php if ($queryError): ?>
+<div class="setup-alert mb-4">
+  <div class="setup-alert-icon"><span class="msi">error_outline</span></div>
+  <div>
+    <h5>ไม่สามารถดึงข้อมูลจาก HOSxP</h5>
+    <p>ตรวจสอบการเชื่อมต่อฐานข้อมูลที่ <a href="db_config_admin.php" class="text-white fw-bold">ตั้งค่าฐานข้อมูล</a></p>
+    <p class="mt-1"><code style="background:rgba(0,0,0,.25);padding:2px 6px;border-radius:4px"><?= htmlspecialchars($queryError) ?></code></p>
+  </div>
+</div>
+<?php else: ?>
+
+<!-- KPI -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-4">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-teal"><span class="msi">pets</span></div>
+      <div>
+        <p class="kpi-label">ทั้งหมด (<?= date('d/m',strtotime($start))?>–<?= date('d/m',strtotime($end))?>)</p>
+        <p class="kpi-value" style="color:#0891b2"><?= number_format($kpi['total']) ?></p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-4">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue"><span class="msi">today</span></div>
+      <div>
+        <p class="kpi-label">วันนี้</p>
+        <p class="kpi-value text-primary"><?= number_format($kpi['today']) ?></p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-4">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-indigo"><span class="msi">people</span></div>
+      <div>
+        <p class="kpi-label">จำนวน HN ไม่ซ้ำ</p>
+        <p class="kpi-value" style="color:#4f46e5"><?= number_format($kpi['unique_hn']) ?></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="card filter-card">
+  <form class="row g-2 align-items-end" method="get">
+    <div class="col-sm-6 col-md-3">
+      <label for="f-start">ตั้งแต่วันที่</label>
+      <input type="date" id="f-start" class="form-control form-control-sm" name="start"
+             value="<?= htmlspecialchars($start) ?>">
+    </div>
+    <div class="col-sm-6 col-md-3">
+      <label for="f-end">ถึงวันที่</label>
+      <input type="date" id="f-end" class="form-control form-control-sm" name="end"
+             value="<?= htmlspecialchars($end) ?>">
+    </div>
+    <div class="col-sm-6 col-md-3 d-flex gap-2 align-items-end">
+      <button class="btn btn-sm flex-grow-1"
+              style="background:linear-gradient(135deg,#22d3ee,#0891b2);color:#fff;border:none;border-radius:8px">
+        <span class="msi me-1">search</span> ค้นหา
+      </button>
+      <a class="btn btn-sm btn-outline-secondary" href="Leptospira.php" title="รีเซ็ตตัวกรอง">
+        <span class="msi">undo</span>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-3 d-flex align-items-end">
+      <small class="text-muted">
+        <span class="msi me-1" style="font-size:.9em">info</span>
+        แสดง <?= number_format(count($rows)) ?> รายการ (max 500)
+      </small>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="card p-3">
+  <div class="table-responsive">
+    <table id="tblLepto" class="table table-hover align-middle nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>VN</th>
+          <th>HN</th>
+          <th>ชื่อ-สกุล</th>
+          <th>อายุ / เพศ</th>
+          <th>เลขบัตรประชาชน</th>
+          <th>เบอร์โทร</th>
+          <th>วันที่รับบริการ</th>
+          <th>แพทย์ผู้ตรวจ</th>
+          <th>ชื่อโรค / ICD-10</th>
+          <th>ผลตรวจ</th>
+          <th>ส่งแจ้งเตือน</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php foreach ($rows as $i => $r):
+        $r        = array_map('to_utf8_lepto', $r);
+        $vn       = htmlspecialchars($r['vn']       ?? '');
+        $hn       = htmlspecialchars($r['hn']       ?? '');
+        $fullname = htmlspecialchars($r['fullname'] ?? '');
+        $age      = htmlspecialchars($r['age']      ?? '');
+        $sex      = htmlspecialchars($r['sex']      ?? '');
+        $cid      = htmlspecialchars($r['cid']      ?? '');
+        $tel      = htmlspecialchars($r['hometel']  ?? '');
+        $vstdate  = htmlspecialchars($r['vstdate']  ?? '');
+        $doctor   = htmlspecialchars($r['doctor']   ?? '');
+        $disease  = htmlspecialchars($r['disease']  ?? '');
+        $icd10    = htmlspecialchars($r['icd10']    ?? '');
+        $result   = htmlspecialchars($r['result']   ?? '');
+        $isToday  = (substr((string)($r['vstdate']??''), 0, 10) === $today);
+      ?>
+        <tr>
+          <td class="text-muted" style="font-size:.8rem"><?= $i+1 ?></td>
+          <td><code style="font-size:.8rem;color:#374151"><?= $vn ?></code></td>
+          <td><strong><?= $hn ?></strong></td>
+          <td><?= $fullname ?></td>
+          <td class="text-center">
+            <?php if ($age || $sex): ?>
+              <span><?= $age ? $age.' ปี' : '' ?></span>
+              <?php if ($sex): ?>
+                <span class="badge rounded-pill ms-1"
+                      style="background:<?= $sex==='ชาย'?'#dbeafe':'#fce7f3' ?>;
+                             color:<?= $sex==='ชาย'?'#1e40af':'#9d174d' ?>;font-size:.75rem">
+                  <?= $sex ?>
+                </span>
+              <?php endif; ?>
+            <?php else: echo '-'; endif; ?>
+          </td>
+          <td style="font-size:.82rem;font-family:monospace"><?= $cid ?: '-' ?></td>
+          <td style="font-size:.85rem"><?= $tel ?: '-' ?></td>
+          <td>
+            <span style="font-size:.85rem;<?= $isToday ? 'color:#dc2626;font-weight:600' : '' ?>">
+              <?= $vstdate ?>
+            </span>
+            <?php if ($isToday): ?>
+              <span class="badge rounded-pill ms-1"
+                    style="background:#fef2f2;color:#dc2626;font-size:.72rem">วันนี้</span>
+            <?php endif; ?>
+          </td>
+          <td style="font-size:.85rem"><?= $doctor ?: '-' ?></td>
+          <td>
+            <div style="font-size:.85rem"><?= $disease ?: '-' ?></div>
+            <?php if ($icd10): ?>
+              <span class="badge rounded-pill mt-1"
+                    style="background:#ecfeff;color:#164e63;border:1px solid #a5f3fc;font-size:.75rem">
+                <?= $icd10 ?>
+              </span>
+            <?php endif; ?>
+          </td>
+          <td>
+            <?php if ($result): ?>
+              <span class="badge rounded-pill"
+                    style="background:#ecfeff;color:#164e63;font-size:.82rem;padding:.3rem .7rem;font-weight:600">
+                <?= $result ?>
+              </span>
+            <?php else: ?>
+              <span class="text-muted" style="font-size:.85rem">-</span>
+            <?php endif; ?>
+          </td>
+          <td>
+            <button class="btn-send-disease" id="btn-<?= $vn ?>"
+                    data-vn="<?= $vn ?>" data-hn="<?= $hn ?>" data-name="<?= $fullname ?>">
+              <span class="msi">send</span> ส่งแจ้งเตือน
+            </button>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<?php endif; ?>
+
+<?php
+$EXTRA_FOOTER = '
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
-    $(document).ready( function () {
-        $('#table').DataTable();
-    } );
-
-    function Sentdata( hn, fullname , age, cid, informaddr, hometel, vstdate, disease, icd10, doctor, result ) {
-        let body = {
-            hn: hn,
-            fullname : fullname,
-            age: age,
-            cid: cid,
-            informaddr: informaddr,
-            hometel: hometel,
-            vstdate: vstdate,
-            disease: disease,
-            icd10: icd10,
-            doctor: doctor,
-            result: result,
-            
-        }
-        $(document).ready(function() {
-            Swal.fire({
-            title: 'success',
-            text: 'ดำเนินการส่งข้อมูลเรียบร้อยแล้ว!',
-            icon: 'success',
-            timer: 2500,
-            showConfirmButton: false
-        }).then((result) =>{
-            if(result.isDismissed){
-                window.location.href='Leptospira.php'
-            }
-        })
-            })
-
-        $.ajax({
-            url: 'sentlep.php',
-            type: "POST",
-            data: body,
-            success: function(data) {
-                console.log(data);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.log(jqXHR);
-                console.log(textStatus);
-                console.log(errorThrown);
-            }
-        })
-        
+$(function(){
+  $("#tblLepto").DataTable({
+    responsive: true,
+    order: [[7, "desc"]],
+    pageLength: 25,
+    lengthMenu: [[10,25,50,100,-1],["10","25","50","100","ทั้งหมด"]],
+    dom: \'<"row align-items-center mb-2"<"col-sm-6"B><"col-sm-6 text-end"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>\',
+    buttons: [
+      {extend:"excel", text:\'<span class="msi me-1">table_view</span> Excel\',
+       className:"btn btn-sm btn-outline-success",
+       title:"lepto_alert_"+new Date().toLocaleDateString("th-TH")},
+      {extend:"print",  text:\'<span class="msi me-1">print</span> พิมพ์\',
+       className:"btn btn-sm btn-outline-secondary"},
+    ],
+    language:{
+      search:"ค้นหา:", lengthMenu:"แสดง _MENU_ รายการ",
+      info:"แสดง _START_–_END_ จาก _TOTAL_ รายการ",
+      infoEmpty:"ไม่มีข้อมูล", paginate:{previous:"ก่อน",next:"ถัดไป"},
+      zeroRecords:"ไม่พบข้อมูลที่ค้นหา"
     }
+  });
+
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest(".btn-send-disease");
+    if (!btn || btn.disabled) return;
+
+    const vn   = btn.dataset.vn;
+    const hn   = btn.dataset.hn;
+    const name = btn.dataset.name;
+
+    Swal.fire({
+      title: "ส่งแจ้งเตือนเลปโตฯ?",
+      html: `<div class="text-start" style="font-size:.9rem">
+               <div><strong>VN:</strong> ${vn}</div>
+               <div><strong>HN:</strong> ${hn}</div>
+               <div><strong>ชื่อ:</strong> ${name}</div>
+             </div>`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: \'<span class="msi me-1">send</span> ส่งเลย\',
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#0891b2",
+      reverseButtons: true,
+      focusCancel: true,
+    }).then(r => {
+      if (!r.isConfirmed) return;
+
+      btn.disabled = true;
+      btn.innerHTML = \'<span class="msi msi-spin">progress_activity</span> กำลังส่ง…\';
+      btn.style.background = "#cbd5e1";
+
+      fetch("lepto_action.php", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({ action: "send", vn })
+      })
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) {
+          btn.innerHTML = \'<span class="msi">check_circle</span> ส่งแล้ว\';
+          Swal.fire({
+            toast:true, position:"top-end", icon:"success", timer:3000,
+            showConfirmButton:false, timerProgressBar:true,
+            title:"ส่งสำเร็จ", text:"Ref: "+(json.ref??"-")
+          });
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = \'<span class="msi">send</span> ส่งแจ้งเตือน\';
+          btn.style.background = "";
+          Swal.fire({icon:"error",title:"ส่งไม่สำเร็จ",
+            text:json.msg??"เกิดข้อผิดพลาด",confirmButtonColor:"#0891b2"});
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = \'<span class="msi">send</span> ส่งแจ้งเตือน\';
+        btn.style.background = "";
+        Swal.fire({icon:"error",title:"Network error",text:err.message,
+          confirmButtonColor:"#0891b2"});
+      });
+    });
+  });
+});
 </script>
-</body>
-</html>
+';
+require_once __DIR__ . '/partials/footer.php';
+?>

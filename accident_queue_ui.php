@@ -1,4 +1,11 @@
-﻿<?php
+<?php
+/**
+ * accident_queue_ui.php
+ * คิวแจ้งเตือน พ.ร.บ. — HR-CENTER 4.0
+ * — Sticky action bar (ส่งซ้ำ / Requeue / ล้าง Error)
+ * — SweetAlert2 confirm ก่อน bulk action
+ * — DataTable พร้อม Export Excel + Print
+ */
 require_once __DIR__ . '/config.php';
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
@@ -58,7 +65,7 @@ $stmt->execute($p);
 $rows = $stmt->fetchAll() ?: [];
 
 /* ---------- KPI ---------- */
-$kpi = ['total' => 0, 'pending' => 0, 'sent' => 0, 'failed' => 0, 'today' => 0];
+$kpi  = ['total' => 0, 'pending' => 0, 'sent' => 0, 'failed' => 0, 'today' => 0];
 $today = date('Y-m-d');
 foreach ($rows as $r) {
     $kpi['total']++;
@@ -78,26 +85,44 @@ $EXTRA_HEAD = '
 <style>
   .filter-card { padding: 1rem 1.15rem; margin-bottom: 1rem; }
   .filter-card label { font-size: .82rem; color: #64748b; margin-bottom: .25rem; }
+
+  /* Sticky action bar */
+  #accStickyBar {
+    position: fixed;
+    bottom: 0; left: 260px; right: 0;
+    z-index: 1050;
+    background: #1e293b;
+    border-top: 2px solid #d97706;
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    transform: translateY(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.25);
+  }
+  #accStickyBar.show { transform: translateY(0); }
+
+  @media (max-width: 991.98px) {
+    #accStickyBar { left: 0; }
+  }
+
+  .acc-sel-count {
+    color: #fbbf24; font-weight: 700; font-size: .88rem; flex-shrink: 0;
+  }
+  .acc-bar-btn {
+    border: none; border-radius: 8px; font-size: .82rem; padding: .35rem .8rem;
+    display: inline-flex; align-items: center; gap: .3rem; cursor: pointer;
+    transition: opacity .2s, transform .1s; font-family: inherit;
+  }
+  .acc-bar-btn:hover  { opacity: .88; }
+  .acc-bar-btn:active { transform: scale(.97); }
+  .acc-bar-btn-send    { background: linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
+  .acc-bar-btn-requeue { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+  .acc-bar-btn-clear   { background: transparent; color:#f87171; border:1px solid #f87171; }
+  .acc-bar-btn-cancel  { background: rgba(255,255,255,.1); color:#94a3b8; margin-left:auto; }
+
+  /* Padding so last row isn't hidden behind sticky bar */
+  .content-bottom-pad { padding-bottom: 80px; }
 </style>
-';
-$EXTRA_FOOTER = '
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
-<script>
-$(function(){
-  $("#tbl").DataTable({
-    responsive: true, autoWidth: false, pageLength: 25, order: [[1,"desc"]],
-    language: {
-      search: "ค้นหา:", lengthMenu: "แสดง _MENU_ รายการ",
-      info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-      paginate: { first:"หน้าแรก", last:"หน้าสุดท้าย", next:"ถัดไป", previous:"ก่อนหน้า" }
-    }
-  });
-});
-</script>
 ';
 
 require_once __DIR__ . '/partials/header.php';
@@ -129,7 +154,7 @@ require_once __DIR__ . '/partials/header.php';
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-card">
-      <div class="kpi-icon bg-green"><span class="msi">check</span></div>
+      <div class="kpi-icon bg-green"><span class="msi">check_circle</span></div>
       <div><p class="kpi-label">ส่งสำเร็จ</p><p class="kpi-value" style="color:#059669"><?= number_format($kpi['sent']) ?></p></div>
     </div>
   </div>
@@ -144,17 +169,17 @@ require_once __DIR__ . '/partials/header.php';
 <!-- Filter -->
 <div class="card filter-card">
   <form class="row g-2 align-items-end" method="get">
-    <div class="col-sm-6 col-md-3">
+    <div class="col-sm-6 col-md-2">
       <label>ตั้งแต่วันที่</label>
-      <input type="date" class="form-control" name="start" value="<?= htmlspecialchars($start) ?>">
+      <input type="date" class="form-control form-control-sm" name="start" value="<?= htmlspecialchars($start) ?>">
     </div>
-    <div class="col-sm-6 col-md-3">
+    <div class="col-sm-6 col-md-2">
       <label>ถึงวันที่</label>
-      <input type="date" class="form-control" name="end" value="<?= htmlspecialchars($end) ?>">
+      <input type="date" class="form-control form-control-sm" name="end" value="<?= htmlspecialchars($end) ?>">
     </div>
     <div class="col-sm-6 col-md-2">
       <label>สถานะ</label>
-      <select class="form-select" name="status">
+      <select class="form-select form-select-sm" name="status">
         <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
         <option value="0"   <?= $status === '0'   ? 'selected' : '' ?>>ค้างส่ง</option>
         <option value="1"   <?= $status === '1'   ? 'selected' : '' ?>>ส่งแล้ว</option>
@@ -162,82 +187,221 @@ require_once __DIR__ . '/partials/header.php';
     </div>
     <div class="col-sm-6 col-md-3">
       <label>pttypes (คั่นด้วย ,)</label>
-      <input type="text" class="form-control" name="pttypes"
+      <input type="text" class="form-control form-control-sm" name="pttypes"
              value="<?= htmlspecialchars($pttypes) ?>" placeholder="เช่น 33,35,36,39">
     </div>
-    <div class="col-sm-6 col-md-1 d-flex gap-2">
-      <button class="btn btn-primary flex-grow-1">
-        <span class="msi">search</span>
+    <div class="col-sm-6 col-md-3 d-flex gap-2 align-items-end">
+      <button class="btn btn-sm btn-primary flex-grow-1">
+        <span class="msi me-1">search</span> ค้นหา
       </button>
+      <a class="btn btn-sm btn-outline-secondary" href="accident_queue_ui.php" title="รีเซ็ตตัวกรอง">
+        <span class="msi">undo</span>
+      </a>
     </div>
   </form>
 </div>
 
 <!-- Table -->
-<div class="card">
+<div class="card content-bottom-pad">
   <div class="card-header d-flex align-items-center justify-content-between">
     <span><span class="msi me-2 text-warning">table</span>รายการคิวแจ้งเตือน พ.ร.บ.</span>
     <span class="badge bg-secondary"><?= count($rows) ?> รายการ</span>
   </div>
-  <div class="table-responsive">
-    <form method="post" action="accident_queue_action.php"
-          onsubmit="return confirm('ยืนยันดำเนินการกับรายการที่เลือก?');">
-      <input type="hidden" name="token" value="<?= htmlspecialchars(ACCIDENT_UI_ACTION_TOKEN) ?>">
+  <div class="p-3">
+    <form id="bulkForm" method="post" action="accident_queue_action.php">
+      <input type="hidden" name="token"  value="<?= htmlspecialchars(ACCIDENT_UI_ACTION_TOKEN) ?>">
+      <input type="hidden" name="action" id="hiddenAction" value="">
 
-      <div class="p-3 border-bottom d-flex gap-2 flex-wrap">
-        <button class="btn btn-sm btn-success" name="action" value="send_now">
-          <span class="msi me-1">send</span>ส่งซ้ำทันที
-        </button>
-        <button class="btn btn-sm btn-warning" name="action" value="requeue">
-          <span class="msi me-1">refresh</span>Requeue
-        </button>
-        <button class="btn btn-sm btn-outline-danger" name="action" value="clear_error">
-          <span class="msi me-1">backspace</span>ล้าง Error
-        </button>
-      </div>
-
-      <table id="tbl" class="table table-hover mb-0" style="width:100%">
-        <thead>
-          <tr>
-            <th><input type="checkbox" onclick="document.querySelectorAll('.chk').forEach(c=>c.checked=this.checked)"></th>
-            <th>ID</th><th>สถานะ</th><th>HN</th><th>AN</th>
-            <th>ชื่อ-สกุล</th><th>วันที่ Reg</th><th>เวลา</th>
-            <th>pttype</th><th>สิทธิ</th><th>Attempt</th>
-            <th>Last Attempt</th><th>Out Ref</th><th>Error</th>
-            <th>Created</th><th>Sent</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($rows as $r): ?>
-          <tr>
-            <td><input type="checkbox" class="chk" name="ids[]" value="<?= $r['id'] ?>"></td>
-            <td><?= $r['id'] ?></td>
-            <td>
-              <?php if ((int)$r['status'] === 1): ?>
-                <span class="status-badge status-ok"><span class="msi">check</span>ส่งแล้ว</span>
-              <?php else: ?>
-                <span class="status-badge status-pending"><span class="msi">schedule</span>ค้างส่ง</span>
-              <?php endif; ?>
-            </td>
-            <td><?= htmlspecialchars($r['hn']) ?></td>
-            <td><?= htmlspecialchars($r['an']) ?></td>
-            <td><?= htmlspecialchars(to_utf8_acc($r['fullname'])) ?></td>
-            <td><?= htmlspecialchars($r['regdate']) ?></td>
-            <td><?= htmlspecialchars($r['regtime']) ?></td>
-            <td><?= htmlspecialchars($r['pttype']) ?></td>
-            <td style="font-size:.82rem"><?= htmlspecialchars(to_utf8_acc($r['pttname'])) ?></td>
-            <td><?= $r['attempt'] ?></td>
-            <td style="font-size:.82rem"><?= htmlspecialchars($r['last_attempt_at']) ?></td>
-            <td style="font-size:.82rem"><?= htmlspecialchars($r['out_ref']) ?></td>
-            <td style="font-size:.78rem; color:#dc2626"><?= htmlspecialchars(to_utf8_acc($r['last_error'])) ?></td>
-            <td style="font-size:.82rem"><?= htmlspecialchars($r['created_at']) ?></td>
-            <td style="font-size:.82rem"><?= htmlspecialchars($r['sent_at']) ?></td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table id="tblAcc" class="table table-hover align-middle nowrap mb-0" style="width:100%">
+          <thead>
+            <tr>
+              <th>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" id="chkAll">
+                </div>
+              </th>
+              <th>ID</th><th>สถานะ</th><th>HN</th><th>AN</th>
+              <th>ชื่อ-สกุล</th><th>วันที่ Reg</th><th>เวลา</th>
+              <th>pttype</th><th>สิทธิ</th><th>Attempt</th>
+              <th>Last Attempt</th><th>Out Ref</th><th>Error</th>
+              <th>Created</th><th>Sent</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($rows as $r): ?>
+            <tr>
+              <td>
+                <div class="form-check mb-0">
+                  <input class="form-check-input chk" type="checkbox"
+                         name="ids[]" value="<?= $r['id'] ?>">
+                </div>
+              </td>
+              <td><?= $r['id'] ?></td>
+              <td>
+                <?php if ((int)$r['status'] === 1): ?>
+                  <span class="status-badge status-ok"><span class="msi">check</span>ส่งแล้ว</span>
+                <?php else: ?>
+                  <span class="status-badge status-pending"><span class="msi">schedule</span>ค้างส่ง</span>
+                <?php endif; ?>
+              </td>
+              <td><strong><?= htmlspecialchars($r['hn']) ?></strong></td>
+              <td><?= htmlspecialchars($r['an']) ?></td>
+              <td><?= htmlspecialchars(to_utf8_acc($r['fullname'])) ?></td>
+              <td><?= htmlspecialchars($r['regdate']) ?></td>
+              <td><?= htmlspecialchars($r['regtime']) ?></td>
+              <td><?= htmlspecialchars($r['pttype']) ?></td>
+              <td style="font-size:.82rem"><?= htmlspecialchars(to_utf8_acc($r['pttname'])) ?></td>
+              <td class="text-center"><?= $r['attempt'] ?></td>
+              <td style="font-size:.82rem"><?= htmlspecialchars($r['last_attempt_at']) ?></td>
+              <td style="font-size:.82rem"><?= htmlspecialchars($r['out_ref']) ?></td>
+              <td style="font-size:.78rem; color:#dc2626; max-width:160px; white-space:normal">
+                <?= htmlspecialchars(to_utf8_acc($r['last_error'])) ?>
+              </td>
+              <td style="font-size:.82rem"><?= htmlspecialchars($r['created_at']) ?></td>
+              <td style="font-size:.82rem"><?= htmlspecialchars($r['sent_at']) ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div><!-- /table-responsive -->
     </form>
   </div>
 </div>
 
-<?php require_once __DIR__ . '/partials/footer.php'; ?>
+<!-- ═══ Sticky Action Bar ═══ -->
+<div id="accStickyBar">
+  <span class="msi" style="color:#fbbf24">checklist</span>
+  <span class="acc-sel-count" id="selCount">0 รายการที่เลือก</span>
+
+  <button type="button" class="acc-bar-btn acc-bar-btn-send"
+          data-action="send_now" data-label="ส่งซ้ำทันที">
+    <span class="msi">send</span> ส่งซ้ำทันที
+  </button>
+  <button type="button" class="acc-bar-btn acc-bar-btn-requeue"
+          data-action="requeue" data-label="Requeue">
+    <span class="msi">refresh</span> Requeue
+  </button>
+  <button type="button" class="acc-bar-btn acc-bar-btn-clear"
+          data-action="clear_error" data-label="ล้าง Error">
+    <span class="msi">backspace</span> ล้าง Error
+  </button>
+
+  <button type="button" class="acc-bar-btn acc-bar-btn-cancel" id="btnCancelSel">
+    <span class="msi">close</span> ยกเลิก
+  </button>
+</div>
+
+<?php
+$EXTRA_FOOTER = '
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script>
+$(function(){
+  // ── DataTable ─────────────────────────────────────────────────────────
+  $("#tblAcc").DataTable({
+    responsive: true,
+    autoWidth: false,
+    pageLength: 25,
+    order: [[1, "desc"]],
+    lengthMenu: [[10,25,50,100,-1],["10","25","50","100","ทั้งหมด"]],
+    columnDefs: [
+      { orderable: false, targets: 0 },   // checkbox column
+    ],
+    dom: \'<"row align-items-center mb-2"<"col-sm-6"B><"col-sm-6 text-end"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>\',
+    buttons: [
+      {extend:"excel", text:\'<span class="msi me-1">table_view</span> Excel\',
+       className:"btn btn-sm btn-outline-success",
+       title:"accident_queue_"+new Date().toLocaleDateString("th-TH"),
+       exportOptions:{ columns:":not(:first-child)" }},
+      {extend:"print",  text:\'<span class="msi me-1">print</span> พิมพ์\',
+       className:"btn btn-sm btn-outline-secondary",
+       exportOptions:{ columns:":not(:first-child)" }},
+    ],
+    language:{
+      search:"ค้นหา:", lengthMenu:"แสดง _MENU_ รายการ",
+      info:"แสดง _START_–_END_ จาก _TOTAL_ รายการ",
+      infoEmpty:"ไม่มีข้อมูล",
+      paginate:{previous:"ก่อน",next:"ถัดไป"},
+      zeroRecords:"ไม่พบข้อมูลที่ค้นหา"
+    }
+  });
+
+  // ── Select All ────────────────────────────────────────────────────────
+  document.getElementById("chkAll").addEventListener("change", function(){
+    document.querySelectorAll(".chk").forEach(c => c.checked = this.checked);
+    updateBar();
+  });
+  document.getElementById("tblAcc").addEventListener("change", function(e){
+    if (e.target.classList.contains("chk")) updateBar();
+  });
+
+  // ── Update sticky bar ─────────────────────────────────────────────────
+  function updateBar() {
+    const count = document.querySelectorAll(".chk:checked").length;
+    document.getElementById("selCount").textContent = count + " รายการที่เลือก";
+    const bar = document.getElementById("accStickyBar");
+    if (count > 0) bar.classList.add("show");
+    else           bar.classList.remove("show");
+    // Sync chkAll indeterminate
+    const all  = document.querySelectorAll(".chk").length;
+    const chkAll = document.getElementById("chkAll");
+    chkAll.checked       = (count === all && all > 0);
+    chkAll.indeterminate = (count > 0 && count < all);
+  }
+
+  // ── Cancel selection ─────────────────────────────────────────────────
+  document.getElementById("btnCancelSel").addEventListener("click", function(){
+    document.querySelectorAll(".chk, #chkAll").forEach(c => { c.checked = false; c.indeterminate = false; });
+    updateBar();
+  });
+
+  // ── Bulk action buttons ───────────────────────────────────────────────
+  document.querySelectorAll(".acc-bar-btn[data-action]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      const action = this.dataset.action;
+      const label  = this.dataset.label;
+      const count  = document.querySelectorAll(".chk:checked").length;
+      if (count === 0) {
+        Swal.fire({ icon:"warning", title:"กรุณาเลือกรายการ",
+          text:"เลือกรายการในตารางก่อนดำเนินการ", confirmButtonColor:"#d97706" });
+        return;
+      }
+      const icons   = { send_now:"send", requeue:"refresh", clear_error:"backspace" };
+      const colors  = { send_now:"#16a34a", requeue:"#d97706", clear_error:"#dc2626" };
+      const descs   = {
+        send_now:    "ส่งซ้ำทันที (bypass cooldown) สำหรับ " + count + " รายการที่เลือก",
+        requeue:     "รีเซ็ต attempt=0 status=0 สำหรับ " + count + " รายการที่เลือก",
+        clear_error: "ล้างข้อความ Error สำหรับ " + count + " รายการที่เลือก",
+      };
+      Swal.fire({
+        title: label,
+        html:  \'<div class="text-start" style="font-size:.9rem">\' + descs[action] + \'</div>\',
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: \'<span class="msi me-1">\' + (icons[action]||"check") + \'</span> ยืนยัน\',
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: colors[action] || "#1d4ed8",
+        reverseButtons: true,
+        focusCancel: true,
+      }).then(function(r){
+        if (r.isConfirmed) {
+          document.getElementById("hiddenAction").value = action;
+          document.getElementById("bulkForm").submit();
+        }
+      });
+    });
+  });
+});
+</script>
+';
+require_once __DIR__ . '/partials/footer.php';
+?>
