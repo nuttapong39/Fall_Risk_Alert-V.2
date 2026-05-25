@@ -30,7 +30,7 @@ try {
                   created_at, sent_at, line_message_id
            FROM   drug_queue
            WHERE  ".implode(' AND ', $w)."
-           ORDER  BY id DESC
+           ORDER  BY vstdate DESC, id DESC
            LIMIT  2000";
   $stmt = $dbcon->prepare($sql);
   $stmt->execute($p);
@@ -437,7 +437,7 @@ $(function(){
     responsive: true,
     autoWidth:  false,
     pageLength: 25,
-    order: [[1,"desc"]],
+    order: [[9,"desc"]],
     dom: "<\"row mb-2\"<\"col-sm-4\"l><\"col-sm-4 text-center\"B><\"col-sm-4\"f>>tip",
     buttons: [
       {

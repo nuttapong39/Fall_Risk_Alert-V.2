@@ -59,7 +59,7 @@ $sql = "SELECT id, hn, an, regdate, regtime, pttype, pttname, fullname,
                created_at, sent_at, line_message_id
         FROM accident_queue
         WHERE " . implode(' AND ', $w) . "
-        ORDER BY id DESC LIMIT 2000";
+        ORDER BY regdate DESC, id DESC LIMIT 2000";
 $stmt = $dbcon->prepare($sql);
 $stmt->execute($p);
 $rows = $stmt->fetchAll() ?: [];
@@ -404,7 +404,7 @@ $(function(){
     responsive: true,
     autoWidth: false,
     pageLength: 25,
-    order: [[1, "desc"]],
+    order: [[6, "desc"]],
     lengthMenu: [[10,25,50,100,-1],["10","25","50","100","ทั้งหมด"]],
     columnDefs: [
       { orderable: false, targets: 0 },   // checkbox column

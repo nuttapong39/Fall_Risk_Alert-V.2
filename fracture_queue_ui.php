@@ -33,7 +33,7 @@ $sql = "SELECT id, visit_vn, hn, fullname, cid, hometel, age, sex, address,
                created_at, sent_at, line_message_id
         FROM fracture_queue
         WHERE ".implode(' AND ', $w)."
-        ORDER BY id DESC
+        ORDER BY vstdate DESC, id DESC
         LIMIT 2000";
 $stmt = $dbcon->prepare($sql);
 $stmt->execute($p);
@@ -372,7 +372,7 @@ $(function(){
     responsive: true,
     autoWidth: false,
     pageLength: 25,
-    order: [[1,"desc"]],
+    order: [[10,"desc"]],
     dom: "<\"row mb-2\"<\"col-sm-4\"l><\"col-sm-4 text-center\"B><\"col-sm-4\"f>>tip",
     buttons: [
       { extend: "colvis", text: "<span class=\"msi\">view_column<\/span> คอลัมน์", className: "btn btn-outline-secondary btn-sm", columns: ":not(:first-child)" }

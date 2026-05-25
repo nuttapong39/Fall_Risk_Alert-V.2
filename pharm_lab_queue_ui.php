@@ -38,7 +38,7 @@ $sql = "SELECT id, hn, fullname, age, lab_date, lab_time, doctor,
                created_at, sent_at, line_message_id
         FROM pharm_lab_queue
         WHERE ".implode(' AND ', $w)."
-        ORDER BY id DESC
+        ORDER BY lab_date DESC, id DESC
         LIMIT 2000";
 try {
   $stmt = $dbcon->prepare($sql);
@@ -445,7 +445,7 @@ $(function(){
     responsive: true,
     autoWidth: false,
     pageLength: 25,
-    order: [[1,"desc"]],
+    order: [[9,"desc"]],
     dom: "<\"row mb-2\"<\"col-sm-4\"l><\"col-sm-4 text-center\"B><\"col-sm-4\"f>>tip",
     buttons: [
       { extend: "colvis", text: "<span class=\"msi\">view_column<\/span> คอลัมน์", className: "btn btn-outline-secondary btn-sm", columns: ":not(:first-child)" }

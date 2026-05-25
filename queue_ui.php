@@ -13,7 +13,7 @@ $p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
 if ($status==='0') { $w[]="status=0"; }
 if ($status==='1') { $w[]="status=1"; }
 
-$sql = "SELECT * FROM covid_queue WHERE ".implode(' AND ',$w)." ORDER BY id DESC LIMIT 2000";
+$sql = "SELECT * FROM covid_queue WHERE ".implode(' AND ',$w)." ORDER BY vstdate DESC, id DESC LIMIT 2000";
 $stmt = $dbcon->prepare($sql);
 $stmt->execute($p);
 $rows = $stmt->fetchAll();
@@ -117,7 +117,7 @@ function to_utf8($s){ if(!is_string($s)) return $s; if(mb_check_encoding($s,'UTF
 $(function(){
   $('#tbl').DataTable({
     pageLength: 25,
-    order: [[1,'desc']],
+    order: [[5,'desc']],
     language: {
       search: "ค้นหา:", lengthMenu: "แสดง _MENU_ รายการ",
       info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
