@@ -8,9 +8,15 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
+// Worker script — ต้องรันจนเสร็จ ไม่มี time limit
+// (Apache/XAMPP default = 120s ไม่เพียงพอสำหรับ batch cURL)
+@set_time_limit(0);
+@ini_set('max_execution_time', '0');
+
 /* ===================== CONFIG / DEFAULTS ===================== */
-if (!defined('MOPH_API_URL'))         define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
-if (!defined('MOPH_TIMEOUT'))         define('MOPH_TIMEOUT', 30);
+if (!defined('MOPH_API_URL'))            define('MOPH_API_URL',            'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
+if (!defined('MOPH_TIMEOUT'))            define('MOPH_TIMEOUT',            20);  // total transfer timeout (s)
+if (!defined('MOPH_CONNECT_TIMEOUT'))    define('MOPH_CONNECT_TIMEOUT',    8);   // TCP connect timeout (s) — fail-fast on dead IP
 
 // ใช้คีย์เดียวกับ config.php (เหมือน fracture/covid)
 if (!defined('ACCIDENT_CLIENT_KEY')) define('ACCIDENT_CLIENT_KEY', defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
@@ -434,10 +440,11 @@ function send_via_moph_alert_accident(array $row): array {
   $doSend = function(?string $ipOverride) use ($body, $host, $row) {
     $ch = curl_init();
     $opts = [
-      CURLOPT_URL            => MOPH_API_URL,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_TIMEOUT        => MOPH_TIMEOUT,    // ให้พฤติกรรมเหมือน fracture/covid
-      CURLOPT_CUSTOMREQUEST  => 'POST',
+      CURLOPT_URL             => MOPH_API_URL,
+      CURLOPT_RETURNTRANSFER  => true,
+      CURLOPT_CONNECTTIMEOUT  => MOPH_CONNECT_TIMEOUT, // fail-fast ถ้า IP ไม่ตอบ
+      CURLOPT_TIMEOUT         => MOPH_TIMEOUT,          // total transfer timeout
+      CURLOPT_CUSTOMREQUEST   => 'POST',
       CURLOPT_POSTFIELDS     => $body,
       CURLOPT_HTTPHEADER     => [
         'client-key: ' . ACCIDENT_CLIENT_KEY,
