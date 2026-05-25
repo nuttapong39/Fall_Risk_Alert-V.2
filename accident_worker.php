@@ -87,39 +87,312 @@ function normalize_date_ymd($d,$fallback){
 }
 
 /* ===================== Flex Payload ===================== */
-if (!defined('ACC_TITLE'))        define('ACC_TITLE', 'ผู้ป่วยอุบัติเหตุ (สิทธิ์ พ.ร.บ./ประกันสังคมต่างจังหวัด)');
+if (!defined('ACC_TITLE'))        define('ACC_TITLE',      'ผู้ป่วยอุบัติเหตุ (สิทธิ์ พ.ร.บ./ประกันสังคมต่างจังหวัด)');
+if (!defined('ACC_SUBTITLE'))     define('ACC_SUBTITLE',   'Accident Alert สำหรับเจ้าหน้าที่ รพ.สต. เครือข่าย');
+if (!defined('ACC_SYSTEM_NAME'))  define('ACC_SYSTEM_NAME','ระบบแจ้งเตือนอุบัติเหตุ • รพ.เชียงกลาง');
 if (!defined('FALL_HEADER_URL'))  define('FALL_HEADER_URL','https://www.ckhospital.net/home/PDF/moph-flex-header-2.jpg');
-if (!defined('FALL_ICON_URL'))    define('FALL_ICON_URL','https://www.ckhospital.net/home/PDF/Logo_ck.png');
+if (!defined('FALL_ICON_URL'))    define('FALL_ICON_URL',  'https://www.ckhospital.net/home/PDF/Logo_ck.png');
 
-function makeTextBox($text){
-  return [
-    "type"=>"box","layout"=>"horizontal","margin"=>"8px",
-    "contents"=>[["type"=>"text","text"=>$text,"size"=>"14.5px","align"=>"start","gravity"=>"center","wrap"=>true,"weight"=>"regular","flex"=>2]]
+/** แปลง YYYY-MM-DD → "23 เม.ย. 2569" (พ.ศ.) */
+function acc_thai_date(?string $ymd): string {
+  if (!$ymd) return '-';
+  $ts = strtotime($ymd);
+  if ($ts === false) return $ymd;
+  static $months = [
+    1=>'ม.ค.',2=>'ก.พ.',3=>'มี.ค.',4=>'เม.ย.',5=>'พ.ค.',6=>'มิ.ย.',
+    7=>'ก.ค.',8=>'ส.ค.',9=>'ก.ย.',10=>'ต.ค.',11=>'พ.ย.',12=>'ธ.ค.',
   ];
+  return sprintf('%d %s %d', (int)date('j',$ts), $months[(int)date('n',$ts)]??'', (int)date('Y',$ts)+543);
 }
-function buildAccidentPayload(array $r){
-  $lines=[
-    makeTextBox("คนไข้: ".($r['fullname']??'-')),
-    makeTextBox("HN: ".($r['hn']??'-')."  AN: ".($r['an']??'-')),
-    makeTextBox("วันที่ Admit: ".($r['regdate']??'-')." เวลา ".($r['regtime']??'-')),
-    makeTextBox("สิทธิ์: ".($r['pttype']??'-').' '.($r['pttname']??'')),
+
+/**
+ * buildAccidentPayload()  v2 — Modern section-card Flex Message
+ * ข้อมูล: AN, HN, ชื่อ-สกุล, วันที่ Admit, เวลา, สิทธิ์การรักษา
+ */
+function buildAccidentPayload(array $r): array {
+  $r = row_to_utf8($r);
+
+  /* ── Normalize ── */
+  $an       = (string)($r['an']       ?? '-');
+  $hn       = (string)($r['hn']       ?? '-');
+  $fullname = (string)($r['fullname'] ?? '-');
+  $regdate  = acc_thai_date($r['regdate'] ?? null);
+  $regtime  = (string)($r['regtime']  ?? '');
+  $regtime  = ($regtime !== '') ? substr($regtime, 0, 5) : '-'; // HH:MM
+  $pttype   = (string)($r['pttype']   ?? '');
+  $pttname  = (string)($r['pttname']  ?? '');
+  $refId    = $an;
+
+  $pttypeDisplay = trim($pttype . ($pttname !== '' ? '  ' . $pttname : ''));
+  if ($pttypeDisplay === '') $pttypeDisplay = '-';
+
+  /* ── Local helpers ── */
+
+  /** section card with ▌ accent bar */
+  $mkSec = function(string $icon, string $title, array $rows, array $o = []) {
+    $bg     = $o['bg']     ?? '#FFFFFF';
+    $bd     = $o['bd']     ?? '#E2E8F0';
+    $accent = $o['accent'] ?? '#1E3A8A';
+    $sep    = $o['sep']    ?? '#E2E8F0';
+
+    $hdr = [
+      'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '▌', 'size' => 'lg',
+          'color' => $accent, 'flex' => 0, 'weight' => 'bold' ],
+        [ 'type' => 'text', 'text' => $icon . '  ' . $title,
+          'size' => 'sm', 'color' => $accent, 'weight' => 'bold',
+          'flex' => 1, 'gravity' => 'center' ],
+      ],
+    ];
+    return [
+      'type'            => 'box', 'layout' => 'vertical',
+      'paddingAll'      => '14px', 'cornerRadius' => '12px',
+      'backgroundColor' => $bg, 'borderColor' => $bd, 'borderWidth' => '1px',
+      'margin'          => 'md', 'spacing' => 'xs',
+      'contents'        => array_values(array_filter(
+        array_merge([$hdr, ['type'=>'separator','margin'=>'sm','color'=>$sep]], $rows),
+        fn($x) => $x !== null
+      )),
+    ];
+  };
+
+  /** key-value row */
+  $kv = fn(string $lbl, string $val, array $o = []) => [
+    'type' => 'box', 'layout' => 'baseline', 'spacing' => 'sm', 'margin' => 'sm',
+    'contents' => [
+      [ 'type' => 'text', 'text' => $lbl,
+        'size' => 'xs', 'color' => '#64748B', 'flex' => 3 ],
+      [ 'type' => 'text', 'text' => ($val === '' ? '-' : $val),
+        'size'   => $o['size']   ?? 'sm',
+        'color'  => $o['color']  ?? '#1E293B',
+        'weight' => $o['weight'] ?? 'regular',
+        'flex' => 5, 'align' => 'end', 'wrap' => true ],
+    ],
   ];
-  $body = array_merge([
-    ["type"=>"box","layout"=>"vertical","margin"=>"8px","contents"=>[["type"=>"image","url"=>FALL_ICON_URL,"size"=>"full","aspectMode"=>"cover","align"=>"center"]],"cornerRadius"=>"100px","maxWidth"=>"72px","offsetStart"=>"93px"],
-    ["type"=>"box","layout"=>"vertical","cornerRadius"=>"15px","margin"=>"xs","paddingTop"=>"lg","paddingBottom"=>"lg","paddingStart"=>"8px","paddingEnd"=>"8px","backgroundColor"=>"#DCE7FF","contents"=>[["type"=>"text","text"=>ACC_TITLE,"weight"=>"bold","size"=>"lg","align"=>"center","color"=>"#2D2D2D","adjustMode"=>"shrink-to-fit"]]],
-    ["type"=>"box","layout"=>"vertical","margin"=>"sm","contents"=>[["type"=>"text","text"=>"-------------------------------------","weight"=>"bold","size"=>"14px","align"=>"center"]]],
-  ], $lines, [
-    ["type"=>"box","layout"=>"vertical","margin"=>"sm","contents"=>[["type"=>"text","text"=>"-------------------------------------","weight"=>"bold","size"=>"14px","align"=>"center"]]],
-  ]);
-  return [
-    "messages"=>[[
-      "type"=>"flex","altText"=>"Accident Alert",
-      "contents"=>[
-        "type"=>"bubble","size"=>"mega",
-        "header"=>["type"=>"box","layout"=>"vertical","paddingAll"=>"0px","contents"=>[["type"=>"image","url"=>FALL_HEADER_URL,"size"=>"full","aspectRatio"=>"3120:885","aspectMode"=>"cover"]]],
-        "body"=>["type"=>"box","layout"=>"vertical","contents"=>$body]
+
+  $sep = fn(string $c = '#F1F5F9') => ['type' => 'separator', 'margin' => 'sm', 'color' => $c];
+
+  /* ── HEADER IMAGE ── */
+  $header = FALL_HEADER_URL ? [
+    'type' => 'box', 'layout' => 'vertical', 'paddingAll' => '0px',
+    'contents' => [[
+      'type' => 'image', 'url' => FALL_HEADER_URL,
+      'size' => 'full', 'aspectRatio' => '3120:885', 'aspectMode' => 'cover',
+    ]],
+  ] : null;
+
+  /* ── TITLE STRIP (deep orange-brown) ── */
+  $titleStrip = [
+    'type'            => 'box', 'layout' => 'vertical',
+    'paddingStart'    => '16px', 'paddingEnd'  => '16px',
+    'paddingTop'      => '16px', 'paddingBottom' => '18px',
+    'backgroundColor' => '#431407',
+    'contents' => [
+      [ 'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm', 'margin' => 'none',
+        'contents' => [
+          [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 0,
+            'backgroundColor' => '#EA580C', 'cornerRadius' => '6px',
+            'paddingStart' => '8px', 'paddingEnd' => '8px',
+            'paddingTop' => '4px', 'paddingBottom' => '4px',
+            'contents' => [[
+              'type' => 'text', 'text' => '🚑  แจ้งเตือน',
+              'size' => 'xxs', 'color' => '#FFFFFF', 'weight' => 'bold',
+            ]],
+          ],
+          [ 'type' => 'text', 'text' => 'Accident Alert',
+            'size' => 'xs', 'color' => '#FED7AA',
+            'flex' => 1, 'align' => 'end', 'gravity' => 'center' ],
+        ]
+      ],
+      [ 'type' => 'text', 'text' => ACC_TITLE,
+        'size' => 'lg', 'color' => '#FFFFFF', 'weight' => 'bold',
+        'wrap' => true, 'margin' => 'sm' ],
+      [ 'type' => 'text', 'text' => ACC_SUBTITLE,
+        'size' => 'xxs', 'color' => '#FED7AA', 'wrap' => true, 'margin' => 'xs' ],
+    ],
+  ];
+
+  /* ── ALERT RIBBON (amber) ── */
+  $alertRibbon = [
+    'type'            => 'box', 'layout' => 'horizontal', 'spacing' => 'md',
+    'paddingStart'    => '12px', 'paddingEnd'    => '12px',
+    'paddingTop'      => '10px', 'paddingBottom' => '10px',
+    'backgroundColor' => '#FFF7ED',
+    'borderColor'     => '#FED7AA', 'borderWidth' => '1px',
+    'cornerRadius'    => '10px', 'margin' => 'none',
+    'contents' => [
+      [ 'type' => 'text', 'text' => '🚨',
+        'size' => 'xxl', 'flex' => 0, 'gravity' => 'center' ],
+      [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 1, 'spacing' => 'xs',
+        'contents' => [
+          [ 'type' => 'text', 'text' => 'สิทธิ์พิเศษ · ต้องดำเนินการด่วน',
+            'size' => 'sm', 'color' => '#C2410C', 'weight' => 'bold' ],
+          [ 'type' => 'text', 'text' => 'พ.ร.บ. คุ้มครองผู้ประสบภัย / ประกันสังคมต่างจังหวัด',
+            'size' => 'xs', 'color' => '#9A3412', 'wrap' => true ],
+        ]
+      ],
+      [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 0, 'justifyContent' => 'center',
+        'contents' => [[
+          'type'            => 'box', 'layout' => 'vertical',
+          'backgroundColor' => '#EA580C', 'cornerRadius' => '999px',
+          'paddingStart'    => '10px', 'paddingEnd'    => '10px',
+          'paddingTop'      => '5px',  'paddingBottom' => '5px',
+          'contents' => [[
+            'type' => 'text', 'text' => 'URGENT',
+            'size' => 'xxs', 'color' => '#FFFFFF', 'weight' => 'bold', 'align' => 'center',
+          ]],
+        ]],
+      ],
+    ],
+  ];
+
+  /* ── SECTION 1: ข้อมูลผู้ป่วย (navy) ── */
+  $secPatient = $mkSec('🧑‍⚕️', 'ข้อมูลผู้ป่วย', [
+    /* AN — ใหญ่ */
+    [ 'type' => 'box', 'layout' => 'baseline', 'spacing' => 'sm', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => 'AN',
+          'size' => 'xs', 'color' => '#64748B', 'flex' => 3 ],
+        [ 'type' => 'text', 'text' => $an,
+          'size' => 'xl', 'color' => '#9A3412', 'weight' => 'bold',
+          'flex' => 5, 'align' => 'end' ],
       ]
-    ]]
+    ],
+    $sep('#F1F5F9'),
+    $kv('HN', $hn),
+    $sep('#F1F5F9'),
+    $kv('ชื่อ-สกุล', $fullname, ['weight' => 'bold', 'color' => '#1E293B']),
+  ], ['bg' => '#FFFFFF', 'bd' => '#E2E8F0', 'accent' => '#1E3A8A', 'sep' => '#CBD5E1']);
+
+  /* ── SECTION 2: ข้อมูลการรับบริการ (amber-orange) ── */
+  /* สิทธิ์ badge — centered */
+  $pttypeBadge = [
+    'type' => 'box', 'layout' => 'horizontal', 'margin' => 'md',
+    'contents' => [
+      [ 'type' => 'filler' ],
+      [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 0,
+        'backgroundColor' => '#FFEDD5', 'cornerRadius' => '14px',
+        'paddingTop' => '12px', 'paddingBottom' => '12px',
+        'paddingStart' => '28px', 'paddingEnd' => '28px',
+        'contents' => [
+          [ 'type' => 'text', 'text' => $pttype !== '' ? $pttype : '-',
+            'size' => 'xxl', 'color' => '#7C2D12', 'weight' => 'bold', 'align' => 'center' ],
+          [ 'type' => 'separator', 'margin' => 'sm', 'color' => '#FED7AA' ],
+          [ 'type' => 'text', 'text' => 'รหัสสิทธิ์',
+            'size' => 'xxs', 'color' => '#9A3412', 'align' => 'center', 'margin' => 'xs' ],
+        ],
+      ],
+      [ 'type' => 'filler' ],
+    ],
+  ];
+  $pttNameEl = ($pttname !== '') ? [
+    'type' => 'text', 'text' => '🏷️  ' . $pttname,
+    'size' => 'sm', 'color' => '#1F2937', 'wrap' => true,
+    'margin' => 'sm', 'align' => 'center',
+  ] : null;
+
+  $secAdmit = $mkSec('🏥', 'ข้อมูลการรับบริการ',
+    array_values(array_filter([
+      $pttypeBadge,
+      $pttNameEl,
+      $sep('#FED7AA'),
+      $kv('วันที่ Admit',     $regdate, ['color' => '#7C2D12', 'weight' => 'bold']),
+      $sep('#F3F4F6'),
+      $kv('เวลารับบริการ', $regtime),
+    ])),
+    ['bg' => '#FFF7ED', 'bd' => '#FED7AA', 'accent' => '#C2410C', 'sep' => '#FFEDD5']
+  );
+
+  /* ── SECTION 3: แนวทางการดำเนินการ (blue) ── */
+  $urgentBox = [
+    'type'            => 'box', 'layout' => 'vertical', 'margin' => 'sm',
+    'backgroundColor' => '#FEE2E2', 'cornerRadius' => '8px', 'paddingAll' => '8px',
+    'contents' => [[
+      'type' => 'text', 'text' => '⏰  โปรดดำเนินการโดยด่วน',
+      'size' => 'sm', 'color' => '#B91C1C', 'weight' => 'bold', 'align' => 'center',
+    ]],
+  ];
+  $checkItems = [
+    'แจ้งงานประกันสุขภาพ / พ.ร.บ. ดำเนินการเคลม',
+    'ตรวจสอบและรวบรวมเอกสารสิทธิ์การรักษา',
+    'ประสานงานบริษัทประกัน / สำนักงานประกันสังคม',
+    'บันทึกข้อมูลและปิดใบแจ้งหนี้ในระบบ',
+  ];
+  $actionRows = [$urgentBox];
+  foreach ($checkItems as $i => $txt) {
+    $actionRows[] = [
+      'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '☑', 'size' => 'sm', 'color' => '#2563EB', 'flex' => 0 ],
+        [ 'type' => 'text', 'text' => $txt, 'size' => 'xs', 'color' => '#1E293B', 'wrap' => true, 'flex' => 1 ],
+      ],
+    ];
+    if ($i < count($checkItems) - 1) {
+      $actionRows[] = $sep('#DBEAFE');
+    }
+  }
+  $secAction = $mkSec('📋', 'แนวทางการดำเนินการ', $actionRows,
+    ['bg' => '#EFF6FF', 'bd' => '#BFDBFE', 'accent' => '#1D4ED8', 'sep' => '#DBEAFE']
+  );
+
+  /* ── BODY ── */
+  $body = [
+    'type' => 'box', 'layout' => 'vertical', 'spacing' => 'none', 'paddingAll' => '0px',
+    'contents' => [
+      $titleStrip,
+      [
+        'type'            => 'box', 'layout' => 'vertical',
+        'paddingAll'      => '14px', 'spacing' => 'none',
+        'backgroundColor' => '#FFF7ED',
+        'contents'        => [ $alertRibbon, $secPatient, $secAdmit, $secAction ],
+      ],
+    ],
+  ];
+
+  /* ── FOOTER (dark slate) ── */
+  $footer = [
+    'type'            => 'box', 'layout' => 'vertical',
+    'paddingStart'    => '14px', 'paddingEnd'    => '14px',
+    'paddingTop'      => '10px', 'paddingBottom' => '12px',
+    'backgroundColor' => '#1E293B',
+    'contents'        => array_values(array_filter([
+      [ 'type' => 'box', 'layout' => 'horizontal', 'contents' => [
+          [ 'type' => 'text', 'text' => ACC_SYSTEM_NAME,
+            'size' => 'xxs', 'color' => '#94A3B8', 'flex' => 3, 'wrap' => true ],
+          [ 'type' => 'text', 'text' => date('j M Y H:i'),
+            'size' => 'xxs', 'color' => '#64748B', 'align' => 'end', 'flex' => 2 ],
+      ]],
+      $refId !== '' ? [
+        'type'   => 'text', 'text' => 'Ref AN: ' . $refId,
+        'size'   => 'xxs', 'color' => '#475569', 'margin' => 'xs',
+      ] : null,
+    ])),
+  ];
+
+  /* ── BUBBLE ── */
+  $bubble = array_filter([
+    'type'   => 'bubble', 'size' => 'giga',
+    'header' => $header,
+    'body'   => $body,
+    'footer' => $footer,
+    'styles' => [
+      'header' => [ 'backgroundColor' => '#FFFFFF' ],
+      'body'   => [ 'backgroundColor' => '#FFF7ED' ],
+      'footer' => [ 'backgroundColor' => '#1E293B' ],
+    ],
+  ]);
+
+  $altText = sprintf('[แจ้งเตือนอุบัติเหตุ] AN %s HN %s %s (สิทธิ์ %s)',
+    $an, $hn, $fullname, $pttype);
+  if (mb_strlen($altText) > 400) $altText = mb_substr($altText, 0, 397) . '...';
+
+  return [
+    'messages' => [[
+      'type'     => 'flex',
+      'altText'  => $altText,
+      'contents' => $bubble,
+    ]],
   ];
 }
 
