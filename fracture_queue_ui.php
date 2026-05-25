@@ -65,6 +65,26 @@ if (!defined('UI_ACTION_TOKEN')) {
   define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/fracture_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
+/* ---------- Flash message ---------- */
+$flash = '';
+if (isset($_GET['msg'])) {
+  $ok  = (int)($_GET['ok']       ?? 0);
+  $fa  = (int)($_GET['fail']     ?? 0);
+  $aff = (int)($_GET['affected'] ?? 0);
+  $imp = (int)($_GET['imported'] ?? 0);
+  $nw  = (int)($_GET['new']      ?? 0);
+  $flash = match($_GET['msg']) {
+    'sendnow'   => "success:ส่งสำเร็จ {$ok} รายการ".($fa > 0 ? " / ล้มเหลว {$fa} รายการ" : ''),
+    'requeued'  => "info:Requeue สำเร็จ {$aff} รายการ",
+    'cleared'   => "info:ล้าง error สำเร็จ {$aff} รายการ",
+    'imported'  => "success:Sync จาก HOSxP สำเร็จ {$imp} รายการ (ใหม่ {$nw} รายการ)",
+    'no_ids'    => "warning:ยังไม่ได้เลือกรายการ",
+    'bad_action'=> "danger:คำสั่งไม่ถูกต้อง",
+    'err'       => "danger:เกิดข้อผิดพลาด: ".htmlspecialchars($_GET['detail']??''),
+    default     => '',
+  };
+}
+
 $PAGE_TITLE = 'คิวแจ้งเตือนพลัดตก / หกล้ม';
 $PAGE_ICON  = 'fa-person-falling';
 $PAGE_KEY   = 'fracture';
@@ -85,15 +105,34 @@ $EXTRA_HEAD = '
                 display:flex; align-items:center; gap:.5rem; flex-wrap:wrap }
   .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
   .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(16,185,129,.25) }
+
+  /* ── Sync modal ── */
+  #frcSyncResult { display:none; border-radius:8px; padding:10px 14px; font-size:.85rem; font-weight:500; margin-top:10px }
+  #frcSyncResult.ok  { background:#dcfce7; color:#166534 }
+  #frcSyncResult.err { background:#fee2e2; color:#991b1b }
 </style>
 ';
 
 require_once __DIR__ . '/partials/header.php';
 ?>
 
+<?php if ($flash):
+  [$ft, $fm] = explode(':', $flash, 2) + ['info',''];
+  $ftMap  = ['success'=>'alert-success','info'=>'alert-info','warning'=>'alert-warning','danger'=>'alert-danger'];
+  $ftIcon = ['success'=>'check_circle','info'=>'info','warning'=>'warning','danger'=>'error'];
+?>
+<div class="alert <?= $ftMap[$ft]??'alert-info' ?> d-flex align-items-center gap-2 mb-3"
+     style="border-radius:10px; font-size:.9rem">
+  <span class="msi"><?= $ftIcon[$ft]??'info' ?></span> <?= $fm ?>
+</div>
+<?php endif; ?>
+
 <div class="page-header">
   <h1><span class="msi text-success me-2">falling</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#frcSyncModal">
+      <span class="msi me-1">sync</span> Sync จาก HOSxP
+    </button>
     <a href="fracture_flex_preview.php" class="btn btn-outline-primary" target="_blank" rel="noopener">
       <span class="msi me-1">smartphone</span> ดูตัวอย่าง Flex
     </a>
@@ -250,6 +289,58 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 
+<!-- ═══ Sync from HOSxP Modal ═══ -->
+<div class="modal fade" id="frcSyncModal" tabindex="-1" aria-labelledby="frcSyncModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px; overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#059669,#065f46); color:#fff; border:none">
+        <h5 class="modal-title" id="frcSyncModalLabel">
+          <span class="msi me-2">sync</span>Sync ข้อมูลจาก HOSxP
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <span class="msi me-1" style="font-size:1rem">calendar_today</span>ช่วงวันที่ดึงข้อมูล
+          </label>
+          <div class="row g-2">
+            <div class="col">
+              <input type="date" id="frcSyncStart" class="form-control"
+                     value="<?= date('Y-m-d', strtotime('-7 days')) ?>">
+            </div>
+            <div class="col-auto d-flex align-items-center text-muted">ถึง</div>
+            <div class="col">
+              <input type="date" id="frcSyncEnd" class="form-control"
+                     value="<?= date('Y-m-d') ?>">
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <span class="msi me-1" style="font-size:1rem">elderly</span>อายุขั้นต่ำ (ปี)
+          </label>
+          <input type="number" id="frcSyncMinAge" class="form-control" min="0" max="120" value="60">
+          <div class="form-text">ค่าเริ่มต้น 60 ปี — กรอง ICD W00–W19 และ S-codes กระดูกหัก</div>
+        </div>
+        <div class="p-2 rounded" style="background:#d1fae5; border:1px solid #6ee7b7; font-size:.8rem; color:#065f46">
+          <span class="msi me-1">info</span>
+          ระบบจะ Query จาก <strong>vn_stat</strong> ใน HOSxP แล้ว Upsert เข้า <code>fracture_queue</code>
+          รายการที่มีอยู่แล้วจะอัปเดตชื่อและสถานบริการ ไม่รีเซ็ตสถานะการส่ง
+        </div>
+        <div id="frcSyncResult"></div>
+      </div>
+      <div class="modal-footer" style="border:none; padding-top:0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+        <button type="button" class="btn btn-success px-4" id="frcSyncBtn" onclick="doFrcSync()">
+          <span class="msi me-1" id="frcSyncIcon">sync</span>
+          <span id="frcSyncBtnText">Sync ข้อมูล</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- Sticky action bar -->
   <div class="action-bar">
     <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
@@ -343,6 +434,58 @@ $(function(){
     });
   });
 });
+
+// ── Sync from HOSxP (AJAX) ────────────────────────────────────────────────
+function doFrcSync() {
+  var btn     = document.getElementById("frcSyncBtn");
+  var icon    = document.getElementById("frcSyncIcon");
+  var btnText = document.getElementById("frcSyncBtnText");
+  var result  = document.getElementById("frcSyncResult");
+  var start   = document.getElementById("frcSyncStart").value;
+  var end     = document.getElementById("frcSyncEnd").value;
+  var minAge  = document.getElementById("frcSyncMinAge").value;
+
+  btn.disabled = true;
+  icon.textContent = "sync";
+  icon.classList.add("msi-spin");
+  btnText.textContent = "กำลัง Sync...";
+  result.style.display = "none";
+
+  var fd = new FormData();
+  fd.append("action",  "import_hosxp");
+  fd.append("start",   start);
+  fd.append("end",     end);
+  fd.append("min_age", minAge);
+
+  fetch("fracture_queue_action.php", { method:"POST", body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      btn.disabled = false;
+      icon.classList.remove("msi-spin");
+      icon.textContent = "sync";
+      btnText.textContent = "Sync ข้อมูล";
+      result.style.display = "block";
+      result.className = data.ok ? "ok" : "err";
+      result.innerHTML = (data.ok
+        ? "<span class=\"msi me-1\">check_circle<\/span>"
+        : "<span class=\"msi me-1\">error<\/span>") + data.msg;
+      if (data.ok) {
+        setTimeout(function(){
+          window.location.href = "fracture_queue_ui.php?msg=imported&imported="
+            + (data.imported||0) + "&new=" + (data.new||0);
+        }, 1500);
+      }
+    })
+    .catch(function(err){
+      btn.disabled = false;
+      icon.classList.remove("msi-spin");
+      icon.textContent = "sync";
+      btnText.textContent = "Sync ข้อมูล";
+      result.style.display = "block";
+      result.className = "err";
+      result.innerHTML = "<span class=\"msi me-1\">error<\/span>เกิดข้อผิดพลาด: " + err;
+    });
+}
 </script>
 ';
 // ไม่ echo ที่นี่ — ส่งเป็นตัวแปรให้ partials/footer.php echo หลัง AdminLTE JS

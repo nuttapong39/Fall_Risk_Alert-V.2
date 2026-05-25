@@ -17,6 +17,120 @@ if (!defined('UI_ACTION_TOKEN')) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
+
+$action = trim($_POST['action'] ?? '');
+
+/* ══ AJAX ── import_hosxp (no CSRF required) ══════════════════════════════ */
+if ($action === 'import_hosxp') {
+  header('Content-Type: application/json; charset=utf-8');
+  $impStart = trim($_POST['start']     ?? date('Y-m-d', strtotime('-7 days')));
+  $impEnd   = trim($_POST['end']       ?? date('Y-m-d'));
+  $codesRaw = trim($_POST['lab_codes'] ?? '539,2368,697,2388,2370');
+
+  $codeArr = array_values(array_filter(
+    array_map(
+      fn($x) => preg_replace('/[^0-9]/', '', trim($x)),
+      preg_split('/[\s,]+/', $codesRaw)
+    )
+  ));
+  if (!$codeArr) {
+    echo json_encode(['ok'=>false, 'msg'=>'ไม่ได้ระบุรหัส lab (lab_items_code)']);
+    exit;
+  }
+
+  // จัดประเภท lab_items_code → lab_name
+  $classifyPharm = function(string $code, ?string $result): ?string {
+    $v = is_numeric($result) ? (float)$result : null;
+    if ($v === null) return null;
+    if ($code === '539'  && $v >= 5)   return 'INR';
+    if ($code === '2368' && $v >  150) return 'Depakin level';
+    if (in_array($code, ['697','2388'], true) && $v > 1.2) return 'Lithium level';
+    if ($code === '2370' && $v >  20)  return 'Phenytoin level';
+    return null;
+  };
+
+  try {
+    $place = implode(',', array_fill(0, count($codeArr), '?'));
+    $sql = "SELECT
+              h.lab_order_number,
+              ov.hn,
+              CONCAT(pt.pname, pt.fname, ' ', pt.lname)                  AS fullname,
+              TIMESTAMPDIFF(YEAR, pt.birthday, h.order_date)             AS age,
+              h.order_date                                                AS lab_date,
+              h.report_time                                               AS lab_time,
+              d.name                                                      AS doctor,
+              l.lab_items_code,
+              l.lab_order_result                                          AS result,
+              'OPD'                                                       AS patient_type
+            FROM   lab_head  h
+            INNER JOIN lab_order l   ON l.lab_order_number = h.lab_order_number
+            INNER JOIN ovst     ov   ON ov.vn              = h.vn
+            LEFT  JOIN patient  pt   ON pt.hn              = ov.hn
+            LEFT  JOIN doctor   d    ON d.code             = ov.dx_doctor
+            WHERE  h.order_date BETWEEN ? AND ?
+            AND    l.lab_items_code IN ($place)
+            AND    l.lab_order_result IS NOT NULL
+            AND    l.lab_order_result <> ''
+            ORDER  BY h.order_date DESC
+            LIMIT  2000";
+
+    $params = array_merge([$impStart, $impEnd], $codeArr);
+    $stmt   = $dbcon->prepare($sql);
+    $stmt->execute($params);
+    $hosxpRows = $stmt->fetchAll();
+
+    $ins = $dbcon->prepare(
+      "INSERT INTO pharm_lab_queue
+         (hn, fullname, age, lab_date, lab_time, doctor,
+          lab_name, result, patient_type, lab_order_number)
+       VALUES (:hn,:fn,:age,:ld,:lt,:dr,:ln,:res,:pt,:lon)
+       ON DUPLICATE KEY UPDATE
+         fullname=VALUES(fullname), result=VALUES(result), doctor=VALUES(doctor)"
+    );
+    $existStmt = $dbcon->prepare(
+      "SELECT id FROM pharm_lab_queue WHERE hn=? AND lab_order_number=? AND lab_name=?"
+    );
+    $imported = 0; $newRows = 0; $skipped = 0;
+
+    foreach ($hosxpRows as $hr) {
+      $hr      = row_to_utf8($hr);
+      $hn      = trim((string)($hr['hn']               ?? ''));
+      $lon     = trim((string)($hr['lab_order_number'] ?? ''));
+      $code    = (string)($hr['lab_items_code'] ?? '');
+      $result  = (string)($hr['result']         ?? '');
+      $labName = $classifyPharm($code, $result);
+
+      if ($hn === '' || $lon === '' || $labName === null) { $skipped++; continue; }
+
+      $existStmt->execute([$hn, $lon, $labName]);
+      $isNew = !$existStmt->fetch();
+
+      $ins->execute([
+        ':hn'  => $hn,
+        ':fn'  => $hr['fullname']    ?? '',
+        ':age' => is_numeric($hr['age']) ? (int)$hr['age'] : null,
+        ':ld'  => $hr['lab_date']    ?: null,
+        ':lt'  => $hr['lab_time']    ?? null,
+        ':dr'  => $hr['doctor']      ?? '',
+        ':ln'  => $labName,
+        ':res' => $result,
+        ':pt'  => $hr['patient_type'] ?? 'OPD',
+        ':lon' => $lon,
+      ]);
+      $imported++;
+      if ($isNew) $newRows++;
+    }
+
+    $skipNote = $skipped > 0 ? " (ข้าม {$skipped} แถว)" : '';
+    echo json_encode(['ok'=>true, 'imported'=>$imported, 'new'=>$newRows, 'skipped'=>$skipped,
+      'msg'=>"นำเข้าสำเร็จ {$imported} รายการ (ใหม่ {$newRows} รายการ){$skipNote}"]);
+
+  } catch (Throwable $e) {
+    echo json_encode(['ok'=>false, 'msg'=>'เกิดข้อผิดพลาด: '.$e->getMessage()]);
+  }
+  exit;
+}
+
 if (!isset($_POST['token']) || $_POST['token'] !== UI_ACTION_TOKEN) { http_response_code(403); exit('Forbidden'); }
 
 $action = $_POST['action'] ?? '';

@@ -149,7 +149,7 @@ foreach ($queue as $row) {
   } elseif (defined('DELIVERY_DRIVER') && DELIVERY_DRIVER === 'file') {
     [$ok, $ref, $err] = send_via_file($row);
   } else { // default: moph_alert
-    [$ok, $ref, $err] = send_via_moph_alert($row);
+    [$ok, $ref, $err] = covid_send_via_moph_alert($row);
   }
 
   if ($ok) {

@@ -75,6 +75,26 @@ foreach ($rows as $r) {
     if (substr($r['created_at'], 0, 10) === $today) $kpi['today']++;
 }
 
+/* ---------- Flash message ---------- */
+$flash = '';
+if (isset($_GET['msg'])) {
+  $ok  = (int)($_GET['ok']       ?? 0);
+  $fa  = (int)($_GET['fail']     ?? 0);
+  $aff = (int)($_GET['affected'] ?? 0);
+  $imp = (int)($_GET['imported'] ?? 0);
+  $nw  = (int)($_GET['new']      ?? 0);
+  $flash = match($_GET['msg']) {
+    'sendnow'   => "success:ส่งสำเร็จ {$ok} รายการ".($fa > 0 ? " / ล้มเหลว {$fa} รายการ" : ''),
+    'requeued'  => "info:Requeue สำเร็จ {$aff} รายการ",
+    'cleared'   => "info:ล้าง error สำเร็จ {$aff} รายการ",
+    'imported'  => "success:Sync จาก HOSxP สำเร็จ {$imp} รายการ (ใหม่ {$nw} รายการ)",
+    'no_ids'    => "warning:ยังไม่ได้เลือกรายการ",
+    'bad_action'=> "danger:คำสั่งไม่ถูกต้อง",
+    'err'       => "danger:เกิดข้อผิดพลาด: ".htmlspecialchars($_GET['detail']??''),
+    default     => '',
+  };
+}
+
 /* ---------- Page setup ---------- */
 $PAGE_TITLE = 'คิวแจ้งเตือน พ.ร.บ.';
 $PAGE_KEY   = 'accident';
@@ -120,18 +140,37 @@ $EXTRA_HEAD = '
   .acc-bar-btn-clear   { background: transparent; color:#f87171; border:1px solid #f87171; }
   .acc-bar-btn-cancel  { background: rgba(255,255,255,.1); color:#94a3b8; margin-left:auto; }
 
-  /* Padding so last row isn't hidden behind sticky bar */
+  /* Padding so last row is not hidden behind sticky bar */
   .content-bottom-pad { padding-bottom: 80px; }
+
+  /* ── Sync modal ── */
+  #accSyncResult { display:none; border-radius:8px; padding:10px 14px; font-size:.85rem; font-weight:500; margin-top:10px }
+  #accSyncResult.ok  { background:#dcfce7; color:#166534 }
+  #accSyncResult.err { background:#fee2e2; color:#991b1b }
 </style>
 ';
 
 require_once __DIR__ . '/partials/header.php';
 ?>
 
+<?php if ($flash):
+  [$ft, $fm] = explode(':', $flash, 2) + ['info',''];
+  $ftMap  = ['success'=>'alert-success','info'=>'alert-info','warning'=>'alert-warning','danger'=>'alert-danger'];
+  $ftIcon = ['success'=>'check_circle','info'=>'info','warning'=>'warning','danger'=>'error'];
+?>
+<div class="alert <?= $ftMap[$ft]??'alert-info' ?> d-flex align-items-center gap-2 mb-3"
+     style="border-radius:10px; font-size:.9rem">
+  <span class="msi"><?= $ftIcon[$ft]??'info' ?></span> <?= $fm ?>
+</div>
+<?php endif; ?>
+
 <!-- Page header -->
 <div class="page-header">
   <h1><span class="msi text-warning me-2">car_crash</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#accSyncModal">
+      <span class="msi me-1">sync</span> Sync จาก HOSxP
+    </button>
     <a href="accident_queue_ui.php" class="btn btn-outline-secondary btn-sm">
       <span class="msi me-1">undo</span>รีเซ็ต
     </a>
@@ -269,6 +308,60 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
+<!-- ═══ Sync from HOSxP Modal ═══ -->
+<div class="modal fade" id="accSyncModal" tabindex="-1" aria-labelledby="accSyncModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px; overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#d97706,#92400e); color:#fff; border:none">
+        <h5 class="modal-title" id="accSyncModalLabel">
+          <span class="msi me-2">sync</span>Sync ข้อมูลจาก HOSxP
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <span class="msi me-1" style="font-size:1rem">calendar_today</span>ช่วงวันที่ดึงข้อมูล
+          </label>
+          <div class="row g-2">
+            <div class="col">
+              <input type="date" id="accSyncStart" class="form-control"
+                     value="<?= date('Y-m-d', strtotime('-7 days')) ?>">
+            </div>
+            <div class="col-auto d-flex align-items-center text-muted">ถึง</div>
+            <div class="col">
+              <input type="date" id="accSyncEnd" class="form-control"
+                     value="<?= date('Y-m-d') ?>">
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <span class="msi me-1" style="font-size:1rem">badge</span>รหัสสิทธิ (pttype)
+          </label>
+          <input type="text" id="accSyncPttypes" class="form-control font-monospace"
+                 value="33,35,36,39"
+                 placeholder="เช่น 33,35,36,39">
+          <div class="form-text">คั่นด้วย <code>,</code> — ดูรหัสสิทธิ พ.ร.บ./ประกันสังคมจากระบบ HOSxP</div>
+        </div>
+        <div class="p-2 rounded" style="background:#fef3c7; border:1px solid #fde68a; font-size:.8rem; color:#92400e">
+          <span class="msi me-1">info</span>
+          ระบบจะ Query จาก <strong>ovst</strong> ใน HOSxP แล้ว Upsert เข้า <code>accident_queue</code>
+          รายการที่มีอยู่แล้วจะอัปเดตชื่อและสิทธิ โดยไม่รีเซ็ตสถานะการส่ง
+        </div>
+        <div id="accSyncResult"></div>
+      </div>
+      <div class="modal-footer" style="border:none; padding-top:0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+        <button type="button" class="btn btn-warning px-4" id="accSyncBtn" onclick="doAccSync()">
+          <span class="msi me-1" id="accSyncIcon">sync</span>
+          <span id="accSyncBtnText">Sync ข้อมูล</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Sticky Action Bar ═══ -->
 <div id="accStickyBar">
   <span class="msi" style="color:#fbbf24">checklist</span>
@@ -401,6 +494,65 @@ $(function(){
     });
   });
 });
+
+// ── Sync from HOSxP (AJAX) ────────────────────────────────────────────────
+function doAccSync() {
+  var btn     = document.getElementById("accSyncBtn");
+  var icon    = document.getElementById("accSyncIcon");
+  var btnText = document.getElementById("accSyncBtnText");
+  var result  = document.getElementById("accSyncResult");
+  var start   = document.getElementById("accSyncStart").value;
+  var end     = document.getElementById("accSyncEnd").value;
+  var pttypes = document.getElementById("accSyncPttypes").value.trim();
+
+  if (!pttypes) {
+    result.style.display = "block";
+    result.className = "err";
+    result.textContent = "กรุณาระบุรหัสสิทธิ (pttype)";
+    return;
+  }
+
+  btn.disabled = true;
+  icon.textContent = "sync";
+  icon.classList.add("msi-spin");
+  btnText.textContent = "กำลัง Sync...";
+  result.style.display = "none";
+
+  var fd = new FormData();
+  fd.append("action",  "import_hosxp");
+  fd.append("start",   start);
+  fd.append("end",     end);
+  fd.append("pttypes", pttypes);
+
+  fetch("accident_queue_action.php", { method:"POST", body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      btn.disabled = false;
+      icon.classList.remove("msi-spin");
+      icon.textContent = "sync";
+      btnText.textContent = "Sync ข้อมูล";
+      result.style.display = "block";
+      result.className = data.ok ? "ok" : "err";
+      result.innerHTML = (data.ok
+        ? "<span class=\"msi me-1\">check_circle<\/span>"
+        : "<span class=\"msi me-1\">error<\/span>") + data.msg;
+      if (data.ok) {
+        setTimeout(function(){
+          window.location.href = "accident_queue_ui.php?msg=imported&imported="
+            + (data.imported||0) + "&new=" + (data.new||0);
+        }, 1500);
+      }
+    })
+    .catch(function(err){
+      btn.disabled = false;
+      icon.classList.remove("msi-spin");
+      icon.textContent = "sync";
+      btnText.textContent = "Sync ข้อมูล";
+      result.style.display = "block";
+      result.className = "err";
+      result.innerHTML = "<span class=\"msi me-1\">error<\/span>เกิดข้อผิดพลาด: " + err;
+    });
+}
 </script>
 ';
 require_once __DIR__ . '/partials/footer.php';

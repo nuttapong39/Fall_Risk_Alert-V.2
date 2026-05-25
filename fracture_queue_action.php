@@ -12,6 +12,102 @@ if (!defined('UI_ACTION_TOKEN')) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
+
+$action = trim($_POST['action'] ?? '');
+
+/* ══ AJAX ── import_hosxp (no CSRF required) ══════════════════════════════ */
+if ($action === 'import_hosxp') {
+  header('Content-Type: application/json; charset=utf-8');
+  $impStart = trim($_POST['start']   ?? date('Y-m-d', strtotime('-7 days')));
+  $impEnd   = trim($_POST['end']     ?? date('Y-m-d'));
+  $minAge   = max(0, (int)($_POST['min_age'] ?? 60));
+
+  try {
+    $sql = "SELECT
+              vs.vn                                                       AS visit_vn,
+              vs.hn,
+              CONCAT(pt.pname, pt.fname, ' ', pt.lname)                  AS fullname,
+              pt.cid,
+              pt.hometel,
+              TIMESTAMPDIFF(YEAR, pt.birthday, vs.vstdate)               AS age,
+              CASE WHEN pt.sex='1' THEN 'ชาย'
+                   WHEN pt.sex='2' THEN 'หญิง' ELSE '' END               AS sex,
+              pt.informaddr                                               AS address,
+              vs.pdx                                                      AS pdx_code,
+              i.name                                                      AS pdx_name,
+              vs.vstdate,
+              COALESCE(ksk.name, '')                                      AS mainstation
+            FROM   vn_stat vs
+            LEFT JOIN patient       pt  ON pt.hn       = vs.hn
+            LEFT JOIN icd101        i   ON i.code      = vs.pdx
+            LEFT JOIN kskdepartment ksk ON ksk.depcode = vs.main_dep_code
+            WHERE  vs.vstdate BETWEEN ? AND ?
+            AND    TIMESTAMPDIFF(YEAR, pt.birthday, vs.vstdate) >= ?
+            AND    (
+              (UPPER(vs.pdx) BETWEEN 'W00' AND 'W19')
+              OR UPPER(vs.pdx) LIKE 'S720%' OR UPPER(vs.pdx) LIKE 'S721%'
+              OR UPPER(vs.pdx) LIKE 'S722%' OR UPPER(vs.pdx) LIKE 'S525%'
+              OR UPPER(vs.pdx) LIKE 'S526%' OR UPPER(vs.pdx) LIKE 'S422%'
+              OR UPPER(vs.pdx) LIKE 'S220%' OR UPPER(vs.pdx) LIKE 'S221%'
+              OR UPPER(vs.pdx) LIKE 'S320%' OR UPPER(vs.pdx) LIKE 'S327%'
+            )
+            AND    vs.hn IS NOT NULL AND vs.hn != ''
+            ORDER  BY vs.vstdate DESC
+            LIMIT  2000";
+
+    $stmt = $dbcon->prepare($sql);
+    $stmt->execute([$impStart, $impEnd, $minAge]);
+    $hosxpRows = $stmt->fetchAll();
+
+    $ins = $dbcon->prepare(
+      "INSERT INTO fracture_queue
+         (visit_vn, hn, fullname, cid, hometel, age, sex, address,
+          pdx_code, pdx_name, vstdate, mainstation)
+       VALUES (:vn,:hn,:fn,:cid,:tel,:age,:sex,:addr,:dc,:dn,:vd,:ms)
+       ON DUPLICATE KEY UPDATE
+         fullname=VALUES(fullname), hometel=VALUES(hometel),
+         pdx_name=VALUES(pdx_name), mainstation=VALUES(mainstation)"
+    );
+    $existStmt = $dbcon->prepare("SELECT id FROM fracture_queue WHERE visit_vn=?");
+    $imported = 0; $newRows = 0; $skipped = 0;
+
+    foreach ($hosxpRows as $hr) {
+      $hr = row_to_utf8($hr);
+      $vn = trim((string)($hr['visit_vn'] ?? ''));
+      $hn = trim((string)($hr['hn']       ?? ''));
+      if ($vn === '' || $hn === '') { $skipped++; continue; }
+
+      $existStmt->execute([$vn]);
+      $isNew = !$existStmt->fetch();
+
+      $ins->execute([
+        ':vn'  => $vn,
+        ':hn'  => $hn,
+        ':fn'  => $hr['fullname']    ?? '',
+        ':cid' => $hr['cid']         ?? '',
+        ':tel' => $hr['hometel']     ?? '',
+        ':age' => is_numeric($hr['age']) ? (int)$hr['age'] : null,
+        ':sex' => $hr['sex']         ?? '',
+        ':addr'=> $hr['address']     ?? '',
+        ':dc'  => $hr['pdx_code']    ?? '',
+        ':dn'  => $hr['pdx_name']    ?? '',
+        ':vd'  => $hr['vstdate']     ?: null,
+        ':ms'  => $hr['mainstation'] ?? '',
+      ]);
+      $imported++;
+      if ($isNew) $newRows++;
+    }
+
+    $skipNote = $skipped > 0 ? " (ข้าม {$skipped} แถว)" : '';
+    echo json_encode(['ok'=>true, 'imported'=>$imported, 'new'=>$newRows, 'skipped'=>$skipped,
+      'msg'=>"นำเข้าสำเร็จ {$imported} รายการ (ใหม่ {$newRows} รายการ){$skipNote}"]);
+
+  } catch (Throwable $e) {
+    echo json_encode(['ok'=>false, 'msg'=>'เกิดข้อผิดพลาด: '.$e->getMessage()]);
+  }
+  exit;
+}
+
 if (!isset($_POST['token']) || !defined('UI_ACTION_TOKEN') || $_POST['token'] !== UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
 }

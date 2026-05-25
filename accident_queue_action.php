@@ -6,6 +6,91 @@ mb_internal_encoding('UTF-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
 
+$action = trim($_POST['action'] ?? '');
+
+/* ══ AJAX ── import_hosxp (no CSRF required) ══════════════════════════════ */
+if ($action === 'import_hosxp') {
+  header('Content-Type: application/json; charset=utf-8');
+  $impStart   = trim($_POST['start']   ?? date('Y-m-d', strtotime('-7 days')));
+  $impEnd     = trim($_POST['end']     ?? date('Y-m-d'));
+  $pttypesRaw = trim($_POST['pttypes'] ?? '33,35,36,39');
+
+  $ptArr = array_values(array_filter(
+    array_map(
+      fn($x) => preg_replace('/[^A-Z0-9]/i', '', trim($x)),
+      preg_split('/[\s,]+/', $pttypesRaw)
+    )
+  ));
+  if (!$ptArr) {
+    echo json_encode(['ok'=>false, 'msg'=>'ไม่ได้ระบุรหัสสิทธิ (pttype)']);
+    exit;
+  }
+
+  try {
+    $place = implode(',', array_fill(0, count($ptArr), '?'));
+    $sql = "SELECT
+              ov.vn                                                       AS an,
+              ov.hn,
+              CONCAT(pt.pname, pt.fname, ' ', pt.lname)                  AS fullname,
+              DATE(ov.vstdate)                                            AS regdate,
+              SUBSTRING(TIME(ov.vstdate),1,5)                            AS regtime,
+              ov.pttype,
+              ptt.name                                                    AS pttname
+            FROM   ovst ov
+            LEFT JOIN patient pt  ON pt.hn      = ov.hn
+            LEFT JOIN pttype  ptt ON ptt.pttype = ov.pttype
+            WHERE  DATE(ov.vstdate) BETWEEN ? AND ?
+            AND    ov.pttype IN ($place)
+            AND    ov.hn IS NOT NULL AND ov.hn != ''
+            ORDER  BY ov.vstdate DESC
+            LIMIT  2000";
+
+    $params = array_merge([$impStart, $impEnd], $ptArr);
+    $stmt   = $dbcon->prepare($sql);
+    $stmt->execute($params);
+    $hosxpRows = $stmt->fetchAll();
+
+    $ins = $dbcon->prepare(
+      "INSERT INTO accident_queue (an, hn, fullname, regdate, regtime, pttype, pttname)
+       VALUES (:an,:hn,:fn,:rd,:rt,:pt,:ptn)
+       ON DUPLICATE KEY UPDATE
+         fullname=VALUES(fullname), pttname=VALUES(pttname), regtime=VALUES(regtime)"
+    );
+    $existStmt = $dbcon->prepare("SELECT id FROM accident_queue WHERE an=?");
+    $imported = 0; $newRows = 0; $skipped = 0;
+
+    foreach ($hosxpRows as $hr) {
+      $hr = row_to_utf8($hr);
+      $an = trim((string)($hr['an'] ?? ''));
+      $hn = trim((string)($hr['hn'] ?? ''));
+      if ($an === '' || $hn === '') { $skipped++; continue; }
+
+      $existStmt->execute([$an]);
+      $isNew = !$existStmt->fetch();
+
+      $ins->execute([
+        ':an'  => $an,
+        ':hn'  => $hn,
+        ':fn'  => $hr['fullname'] ?? '',
+        ':rd'  => $hr['regdate']  ?: null,
+        ':rt'  => $hr['regtime']  ?? '',
+        ':pt'  => $hr['pttype']   ?? '',
+        ':ptn' => $hr['pttname']  ?? '',
+      ]);
+      $imported++;
+      if ($isNew) $newRows++;
+    }
+
+    $skipNote = $skipped > 0 ? " (ข้าม {$skipped} แถว)" : '';
+    echo json_encode(['ok'=>true, 'imported'=>$imported, 'new'=>$newRows, 'skipped'=>$skipped,
+      'msg'=>"นำเข้าสำเร็จ {$imported} รายการ (ใหม่ {$newRows} รายการ){$skipNote}"]);
+
+  } catch (Throwable $e) {
+    echo json_encode(['ok'=>false, 'msg'=>'เกิดข้อผิดพลาด: '.$e->getMessage()]);
+  }
+  exit;
+}
+
 /* ===================== Token (FIX: make same as UI) ===================== */
 /*
   UI ของคุณสร้าง token จาก __FILE__ ของ accident_queue_ui.php
