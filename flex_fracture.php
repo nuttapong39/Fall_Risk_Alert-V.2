@@ -117,200 +117,395 @@ if (!function_exists('buildFracturePayload')) {
 
 /**
  * ประกอบ Flex payload จาก row เดียวของ fracture_queue
- * @param array $row
- * @return array  payload พร้อมส่ง MOPH Alert (มี messages[])
+ * v2 — redesigned: section cards พร้อม accent bars, ICD badge ขนาดใหญ่,
+ *      risk ribbon, checklist actions, dark footer
+ *
+ * @param  array $row  แถวจาก fracture_queue
+ * @return array       payload พร้อมส่ง MOPH Alert (มี messages[])
  */
 function buildFracturePayload(array $row): array {
   $row = row_to_utf8($row);
 
-  /* ---------- Normalize values ---------- */
-  $hn       = $row['hn']       ?? '-';
-  $fullname = $row['fullname'] ?? '-';
-  $age      = $row['age']      ?? '';
-  $sex      = $row['sex']      ?? '';
-  $address  = $row['address']  ?? '-';
-  $tel      = $row['hometel']  ?? '-';
-  $pdxCode  = $row['pdx_code'] ?? '-';
-  $pdxName  = $row['pdx_name'] ?? '';
+  /* ── Normalize ─────────────────────────────────────────────────────── */
+  $hn       = (string)($row['hn']         ?? '-');
+  $fullname = (string)($row['fullname']    ?? '-');
+  $age      = (string)($row['age']         ?? '');
+  $sex      = (string)($row['sex']         ?? '');
+  $address  = (string)($row['address']     ?? '-');
+  $tel      = (string)($row['hometel']     ?? '');
+  $pdxCode  = (string)($row['pdx_code']    ?? '-');
+  $pdxName  = (string)($row['pdx_name']    ?? '');
   $vstdate  = fr_thai_date($row['vstdate'] ?? null);
-  $station  = $row['mainstation'] ?? '-';
-  $refId    = $row['visit_vn'] ?? ($row['id'] ?? '');
+  $station  = (string)($row['mainstation'] ?? '-');
+  $refId    = (string)($row['visit_vn']    ?? ($row['id'] ?? ''));
 
-  $ageSex = '-';
-  if ($age !== '' && $sex !== '') $ageSex = "{$age} ปี · {$sex}";
-  elseif ($age !== '')            $ageSex = "{$age} ปี";
-  elseif ($sex !== '')            $ageSex = (string)$sex;
+  $ageSex = match(true) {
+    $age !== '' && $sex !== '' => "{$age} ปี · {$sex}",
+    $age !== ''                => "{$age} ปี",
+    $sex !== ''                => $sex,
+    default                    => '-',
+  };
+  $telDisplay = ($tel !== '' && $tel !== '-') ? $tel : 'ไม่พบเบอร์';
+  $telColor   = ($tel !== '' && $tel !== '-') ? '#059669' : '#9CA3AF';
 
-  /* ---------- HEADER BANNER (image) ---------- */
-  $header = [
-    "type"=>"box", "layout"=>"vertical", "paddingAll"=>"0px",
-    "contents"=> FALL_HEADER_URL ? [[
-      "type"=>"image", "url"=>FALL_HEADER_URL,
-      "size"=>"full", "aspectRatio"=>"3120:885", "aspectMode"=>"cover",
-    ]] : [],
+  /* ── Local helpers ──────────────────────────────────────────────────── */
+
+  /** สร้าง section card พร้อม accent bar ซ้าย + divider หลัง header */
+  $mkSec = function(string $icon, string $title, array $rows, array $o = []) {
+    $bg     = $o['bg']     ?? '#FFFFFF';
+    $bd     = $o['bd']     ?? '#E2E8F0';
+    $accent = $o['accent'] ?? '#1E3A8A';
+    $sep    = $o['sep']    ?? '#E2E8F0';
+
+    /* accent bar + icon + title */
+    $hdr = [
+      'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '▌', 'size' => 'lg',
+          'color' => $accent, 'flex' => 0, 'weight' => 'bold' ],
+        [ 'type' => 'text', 'text' => $icon . '  ' . $title,
+          'size' => 'sm', 'color' => $accent, 'weight' => 'bold',
+          'flex' => 1, 'gravity' => 'center' ],
+      ],
+    ];
+    $divider = [ 'type' => 'separator', 'margin' => 'sm', 'color' => $sep ];
+
+    return [
+      'type'            => 'box',
+      'layout'          => 'vertical',
+      'paddingAll'      => '14px',
+      'cornerRadius'    => '12px',
+      'backgroundColor' => $bg,
+      'borderColor'     => $bd,
+      'borderWidth'     => '1px',
+      'margin'          => 'md',
+      'spacing'         => 'xs',
+      'contents'        => array_values(array_filter(
+        array_merge([$hdr, $divider], $rows),
+        fn($x) => $x !== null
+      )),
+    ];
+  };
+
+  /** แถว label (xs, slate) + value สองคอลัมน์ */
+  $kv = fn(string $lbl, string $val, array $o = []) => [
+    'type' => 'box', 'layout' => 'baseline', 'spacing' => 'sm', 'margin' => 'sm',
+    'contents' => [
+      [ 'type' => 'text', 'text' => $lbl,
+        'size' => 'xs', 'color' => '#64748B', 'flex' => 3 ],
+      [ 'type' => 'text', 'text' => ($val === '' ? '-' : $val),
+        'size'   => $o['size']   ?? 'sm',
+        'color'  => $o['color']  ?? '#1E293B',
+        'weight' => $o['weight'] ?? 'regular',
+        'flex' => 5, 'align' => 'end', 'wrap' => true ],
+    ],
   ];
 
-  /* ---------- TITLE STRIP (navy gradient) ---------- */
+  /** separator ชนิดบาง */
+  $sep = fn(string $c = '#F1F5F9') => [ 'type' => 'separator', 'margin' => 'sm', 'color' => $c ];
+
+  /* ── HEADER IMAGE ───────────────────────────────────────────────────── */
+  $header = FALL_HEADER_URL ? [
+    'type' => 'box', 'layout' => 'vertical', 'paddingAll' => '0px',
+    'contents' => [[
+      'type' => 'image', 'url' => FALL_HEADER_URL,
+      'size' => 'full', 'aspectRatio' => '3120:885', 'aspectMode' => 'cover',
+    ]],
+  ] : null;
+
+  /* ── TITLE STRIP (dark navy) ────────────────────────────────────────── */
   $titleStrip = [
-    "type"=>"box", "layout"=>"vertical",
-    "paddingAll"=>"16px", "backgroundColor"=>"#0F2A5B", "cornerRadius"=>"0px",
-    "contents"=>[
-      [ "type"=>"box", "layout"=>"horizontal", "contents"=>[
-          [ "type"=>"text", "text"=>"🚨  แจ้งเตือนผู้ป่วยกลุ่มเสี่ยง",
-            "size"=>"xs", "color"=>"#FDE68A", "weight"=>"bold", "flex"=>1 ],
-          [ "type"=>"text", "text"=>"Fall Risk Alert",
-            "size"=>"xs", "color"=>"#BFDBFE", "align"=>"end", "flex"=>0 ],
-      ]],
-      [ "type"=>"text", "text"=>FALL_TITLE,
-        "size"=>"xl", "color"=>"#FFFFFF", "weight"=>"bold", "wrap"=>true, "margin"=>"sm" ],
-      [ "type"=>"text", "text"=>FALL_SUBTITLE,
-        "size"=>"xs", "color"=>"#CBD5E1", "wrap"=>true, "margin"=>"xs" ],
+    'type'            => 'box',
+    'layout'          => 'vertical',
+    'paddingStart'    => '16px',
+    'paddingEnd'      => '16px',
+    'paddingTop'      => '16px',
+    'paddingBottom'   => '18px',
+    'backgroundColor' => '#0F172A',
+    'contents' => [
+      /* badge row */
+      [ 'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm', 'margin' => 'none',
+        'contents' => [
+          [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 0,
+            'backgroundColor' => '#DC2626', 'cornerRadius' => '6px',
+            'paddingStart' => '8px', 'paddingEnd' => '8px',
+            'paddingTop' => '4px', 'paddingBottom' => '4px',
+            'contents' => [
+              [ 'type' => 'text', 'text' => '🚨  แจ้งเตือน',
+                'size' => 'xxs', 'color' => '#FFFFFF', 'weight' => 'bold' ],
+            ]
+          ],
+          [ 'type' => 'text', 'text' => 'Fall Risk Alert',
+            'size' => 'xs', 'color' => '#93C5FD',
+            'flex' => 1, 'align' => 'end', 'gravity' => 'center' ],
+        ]
+      ],
+      /* main title */
+      [ 'type' => 'text', 'text' => FALL_TITLE,
+        'size' => 'xl', 'color' => '#FFFFFF', 'weight' => 'bold',
+        'wrap' => true, 'margin' => 'sm' ],
+      [ 'type' => 'text', 'text' => FALL_SUBTITLE,
+        'size' => 'xxs', 'color' => '#94A3B8', 'wrap' => true, 'margin' => 'xs' ],
     ],
   ];
 
-  /* ---------- PRIORITY BADGE (red strip) ---------- */
-  $priority = [
-    "type"=>"box", "layout"=>"baseline", "spacing"=>"sm",
-    "paddingAll"=>"10px", "backgroundColor"=>"#FEE2E2", "cornerRadius"=>"8px", "margin"=>"md",
-    "contents"=>[
-      [ "type"=>"text", "text"=>"⚠", "size"=>"md", "flex"=>0, "color"=>"#B91C1C" ],
-      [ "type"=>"text", "text"=>"ผู้สูงอายุ ≥ 60 ปี · วินิจฉัยกลุ่ม W00–W19 / S-codes กระดูกหัก",
-        "size"=>"xs", "color"=>"#991B1B", "weight"=>"bold", "wrap"=>true, "flex"=>1 ],
+  /* ── RISK RIBBON ────────────────────────────────────────────────────── */
+  $riskRibbon = [
+    'type'            => 'box',
+    'layout'          => 'horizontal',
+    'spacing'         => 'md',
+    'paddingStart'    => '12px',
+    'paddingEnd'      => '12px',
+    'paddingTop'      => '10px',
+    'paddingBottom'   => '10px',
+    'backgroundColor' => '#FFF1F2',
+    'borderColor'     => '#FECACA',
+    'borderWidth'     => '1px',
+    'cornerRadius'    => '10px',
+    'margin'          => 'none',
+    'contents' => [
+      [ 'type' => 'text', 'text' => '⚠️',
+        'size' => 'xxl', 'flex' => 0, 'gravity' => 'center' ],
+      [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 1, 'spacing' => 'xs',
+        'contents' => [
+          [ 'type' => 'text', 'text' => 'ความเสี่ยงสูง · ต้องติดตามด่วน',
+            'size' => 'sm', 'color' => '#B91C1C', 'weight' => 'bold' ],
+          [ 'type' => 'text', 'text' => 'ผู้สูงอายุ ≥ 60 ปี · กลุ่มพลัดตก / กระดูกหัก',
+            'size' => 'xs', 'color' => '#9F1239', 'wrap' => true ],
+        ]
+      ],
+      /* HIGH pill */
+      [ 'type' => 'box', 'layout' => 'vertical',
+        'flex' => 0, 'justifyContent' => 'center',
+        'contents' => [[
+          'type'            => 'box',
+          'layout'          => 'vertical',
+          'backgroundColor' => '#DC2626',
+          'cornerRadius'    => '999px',
+          'paddingStart'    => '10px',
+          'paddingEnd'      => '10px',
+          'paddingTop'      => '5px',
+          'paddingBottom'   => '5px',
+          'contents' => [[
+            'type' => 'text', 'text' => 'HIGH',
+            'size' => 'xxs', 'color' => '#FFFFFF',
+            'weight' => 'bold', 'align' => 'center',
+          ]],
+        ]],
+      ],
     ],
   ];
 
-  /* ---------- SECTION: ข้อมูลผู้ป่วย ---------- */
-  $patientRows = [
-    fr_info_row('HN', $hn, ['value_weight'=>'bold','value_color'=>'#111827','value_size'=>'md']),
-    [ "type"=>"separator", "margin"=>"sm", "color"=>"#F3F4F6" ],
-    fr_info_row('ชื่อ-สกุล', $fullname, ['value_weight'=>'bold']),
-    [ "type"=>"separator", "margin"=>"sm", "color"=>"#F3F4F6" ],
-    fr_info_row('อายุ / เพศ', $ageSex),
-  ];
-  $sectionPatient = fr_section('ข้อมูลผู้ป่วย', $patientRows,
-    ['icon'=>'🧑‍⚕️', 'accent'=>'#0F2A5B']);
+  /* ── SECTION 1: ข้อมูลผู้ป่วย ──────────────────────────────────────── */
+  $secPatient = $mkSec('🧑‍⚕️', 'ข้อมูลผู้ป่วย', [
+    /* HN — ใหญ่ */
+    [ 'type' => 'box', 'layout' => 'baseline', 'spacing' => 'sm', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => 'HN',
+          'size' => 'xs', 'color' => '#64748B', 'flex' => 3 ],
+        [ 'type' => 'text', 'text' => $hn,
+          'size' => 'xl', 'color' => '#1E3A8A', 'weight' => 'bold',
+          'flex' => 5, 'align' => 'end' ],
+      ]
+    ],
+    $sep('#F1F5F9'),
+    $kv('ชื่อ-สกุล', $fullname, ['weight' => 'bold', 'color' => '#1E293B']),
+    $sep('#F1F5F9'),
+    $kv('อายุ / เพศ', $ageSex),
+  ], ['bg' => '#FFFFFF', 'bd' => '#E2E8F0', 'accent' => '#1E3A8A', 'sep' => '#CBD5E1']);
 
-  /* ---------- SECTION: การวินิจฉัย (amber tinted) ---------- */
-  $dxCodeBox = [
-    "type"=>"box", "layout"=>"baseline", "spacing"=>"sm", "margin"=>"sm",
-    "contents"=>[
-      [ "type"=>"text", "text"=>"ICD-10", "size"=>"xs", "color"=>"#92400E", "weight"=>"bold", "flex"=>0 ],
-      [ "type"=>"text", "text"=>$pdxCode, "size"=>"lg", "color"=>"#78350F",
-        "weight"=>"bold", "flex"=>1, "align"=>"end" ],
-    ]
-  ];
-  $dxNameBox = $pdxName
-    ? [ "type"=>"text", "text"=>$pdxName, "size"=>"sm", "color"=>"#1F2937",
-        "wrap"=>true, "margin"=>"sm" ]
-    : null;
-  $dxDateBox = [
-    "type"=>"separator", "margin"=>"sm", "color"=>"#FDE68A"
-  ];
-  $dxVisitRow = fr_info_row('วันที่รับบริการ', $vstdate);
-  $dxStationRow = fr_info_row('สถานบริการหลัก', $station);
-  $dxRows = array_values(array_filter([$dxCodeBox, $dxNameBox, $dxDateBox, $dxVisitRow, $dxStationRow]));
-  $sectionDx = fr_section('การวินิจฉัยและการรับบริการ', $dxRows,
-    ['icon'=>'🩺', 'accent'=>'#92400E', 'bg'=>'#FFFBEB', 'bd'=>'#FDE68A']);
+  /* ── SECTION 2: การวินิจฉัย (amber) ────────────────────────────────── */
 
-  /* ---------- SECTION: ติดต่อ / เยี่ยมบ้าน ---------- */
-  $addrRow = [
-    "type"=>"box", "layout"=>"vertical", "spacing"=>"xs", "margin"=>"sm",
-    "contents"=>[
-      [ "type"=>"text", "text"=>"📍 ที่อยู่", "size"=>"xs", "color"=>"#6B7280", "weight"=>"bold" ],
-      [ "type"=>"text", "text"=>$address,    "size"=>"sm", "color"=>"#111827", "wrap"=>true ],
-    ]
+  /* ICD badge — pill ตรงกลาง */
+  $icdBadge = [
+    'type' => 'box', 'layout' => 'horizontal', 'margin' => 'md',
+    'contents' => [
+      [ 'type' => 'filler' ],
+      [ 'type' => 'box', 'layout' => 'vertical', 'flex' => 0,
+        'backgroundColor' => '#FEF3C7', 'cornerRadius' => '14px',
+        'paddingTop' => '12px', 'paddingBottom' => '12px',
+        'paddingStart' => '28px', 'paddingEnd' => '28px',
+        'contents' => [
+          [ 'type' => 'text', 'text' => $pdxCode,
+            'size' => 'xxl', 'color' => '#78350F',
+            'weight' => 'bold', 'align' => 'center' ],
+          [ 'type' => 'separator', 'margin' => 'sm', 'color' => '#FDE68A' ],
+          [ 'type' => 'text', 'text' => 'รหัส ICD-10',
+            'size' => 'xxs', 'color' => '#92400E',
+            'align' => 'center', 'margin' => 'xs' ],
+        ],
+      ],
+      [ 'type' => 'filler' ],
+    ],
   ];
-  $telRow = [
-    "type"=>"box", "layout"=>"baseline", "spacing"=>"sm", "margin"=>"md",
-    "contents"=>[
-      [ "type"=>"text", "text"=>"📞 เบอร์โทร", "size"=>"xs", "color"=>"#6B7280", "weight"=>"bold", "flex"=>3 ],
-      [ "type"=>"text", "text"=>($tel ?: '-'), "size"=>"md", "color"=>"#065F46",
-        "weight"=>"bold", "flex"=>5, "align"=>"end", "wrap"=>true ],
-    ]
-  ];
-  $sectionContact = fr_section('ข้อมูลสำหรับติดตามเยี่ยมบ้าน', [$addrRow, $telRow],
-    ['icon'=>'🏠', 'accent'=>'#065F46', 'bg'=>'#ECFDF5', 'bd'=>'#A7F3D0']);
 
-  /* ---------- SECTION: คำแนะนำ / Action ---------- */
-  $actions = [
-    [ "type"=>"text", "text"=>"โปรดดำเนินการภายใน 7 วัน",
-      "size"=>"sm", "color"=>"#1E3A8A", "weight"=>"bold", "margin"=>"sm" ],
-    [ "type"=>"text", "text"=>"• ติดตามเยี่ยมบ้าน ประเมินการฟื้นตัวของผู้ป่วย",
-      "size"=>"xs", "color"=>"#1F2937", "wrap"=>true, "margin"=>"sm" ],
-    [ "type"=>"text", "text"=>"• ประเมินปัจจัยเสี่ยงในบ้าน (พื้นลื่น แสงสว่าง ราวจับ ห้องน้ำ)",
-      "size"=>"xs", "color"=>"#1F2937", "wrap"=>true, "margin"=>"xs" ],
-    [ "type"=>"text", "text"=>"• ให้ความรู้การป้องกันการพลัดตกซ้ำ",
-      "size"=>"xs", "color"=>"#1F2937", "wrap"=>true, "margin"=>"xs" ],
-    [ "type"=>"text", "text"=>"• บันทึกผลการเยี่ยมในระบบ HDC / JHCIS",
-      "size"=>"xs", "color"=>"#1F2937", "wrap"=>true, "margin"=>"xs" ],
-  ];
-  $sectionAction = fr_section('คำแนะนำสำหรับเจ้าหน้าที่ รพ.สต.', $actions,
-    ['icon'=>'📋', 'accent'=>'#1E3A8A', 'bg'=>'#EFF6FF', 'bd'=>'#BFDBFE']);
+  $dxNameEl = ($pdxName !== '') ? [
+    'type' => 'text', 'text' => '📌  ' . $pdxName,
+    'size' => 'sm', 'color' => '#1F2937',
+    'wrap' => true, 'margin' => 'sm', 'align' => 'center',
+  ] : null;
 
-  /* ---------- BODY ---------- */
+  $secDx = $mkSec('🩺', 'การวินิจฉัยและการรับบริการ',
+    array_values(array_filter([
+      $icdBadge,
+      $dxNameEl,
+      $sep('#FDE68A'),
+      $kv('วันที่รับบริการ', $vstdate, ['color' => '#78350F', 'weight' => 'bold']),
+      $sep('#F3F4F6'),
+      $kv('สถานบริการหลัก', $station),
+    ])),
+    ['bg' => '#FFFBEB', 'bd' => '#FDE68A', 'accent' => '#B45309', 'sep' => '#FEF3C7']
+  );
+
+  /* ── SECTION 3: ข้อมูลติดตามเยี่ยมบ้าน (green) ─────────────────────── */
+  $secContact = $mkSec('🏠', 'ข้อมูลสำหรับติดตามเยี่ยมบ้าน', [
+    /* address block */
+    [ 'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '📍  ที่อยู่',
+          'size' => 'xs', 'color' => '#15803D', 'weight' => 'bold' ],
+        [ 'type' => 'text', 'text' => $address,
+          'size' => 'sm', 'color' => '#1F2937', 'wrap' => true ],
+      ]
+    ],
+    $sep('#A7F3D0'),
+    /* phone — ขนาดใหญ่ */
+    [ 'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '📞  เบอร์โทร',
+          'size' => 'xs', 'color' => '#15803D', 'weight' => 'bold',
+          'flex' => 3, 'gravity' => 'center' ],
+        [ 'type' => 'text', 'text' => $telDisplay,
+          'size' => 'xl', 'color' => $telColor,
+          'weight' => 'bold', 'flex' => 5, 'align' => 'end', 'wrap' => true ],
+      ]
+    ],
+  ], ['bg' => '#F0FDF4', 'bd' => '#86EFAC', 'accent' => '#15803D', 'sep' => '#D1FAE5']);
+
+  /* ── SECTION 4: แนวทางการดำเนินการ (blue) ──────────────────────────── */
+  $urgentBox = [
+    'type'            => 'box',
+    'layout'          => 'vertical',
+    'margin'          => 'sm',
+    'backgroundColor' => '#FEE2E2',
+    'cornerRadius'    => '8px',
+    'paddingAll'      => '8px',
+    'contents' => [[
+      'type'   => 'text',
+      'text'   => '⏰  โปรดดำเนินการภายใน 7 วัน',
+      'size'   => 'sm',
+      'color'  => '#B91C1C',
+      'weight' => 'bold',
+      'align'  => 'center',
+    ]],
+  ];
+
+  $checkItems = [
+    'ติดตามเยี่ยมบ้าน ประเมินการฟื้นตัวของผู้ป่วย',
+    'ประเมินปัจจัยเสี่ยงในบ้าน (พื้นลื่น แสงสว่าง ราวจับ)',
+    'ให้ความรู้การป้องกันการพลัดตกซ้ำ',
+    'บันทึกผลการเยี่ยมใน HDC / JHCIS',
+  ];
+  $actionRows = [$urgentBox];
+  foreach ($checkItems as $i => $txt) {
+    $actionRows[] = [
+      'type' => 'box', 'layout' => 'horizontal',
+      'spacing' => 'sm', 'margin' => 'sm',
+      'contents' => [
+        [ 'type' => 'text', 'text' => '☑',
+          'size' => 'sm', 'color' => '#2563EB', 'flex' => 0 ],
+        [ 'type' => 'text', 'text' => $txt,
+          'size' => 'xs', 'color' => '#1E293B',
+          'wrap' => true, 'flex' => 1 ],
+      ],
+    ];
+    if ($i < count($checkItems) - 1) {
+      $actionRows[] = $sep('#DBEAFE');
+    }
+  }
+  $secAction = $mkSec('📋', 'แนวทางการดำเนินการ', $actionRows,
+    ['bg' => '#EFF6FF', 'bd' => '#BFDBFE', 'accent' => '#1D4ED8', 'sep' => '#DBEAFE']
+  );
+
+  /* ── BODY ───────────────────────────────────────────────────────────── */
   $body = [
-    "type"=>"box", "layout"=>"vertical", "spacing"=>"none", "paddingAll"=>"0px",
-    "contents"=>[
+    'type'       => 'box',
+    'layout'     => 'vertical',
+    'spacing'    => 'none',
+    'paddingAll' => '0px',
+    'contents'   => [
       $titleStrip,
-      [ "type"=>"box", "layout"=>"vertical", "paddingAll"=>"14px", "spacing"=>"none",
-        "backgroundColor"=>"#F9FAFB",
-        "contents"=>[
-          $priority,
-          $sectionPatient,
-          $sectionDx,
-          $sectionContact,
-          $sectionAction,
-        ]
+      [
+        'type'            => 'box',
+        'layout'          => 'vertical',
+        'paddingAll'      => '14px',
+        'spacing'         => 'none',
+        'backgroundColor' => '#F1F5F9',
+        'contents'        => [
+          $riskRibbon,
+          $secPatient,
+          $secDx,
+          $secContact,
+          $secAction,
+        ],
       ],
     ],
   ];
 
-  /* ---------- FOOTER (signature + timestamp) ---------- */
+  /* ── FOOTER (dark slate) ────────────────────────────────────────────── */
   $footer = [
-    "type"=>"box", "layout"=>"vertical",
-    "paddingStart"=>"14px", "paddingEnd"=>"14px", "paddingTop"=>"10px", "paddingBottom"=>"12px",
-    "backgroundColor"=>"#F3F4F6",
-    "contents"=>[
-      [ "type"=>"separator", "color"=>"#E5E7EB" ],
-      [ "type"=>"box", "layout"=>"horizontal", "margin"=>"md",
-        "contents"=>[
-          [ "type"=>"text", "text"=>FALL_SYSTEM_NAME,
-            "size"=>"xxs", "color"=>"#6B7280", "flex"=>3, "wrap"=>true ],
-          [ "type"=>"text", "text"=>date('j M Y H:i'),
-            "size"=>"xxs", "color"=>"#6B7280", "align"=>"end", "flex"=>2 ],
+    'type'            => 'box',
+    'layout'          => 'vertical',
+    'paddingStart'    => '14px',
+    'paddingEnd'      => '14px',
+    'paddingTop'      => '10px',
+    'paddingBottom'   => '12px',
+    'backgroundColor' => '#1E293B',
+    'contents'        => array_values(array_filter([
+      [ 'type' => 'box', 'layout' => 'horizontal',
+        'contents' => [
+          [ 'type' => 'text', 'text' => FALL_SYSTEM_NAME,
+            'size' => 'xxs', 'color' => '#94A3B8', 'flex' => 3, 'wrap' => true ],
+          [ 'type' => 'text', 'text' => date('j M Y H:i'),
+            'size' => 'xxs', 'color' => '#64748B',
+            'align' => 'end', 'flex' => 2 ],
         ]
       ],
-      $refId ? [
-        "type"=>"text", "text"=>"Ref: ".(string)$refId,
-        "size"=>"xxs", "color"=>"#9CA3AF", "margin"=>"xs"
-      ] : [ "type"=>"filler" ],
-    ],
+      $refId !== '' ? [
+        'type'   => 'text',
+        'text'   => 'Ref: ' . $refId,
+        'size'   => 'xxs',
+        'color'  => '#475569',
+        'margin' => 'xs',
+      ] : null,
+    ])),
   ];
 
-  /* ---------- BUBBLE ---------- */
-  $bubble = [
-    "type"=>"bubble", "size"=>"giga",
-    "header"=>$header,
-    "body"=>$body,
-    "footer"=>$footer,
-    "styles"=>[
-      "header"=>[ "backgroundColor"=>"#FFFFFF" ],
-      "body"=>  [ "backgroundColor"=>"#F9FAFB" ],
-      "footer"=>[ "backgroundColor"=>"#F3F4F6" ],
+  /* ── BUBBLE ─────────────────────────────────────────────────────────── */
+  $bubble = array_filter([
+    'type'   => 'bubble',
+    'size'   => 'giga',
+    'header' => $header,
+    'body'   => $body,
+    'footer' => $footer,
+    'styles' => [
+      'header' => [ 'backgroundColor' => '#FFFFFF' ],
+      'body'   => [ 'backgroundColor' => '#F1F5F9' ],
+      'footer' => [ 'backgroundColor' => '#1E293B' ],
     ],
-  ];
+  ]);
 
-  /* ---------- FULL PAYLOAD (messages[]) ---------- */
+  /* ── altText ────────────────────────────────────────────────────────── */
   $altText = sprintf('[แจ้งเตือน] ผู้ป่วยกลุ่มเสี่ยงหกล้ม HN %s %s (ICD %s)',
     $hn, $fullname, $pdxCode);
-  if (mb_strlen($altText) > 400) $altText = mb_substr($altText, 0, 397).'...';
+  if (mb_strlen($altText) > 400) $altText = mb_substr($altText, 0, 397) . '...';
 
   return [
-    "messages"=>[[
-      "type"=>"flex",
-      "altText"=>$altText,
-      "contents"=>$bubble,
-    ]]
+    'messages' => [[
+      'type'     => 'flex',
+      'altText'  => $altText,
+      'contents' => $bubble,
+    ]],
   ];
 }
 

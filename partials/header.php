@@ -602,7 +602,7 @@ a.nav-item.logout-item:hover .nav-ic {
     <!-- เฝ้าระวังโรคติดต่อ -->
     <div class="nav-section-label">เฝ้าระวังโรคติดต่อ</div>
 
-    <a href="covid.php" class="nav-item<?= ckh_active('covid', $PAGE_KEY) ?>">
+    <a href="covid_queue_ui.php" class="nav-item<?= ckh_active('covid', $PAGE_KEY) ?>">
       <span class="nav-ic" style="color:#ea580c"><span class="msi">coronavirus</span></span>
       <span>Covid-19</span>
     </a>
