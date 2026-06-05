@@ -229,7 +229,7 @@ if (!defined('PHARM_LIB_ONLY')) {
         LEFT  JOIN doctor   d  ON d.code = ov.dx_doctor
         INNER JOIN lab_head  h ON h.vn  = ov.vn
         INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-      WHERE ov.vstdate BETWEEN ? AND ?
+      WHERE h.order_date BETWEEN ? AND ?
         AND l.lab_items_code IN ($placeholders)
         AND l.lab_order_result IS NOT NULL
         AND l.lab_order_result <> ''
@@ -252,7 +252,7 @@ if (!defined('PHARM_LIB_ONLY')) {
         LEFT  JOIN doctor   d  ON d.code = ov.dx_doctor
         INNER JOIN lab_head  h1 ON h1.vn = s.an
         INNER JOIN lab_order l1 ON l1.lab_order_number = h1.lab_order_number
-      WHERE ov.vstdate BETWEEN ? AND ?
+      WHERE h1.order_date BETWEEN ? AND ?
         AND s.an IS NOT NULL AND s.an <> ''
         AND l1.lab_items_code IN ($placeholders)
         AND l1.lab_order_result IS NOT NULL
