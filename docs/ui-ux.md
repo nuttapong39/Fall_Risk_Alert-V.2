@@ -5,6 +5,7 @@
 
 ## สารบัญ
 
+0. [การนำไปใช้กับ Project ใหม่](#0-การนำไปใช้กับ-project-ใหม่)
 1. [Stack & Dependencies](#1-stack--dependencies)
 2. [Design Tokens (CSS Variables)](#2-design-tokens-css-variables)
 3. [Theme System](#3-theme-system)
@@ -15,6 +16,166 @@
 8. [JavaScript Patterns](#8-javascript-patterns)
 9. [LINE Flex Message Design](#9-line-flex-message-design)
 10. [Queue UI Page Template](#10-queue-ui-page-template)
+
+---
+
+## 0. การนำไปใช้กับ Project ใหม่
+
+มี 2 แนวทาง ขึ้นอยู่กับว่าต้องการ layout เต็ม (sidebar + topbar) หรือแค่ component เดี่ยว ๆ
+
+---
+
+### แนวทาง A — Full Layout (มี Sidebar + Topbar)
+
+#### ขั้นตอนที่ 1 — Copy ไฟล์ที่จำเป็น
+
+```
+จาก Fall_Risk_Alert-main/ → วางใน my-new-project/
+
+partials/header.php   ← layout หลัก (sidebar, topbar, CSS, CDN)
+partials/footer.php   ← ปิด tag + JS scripts
+```
+
+โครงสร้าง project ใหม่:
+
+```
+my-new-project/
+├── partials/
+│   ├── header.php
+│   └── footer.php
+├── config.php          ← สร้างใหม่ (ดูขั้นตอนที่ 2)
+├── index.php
+└── ...
+```
+
+#### ขั้นตอนที่ 2 — สร้าง `config.php`
+
+`header.php` ต้องการฟังก์ชัน `ckh_active()` — ขาดไม่ได้:
+
+```php
+<?php
+session_start();
+
+// DB (ถ้ามี)
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'ชื่อฐานข้อมูล');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+
+// Helper: active nav item — header.php เรียกใช้ทุกรายการ sidebar
+function ckh_active(string $key, string $current): string {
+    return $key === $current ? ' active' : '';
+}
+```
+
+#### ขั้นตอนที่ 3 — แก้เมนู Sidebar ใน `header.php`
+
+เปิด `partials/header.php` หา comment `<!-- sidebar-nav -->` แล้วแทนที่รายการเมนูด้วยของ project ใหม่:
+
+```php
+<a href="index.php" class="nav-item<?= ckh_active('home', $PAGE_KEY) ?>">
+    <span class="nav-ic"><span class="msi">home</span></span>
+    <span>หน้าหลัก</span>
+</a>
+<a href="report.php" class="nav-item<?= ckh_active('report', $PAGE_KEY) ?>">
+    <span class="nav-ic"><span class="msi">bar_chart</span></span>
+    <span>รายงาน</span>
+</a>
+```
+
+#### ขั้นตอนที่ 4 — สร้างหน้าใหม่
+
+ทุกหน้าต้องตั้ง 3 ตัวแปรก่อน `require_once` header เสมอ:
+
+```php
+<?php
+require_once __DIR__ . '/config.php';
+// require_once __DIR__ . '/auth_guard.php'; // เปิดถ้าต้องการ login
+
+$PAGE_TITLE = 'ชื่อหน้า';      // แสดงใน topbar + <title>
+$PAGE_KEY   = 'home';           // ใช้ highlight menu ใน sidebar
+$EXTRA_HEAD = '';               // CSS/JS เพิ่มเติมเฉพาะหน้านี้ (ว่างได้)
+
+require_once __DIR__ . '/partials/header.php';
+?>
+
+<!-- เนื้อหาหน้าที่นี่ -->
+<div class="page-header">
+    <h1><span class="msi text-primary me-2">home</span>ชื่อหน้า</h1>
+</div>
+
+<?php require_once __DIR__ . '/partials/footer.php'; ?>
+```
+
+---
+
+### แนวทาง B — CDN Only (ไม่มี Sidebar, แค่ Component)
+
+เหมาะสำหรับหน้า form เดี่ยว, report standalone, หรือ microsite ที่ไม่ต้องการ layout เต็ม
+
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Anti-flash: โหลด theme ก่อน CSS render -->
+  <script>
+  (function(){
+    var t = localStorage.getItem('ckh-theme') || 'light';
+    var f = localStorage.getItem('ckh-fontsize') || 'normal';
+    if (t !== 'light') document.documentElement.setAttribute('data-theme', t);
+    if (f !== 'normal') document.documentElement.setAttribute('data-fontsize', f);
+  })();
+  </script>
+
+  <!-- CDN (เหมือนกันทุก project) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+  <style>
+    /* 1. Paste CSS Variables จากหัวข้อ 2 ของไฟล์นี้ */
+    :root { --blue:#1d4ed8; --card-bg:#fff; --page-bg:#f8fafc; --border:#e2e8f0;
+            --text:#0f172a; --muted:#64748b; --card-shadow:0 1px 3px rgba(0,0,0,.07); }
+
+    /* 2. Base */
+    body { font-family:"Kanit",sans-serif; background:var(--page-bg); color:var(--text);
+           font-weight:300; padding:1.5rem; }
+
+    /* 3. Icon class */
+    .msi { font-family:'Material Symbols Outlined';
+           font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;
+           font-size:1.15em; vertical-align:-0.2em; user-select:none; }
+
+    /* 4. Paste component CSS ที่ต้องการจากหัวข้อ 6 */
+  </style>
+</head>
+<body>
+  <!-- ใช้ component ได้เลย: kpi-card, status-badge, filter-card ฯลฯ -->
+</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</html>
+```
+
+---
+
+### Checklist ก่อนใช้งาน
+
+| รายการ | A (Full) | B (CDN Only) |
+|---|:---:|:---:|
+| Copy `partials/header.php` + `footer.php` | ✅ | ❌ |
+| สร้าง `config.php` + `ckh_active()` | ✅ | ❌ |
+| แก้เมนู sidebar | ✅ | ❌ |
+| Paste CSS Variables | อยู่ใน header.php แล้ว | ✅ ต้อง paste |
+| ตั้ง `$PAGE_TITLE`, `$PAGE_KEY`, `$EXTRA_HEAD` ทุกหน้า | ✅ | ❌ |
+| ติดตั้ง npm / Node.js | ❌ ไม่ต้อง | ❌ ไม่ต้อง |
+| ต้องมี PHP | ✅ | ❌ (HTML ล้วนได้) |
+| ต้องมี Internet (CDN) | ✅ | ✅ |
+
+> **สรุป A:** Copy 2 ไฟล์ + สร้าง `config.php` + แก้เมนู = พร้อมใช้งาน  
+> **สรุป B:** Paste CSS Variables + icon class ลงใน `<style>` = พร้อมใช้งาน
 
 ---
 
