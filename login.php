@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__.'/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>เข้าสู่ระบบ | Fall Risk Alert · รพ.เชียงกลาง</title>
+<title>เข้าสู่ระบบ | MedAlert · รพ.เชียงกลาง</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
+/* ── Material Symbols ─────────────────────────────────────── */
 .msi {
   font-family: 'Material Symbols Outlined';
   font-weight: normal; font-style: normal;
@@ -63,15 +64,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 .msi-o { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20; }
 @keyframes msi-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .msi-spin { animation: msi-spin .8s linear infinite; display: inline-block; }
+
+/* ── MedAlert Design Tokens ───────────────────────────────── */
 :root {
-  --blue: #1d4ed8;
-  --blue-2: #2563eb;
-  --green: #059669;
-  --green-2: #10b981;
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: #e2e8f0;
+  --primary:   #1A6FBB;   /* MedAlert blue    */
+  --primary-2: #2a85d0;   /* lighter blue     */
+  --alert:     #E63946;   /* alert red        */
+  --dark:      #1C2B3A;   /* dark navy        */
+  --text:      #0f172a;
+  --muted:     #64748b;
+  --border:    #e2e8f0;
+
+  /* legacy aliases (used by Bootstrap overrides) */
+  --blue:   var(--primary);
+  --blue-2: var(--primary-2);
 }
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; }
 body {
@@ -79,17 +87,17 @@ body {
   font-size: 16px;
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
-  background: #f0f9ff;
+  background: #eef4fb;
   display: flex;
   align-items: stretch;
   min-height: 100vh;
 }
 h1, h2, h3, h4, h5, h6 { font-weight: 700; }
 
-/* ---- Split layout ---- */
+/* ── LEFT panel ───────────────────────────────────────────── */
 .login-left {
   flex: 1;
-  background: linear-gradient(150deg, #0f172a 0%, #1e3a8a 40%, #0891b2 100%);
+  background: linear-gradient(150deg, var(--dark) 0%, var(--primary) 55%, var(--primary-2) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -98,51 +106,106 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; }
   position: relative;
   overflow: hidden;
 }
+
+/* decorative blobs */
 .login-left::before {
   content: "";
   position: absolute; top: -80px; left: -80px;
-  width: 320px; height: 320px; border-radius: 50%;
+  width: 340px; height: 340px; border-radius: 50%;
   background: rgba(255,255,255,.06);
   pointer-events: none;
 }
 .login-left::after {
   content: "";
-  position: absolute; bottom: -60px; right: -60px;
-  width: 240px; height: 240px; border-radius: 50%;
+  position: absolute; bottom: -70px; right: -70px;
+  width: 260px; height: 260px; border-radius: 50%;
   background: rgba(255,255,255,.05);
   pointer-events: none;
 }
-.ll-logo {
-  width: 90px; height: 90px;
-  border-radius: 24px;
-  background: rgba(255,255,255,.15);
-  border: 2px solid rgba(255,255,255,.25);
+/* extra decorative ring (top-right) */
+.login-left .deco-ring {
+  position: absolute; top: 30%; right: -40px;
+  width: 160px; height: 160px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.08);
+  pointer-events: none;
+}
+
+/* logo wrapper with glow ring */
+.ll-logo-wrap {
+  position: relative;
+  width: 300px; height: 300px;
   display: grid; place-items: center;
-  font-size: 2.2rem; color: #fff;
   margin-bottom: 28px;
 }
+.ll-logo-wrap::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  border: 2px solid rgba(255,255,255,.2);
+}
+/* outer glow pulse ring */
+.ll-logo-wrap::after {
+  content: "";
+  position: absolute; inset: -12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.09);
+  pointer-events: none;
+}
+.ll-logo-wrap img {
+  width: 240px; height: 240px;
+  object-fit: contain;
+  border-radius: 28px;
+  filter: drop-shadow(0 8px 32px rgba(0,0,0,.5));
+  position: relative; z-index: 1;
+}
+
 .ll-title {
-  font-size: 1.9rem; font-weight: 700; color: #fff;
-  text-align: center; line-height: 1.3;
+  font-size: 2.2rem; font-weight: 700; color: #fff;
+  text-align: center; line-height: 1.2;
+  letter-spacing: -.01em;
+}
+.ll-title em {
+  font-style: normal;
+  color: var(--alert);
 }
 .ll-sub {
-  font-size: 1rem; color: rgba(255,255,255,.75);
+  font-size: 1rem; color: rgba(255,255,255,.78);
   text-align: center; margin-top: 10px; max-width: 340px;
+  line-height: 1.65;
+}
+.ll-divider {
+  width: 160px; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--alert), transparent);
+  border-radius: 2px;
+  margin: 22px auto 20px;
+}
+.credit-divider {
+  width: 120px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--alert), transparent);
+  border-radius: 2px;
+  margin: 20px auto 16px;
 }
 .ll-badges {
-  display: flex; gap: 10px; flex-wrap: wrap;
-  justify-content: center; margin-top: 32px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+  justify-content: center; margin-top: 4px;
 }
 .ll-badge {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
   background: rgba(255,255,255,.1);
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: .8rem; color: rgba(255,255,255,.9);
+  padding: 5px 13px;
+  font-size: .78rem; color: rgba(255,255,255,.92);
+  backdrop-filter: blur(4px);
+}
+.ll-badge .msi { font-size: .95rem; }
+.ll-badge.is-alert {
+  background: rgba(230,57,70,.2);
+  border-color: rgba(230,57,70,.35);
 }
 
-/* ---- Right form ---- */
+/* ── RIGHT form ───────────────────────────────────────────── */
 .login-right {
   width: 480px;
   max-width: 100%;
@@ -158,17 +221,37 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; }
 .form-card { width: 100%; max-width: 380px; }
 
 .form-top { text-align: center; margin-bottom: 32px; }
+
+/* logo box — white card with shadow */
 .form-logo {
-  width: 56px; height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #1d4ed8, #059669);
+  width: 160px; height: 160px;
+  border-radius: 28px;
+  background: #fff;
+  border: 2px solid rgba(26,111,187,.14);
   display: grid; place-items: center;
-  color: #fff; font-size: 1.4rem;
-  margin: 0 auto 16px;
-  box-shadow: 0 8px 20px rgba(29,78,216,.25);
+  margin: 0 auto 20px;
+  padding: 12px;
+  box-shadow: 0 12px 36px rgba(26,111,187,.2), 0 3px 8px rgba(0,0,0,.07);
+  overflow: hidden;
 }
-.form-title { font-size: 1.35rem; font-weight: 700; color: var(--text); }
-.form-sub   { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+.form-logo img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+
+/* brand name above form */
+.form-brand {
+  font-size: 1.6rem; font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+.form-brand em {
+  font-style: normal;
+  color: var(--alert);
+}
+.form-title { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-top: 6px; }
+.form-sub   { font-size: .82rem; color: var(--muted); margin-top: 3px; }
 
 label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 6px; display: block; }
 
@@ -184,8 +267,8 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
   font-size: .95rem;
 }
 .form-control:focus {
-  border-color: var(--blue-2);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  border-color: var(--primary-2);
+  box-shadow: 0 0 0 3px rgba(26,111,187,.15);
 }
 
 .pw-toggle {
@@ -197,18 +280,19 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
   cursor: pointer; width: 44px;
   transition: color .15s;
 }
-.pw-toggle:hover { color: var(--blue); }
+.pw-toggle:hover { color: var(--primary); }
 
 .btn-login {
   width: 100%; border: none;
-  padding: .7rem 1rem;
+  padding: .75rem 1rem;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--blue-2), var(--blue));
+  background: linear-gradient(135deg, var(--primary-2), var(--primary));
   color: #fff; font-weight: 700; font-size: 1rem;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(29,78,216,.3);
+  box-shadow: 0 6px 20px rgba(26,111,187,.38);
   transition: filter .15s, transform .1s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn-login:hover  { filter: brightness(1.07); }
 .btn-login:active { transform: translateY(1px); }
@@ -222,44 +306,62 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
 .register-link { text-align: center; font-size: .88rem; color: var(--muted); }
-.register-link a { color: var(--blue); font-weight: 600; text-decoration: none; }
+.register-link a { color: var(--primary); font-weight: 600; text-decoration: none; }
 .register-link a:hover { text-decoration: underline; }
 
-.credit { text-align: center; font-size: .72rem; color: #94a3b8; margin-top: 24px; }
+.credit { text-align: center; font-size: .72rem; color: #94a3b8; margin-top: 24px; line-height: 1.6; }
 
-/* Responsive: stack on small screens */
+/* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 767.98px) {
   body { flex-direction: column; }
   .login-left { padding: 32px 24px; }
-  .ll-title { font-size: 1.4rem; }
+  .ll-title { font-size: 1.6rem; }
   .ll-badges { display: none; }
-  .login-right { width: 100%; padding: 32px 24px; border-left: none; border-top: 1px solid var(--border); }
+  .login-right {
+    width: 100%; padding: 32px 24px;
+    border-left: none; border-top: 1px solid var(--border);
+  }
 }
 </style>
 </head>
 <body>
 
-<!-- ===== LEFT panel ===== -->
-<div class="login-left d-none d-md-flex">
-  <div class="ll-logo"><span class="msi">monitor_heart</span></div>
-  <h1 class="ll-title">Fall Risk Alert<br>Web Portal</h1>
-  <p class="ll-sub">ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง<br>โรงพยาบาลเชียงกลาง จ.น่าน</p>
+<!-- ═══════════════ LEFT panel ═══════════════ -->
+<div class="login-left d-none d-md-flex flex-column align-items-center justify-content-center">
+  <div class="deco-ring"></div>
+
+  <div class="ll-logo-wrap">
+    <img src="img/New_Logo.png" alt="MedAlert Logo">
+  </div>
+
+  <h1 class="ll-title">Med<em>Alert</em></h1>
+  <p class="ll-sub">
+    ระบบแจ้งเตือนทางการแพทย์<br>
+    โรงพยาบาลเชียงกลาง จ.น่าน
+  </p>
+
+  <div class="ll-divider"></div>
+
   <div class="ll-badges">
-    <div class="ll-badge"><span class="msi">falling</span> พลัดตก / หกล้ม</div>
-    <div class="ll-badge"><span class="msi">car_crash</span> คนไข้ พ.ร.บ.</div>
-    <div class="ll-badge"><span class="msi">coronavirus</span> Covid-19</div>
-    <div class="ll-badge"><span class="msi">stethoscope</span> จิตเวช</div>
-    <div class="ll-badge"><span class="msi">medication</span> เภสัชกรรม</div>
+    <div class="ll-badge is-alert"><span class="msi">falling</span> พลัดตก / หกล้ม</div>
+    <div class="ll-badge"><span class="msi">coronavirus</span> ไข้เลือดออก</div>
+    <div class="ll-badge"><span class="msi">biotech</span> เลปโต / สครับ</div>
+    <div class="ll-badge"><span class="msi">health_and_safety</span> STI</div>
+    <div class="ll-badge"><span class="msi">medication</span> Drug Monitor</div>
+    <div class="ll-badge"><span class="msi">monitor_heart</span> ผู้ป่วยเสี่ยง</div>
   </div>
 </div>
 
-<!-- ===== RIGHT form ===== -->
+<!-- ═══════════════ RIGHT form ═══════════════ -->
 <div class="login-right">
   <div class="form-card">
     <div class="form-top">
-      <div class="form-logo"><span class="msi">security</span></div>
+      <div class="form-logo">
+        <img src="img/New_Logo.png" alt="MedAlert">
+      </div>
+      <div class="form-brand">Med<em>Alert</em></div>
       <div class="form-title">เข้าสู่ระบบ</div>
-      <div class="form-sub">Fall Risk Alert · โรงพยาบาลเชียงกลาง</div>
+      <div class="form-sub">โรงพยาบาลเชียงกลาง · จ.น่าน</div>
     </div>
 
     <form method="post" id="loginForm" novalidate>
@@ -270,7 +372,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
           ชื่อผู้ใช้ (Username)
         </label>
         <div class="input-group">
-          <span class="input-group-text"><span class="msi">alternate_email</span></span>
+          <span class="input-group-text"><span class="msi">account_circle</span></span>
           <input type="text" class="form-control" id="username" name="username"
                  placeholder="กรอกชื่อผู้ใช้"
                  autocomplete="username" required autofocus
@@ -295,7 +397,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
       </div>
 
       <button class="btn-login" type="submit" id="submitBtn">
-        <span class="msi me-2">login</span>เข้าสู่ระบบ
+        <span class="msi">login</span>เข้าสู่ระบบ
       </button>
 
     </form>
@@ -307,8 +409,10 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
       <a href="register.php">สมัครใช้งานระบบ</a>
     </div>
 
+    <div class="credit-divider"></div>
     <div class="credit">
-      พัฒนาโดย นายณัฐพงษ์ นิลคง · นักวิชาการคอมพิวเตอร์ · รพ.เชียงกลาง
+      พัฒนาโดย นายณัฐพงษ์ นิลคง<br>
+      นักวิชาการคอมพิวเตอร์ · รพ.เชียงกลาง
     </div>
   </div>
 </div>
@@ -320,7 +424,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
   const pwIcon   = document.getElementById('pwIcon');
   pwToggle.addEventListener('click', () => {
     const show = pwInput.type === 'password';
-    pwInput.type  = show ? 'text' : 'password';
+    pwInput.type       = show ? 'text' : 'password';
     pwIcon.textContent = show ? 'visibility_off' : 'visibility';
   });
 
@@ -328,8 +432,8 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
   const form      = document.getElementById('loginForm');
   const submitBtn = document.getElementById('submitBtn');
   form.addEventListener('submit', () => {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="msi msi-spin me-2">progress_activity</span>กำลังเข้าสู่ระบบ…';
+    submitBtn.disabled  = true;
+    submitBtn.innerHTML = '<span class="msi msi-spin">progress_activity</span>กำลังเข้าสู่ระบบ…';
   });
 
   /* Server feedback */
@@ -353,7 +457,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
         title: 'เข้าสู่ระบบไม่สำเร็จ',
         text: err,
         confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#1d4ed8'
+        confirmButtonColor: '#1A6FBB'
       }).then(() => { document.getElementById('username').focus(); });
     }
   });
