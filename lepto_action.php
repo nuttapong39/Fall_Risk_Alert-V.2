@@ -61,35 +61,8 @@ if ($action !== 'send' || $vn === '') {
 
 // ── Query HOSxP ───────────────────────────────────────────────────────────────
 try {
-  $stmt = $dbcon->prepare(
-    "SELECT
-       ov.vn,
-       ov.hn,
-       CONCAT(pt.pname, pt.fname, ' ', pt.lname)            AS fullname,
-       TIMESTAMPDIFF(YEAR, pt.birthday, ov.vstdate)          AS age,
-       CASE WHEN pt.sex='1' THEN 'ชาย'
-            WHEN pt.sex='2' THEN 'หญิง' ELSE '' END          AS sex,
-       ov.cid,
-       pt.informaddr                                          AS address,
-       pt.hometel,
-       ov.vstdate,
-       d.name                                                 AS doctor,
-       i.name                                                 AS disease,
-       ov.pdx                                                 AS icd10,
-       l.lab_order_result                                     AS result
-     FROM   vn_stat ov
-     LEFT  JOIN patient pt ON pt.hn  = ov.hn
-     LEFT  JOIN icd101  i  ON i.code = ov.pdx
-     LEFT  JOIN doctor  d  ON d.code = ov.dx_doctor
-     INNER JOIN lab_head  h ON h.vn             = ov.vn
-     INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-     WHERE  ov.vn             = ?
-       AND  l.lab_items_code  = ?
-     ORDER BY l.lab_order_number DESC
-     LIMIT 1"
-  );
-  $stmt->execute([$vn, LEPTO_LAB_CODE]);
-  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  require_once __DIR__ . '/sources/lepto_source.php';
+  $row = lepto_source_by_vn($vn, LEPTO_LAB_CODE);
 
   if (!$row) {
     echo json_encode(['ok'=>false,
@@ -147,6 +120,8 @@ try {
 
   if (($code >= 200 && $code < 300) && $ok) {
     $ref = $mid ?: ($apiStatus ? "status:$apiStatus" : "HTTP$code");
+    require_once __DIR__ . '/telegram_lib.php';
+    telegram_mirror('lepto', '💧 แจ้งเตือนผู้ป่วยเลปโตสไปโรสิส', $row);
     echo json_encode(['ok'=>true, 'msg'=>'ส่งสำเร็จ', 'ref'=>$ref]);
   } else {
     $detail = "HTTP=$code";

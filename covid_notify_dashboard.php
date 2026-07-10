@@ -8,44 +8,8 @@ $startDate = $_GET['start'] ?? date('Y-m-01');
 $endDate = $_GET['end'] ?? date('Y-m-d');
 
 // สร้าง SQL
-$sql = "SELECT pt.hn,
-         CONCAT(pt.pname, pt.fname, ' ', pt.lname) AS fullname,
-         TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
-         pt.cid,
-         pt.informaddr,
-         pt.hometel,
-         ov.vstdate,
-         d.name AS doctor,
-         ov.pdx,
-         l.lab_order_result,
-         h.lab_order_number
-  FROM lab_order l
-  INNER JOIN lab_head h ON l.lab_order_number = h.lab_order_number
-  LEFT JOIN vn_stat ov ON ov.vn = h.vn
-  LEFT JOIN doctor d ON ov.dx_doctor = d.CODE
-  INNER JOIN patient pt ON pt.hn = ov.hn
-  WHERE ov.vstdate BETWEEN :start AND :end
-    AND l.lab_items_code IN ('3066','3082','3084','3088')
-    AND l.lab_order_result = 'Positive'";
-
-if (!empty($filterDoctor)) {
-    $sql .= " AND d.name LIKE :doctor";
-}
-
-$sql .= " GROUP BY h.lab_order_number
-          ORDER BY h.report_date DESC";
-
-$stmt = $dbcon->prepare($sql);
-$stmt->bindParam(':start', $startDate);
-$stmt->bindParam(':end', $endDate);
-
-if (!empty($filterDoctor)) {
-    $doctorParam = '%' . $filterDoctor . '%';
-    $stmt->bindParam(':doctor', $doctorParam);
-}
-
-$stmt->execute();
-$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+require_once __DIR__ . '/sources/covid_source.php';
+$results = covid_source_rows($startDate, $endDate, ['3066','3082','3084','3088'], false, $filterDoctor ?: '');
 
 // ส่งแจ้งเตือนอัตโนมัติถ้ายังไม่เคยส่ง
 foreach ($results as $row) {

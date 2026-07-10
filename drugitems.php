@@ -53,27 +53,8 @@
                     <tbody>
                 <?php
                     
-                    $hosxp = $dbcon->query("SELECT ovst.hn , CONCAT( pt.pname, pt.fname, ' ', pt.lname ) AS 'fullname',
-                                    d.NAME,
-                                    ovst.vstdate,
-                                    cast(opd.hpi as char(200)) as 'hpi' 
-                                FROM
-                                    ovst ovst
-                                    LEFT OUTER JOIN opdscreen opd ON opd.vn = ovst.vn
-                                    LEFT OUTER JOIN patient pt ON pt.hn = ovst.hn
-                                    LEFT OUTER JOIN opitemrece op on op.hn = ovst.hn 
-                                    LEFT OUTER JOIN drugitems d on d.icode = op.icode
-                                WHERE
-                                    ovst.vn IN ( SELECT vn FROM opitemrece WHERE icode = '1483860' ) 
-                                GROUP BY
-                                    ovst.vn 
-                                ORDER BY
-                                    vstdate DESC 
-                                    LIMIT 20");  
-                                            
-                    $hosxp->execute();
-
-                    $user = $hosxp->fetchAll();
+                    require_once __DIR__ . '/sources/drug_source.php';
+                    $user = drugitems_fever_rows();
                     for ($x = 0 ; $x < count($user) ; $x++) {
                         $hn = "'".$user[$x]['hn']."'";
                         $fullname = "'".$user[$x]['fullname']."'";

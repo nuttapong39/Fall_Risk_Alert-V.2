@@ -10,6 +10,19 @@ require_once __DIR__ . '/config.php';
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
+/* UTF-8 helper (ต้องอยู่ก่อน auto-sync) */
+if (!function_exists('to_utf8')) {
+  function to_utf8($s){
+    if(!is_string($s)) return $s;
+    if(mb_check_encoding($s,'UTF-8')) return $s;
+    foreach(['TIS-620','TIS620','Windows-874','CP874','ISO-8859-11','ISO-8859-1'] as $enc){
+      $t=@iconv($enc,'UTF-8//IGNORE',$s); if($t!==false && $t!=='') return $t;
+      $t=@mb_convert_encoding($s,'UTF-8',$enc); if($t!==false && $t!=='') return $t;
+    }
+    return @iconv('UTF-8','UTF-8//IGNORE',$s);
+  }
+}
+
 /* ---------------- Filters ---------------- */
 /**
  * ใช้ช่วงเวลาค่อนข้างกว้าง เพื่อให้ backfill / ประวัติเก่ายังมองเห็นได้เสมอ
@@ -21,8 +34,58 @@ $end    = isset($_GET['end'])   && $_GET['end']   ? $_GET['end']   : date('Y-m-d
 $status = isset($_GET['status']) ? $_GET['status'] : 'all'; // all | 0 | 1
 $lab    = isset($_GET['lab'])    ? trim($_GET['lab'])   : 'all'; // all | INR | Depakin | Lithium | Phenytoin
 
-$w = ["created_at BETWEEN :s AND :e"];
-$p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
+/* ---- Auto-sync จาก HOSxP เฉพาะเมื่อกดปุ่ม ค้นหา (มี GET start/end) ---- */
+if (!empty($_GET['start']) && !empty($_GET['end'])):
+$_syncCodes = ['539','2368','697','2388','2370'];
+$_classifySync = function(string $code, ?string $result): ?string {
+  if (($result ?? '') === '') return null;
+  // ดึงตัวเลขออกจาก string เช่น "9.26 R" → 9.26, "5.04" → 5.04, "รายงาน..." → null
+  preg_match('/^\d+(?:\.\d+)?/', trim((string)$result), $_m);
+  $v = isset($_m[0]) ? (float)$_m[0] : null;
+  if ($code === '539')                       return ($v !== null && $v >= 5)   ? 'INR'            : null;
+  if ($code === '2368')                      return ($v === null || $v > 150)  ? 'Depakin level'  : null;
+  if (in_array($code, ['697','2388'], true)) return ($v === null || $v > 1.2)  ? 'Lithium level'  : null;
+  if ($code === '2370')                      return ($v === null || $v > 20)   ? 'Phenytoin level': null;
+  return null;
+};
+try {
+  require_once __DIR__ . '/sources/pharm_lab_source.php';
+  $_syncRows = pharm_lab_source_rows($start, $end);
+
+  $_ins = $dbcon->prepare(
+    "INSERT INTO pharm_lab_queue
+       (hn, fullname, age, lab_date, lab_time, doctor,
+        lab_name, result, patient_type, lab_order_number, status)
+     VALUES (:hn,:fn,:age,:ld,:lt,:dr,:ln,:res,:pt,:lon, 1)
+     ON DUPLICATE KEY UPDATE
+       fullname=VALUES(fullname), result=VALUES(result), doctor=VALUES(doctor)"
+  );
+  foreach ($_syncRows as $_hr) {
+    $_hn  = trim((string)($_hr['hn'] ?? ''));
+    $_lon = trim((string)($_hr['lab_order_number'] ?? ''));
+    $_lab = $_classifySync((string)($_hr['lab_items_code'] ?? ''), (string)($_hr['result'] ?? ''));
+    if ($_hn === '' || $_lon === '' || $_lab === null) continue;
+    $_ins->execute([
+      ':hn'  => $_hn,
+      ':fn'  => to_utf8($_hr['fullname'] ?? ''),
+      ':age' => is_numeric($_hr['age']) ? (int)$_hr['age'] : null,
+      ':ld'  => $_hr['lab_date'] ?: null,
+      ':lt'  => $_hr['lab_time'] ?? null,
+      ':dr'  => to_utf8($_hr['doctor'] ?? ''),
+      ':ln'  => $_lab,
+      ':res' => (string)($_hr['result'] ?? ''),
+      ':pt'  => $_hr['patient_type'] ?? 'OPD',
+      ':lon' => $_lon,
+    ]);
+  }
+  unset($_syncSql, $_s, $_syncRows, $_ins, $_hr);
+} catch (Throwable $_e) {
+  // silent — ไม่รบกวน UI หาก HOSxP ไม่ตอบ
+}
+endif;
+
+$w = ["lab_date BETWEEN :s AND :e"];
+$p = [':s'=>$start, ':e'=>$end];
 if ($status==='0') { $w[] = "status=0"; }
 if ($status==='1') { $w[] = "status=1"; }
 if ($lab !== 'all' && $lab !== '') {
@@ -61,18 +124,6 @@ foreach ($rows as $r) {
     if (!empty($r['reported_by_name']) && !empty($r['reported_date'])) $kpi['reported']++;
 }
 
-/* UTF-8 helper (shared) */
-if (!function_exists('to_utf8')) {
-  function to_utf8($s){
-    if(!is_string($s)) return $s;
-    if(mb_check_encoding($s,'UTF-8')) return $s;
-    foreach(['TIS-620','TIS620','Windows-874','CP874','ISO-8859-11','ISO-8859-1'] as $enc){
-      $t=@iconv($enc,'UTF-8//IGNORE',$s); if($t!==false && $t!=='') return $t;
-      $t=@mb_convert_encoding($s,'UTF-8',$enc); if($t!==false && $t!=='') return $t;
-    }
-    return @iconv('UTF-8','UTF-8//IGNORE',$s);
-  }
-}
 
 if (!defined('UI_ACTION_TOKEN')) {
   define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/pharm_lab_queue_ui.php' . php_uname() . date('Y-m-d')));
@@ -396,10 +447,12 @@ require_once __DIR__ . '/partials/header.php';
             Lithium=<code>697,2388</code>, Phenytoin=<code>2370</code>
           </div>
         </div>
-        <div class="p-2 rounded" style="background:#eff6ff; border:1px solid #bfdbfe; font-size:.8rem; color:#1e40af">
+        <div class="p-2 rounded" style="background:#fefce8; border:1px solid #fde68a; font-size:.8rem; color:#92400e">
           <span class="msi me-1">info</span>
-          ระบบจะ Query จาก <strong>lab_head + lab_order</strong> ใน HOSxP แล้ว Upsert เข้า <code>pharm_lab_queue</code>
-          เฉพาะผลที่ถึงเกณฑ์วิกฤต (INR≥5, Depakin>150, Lithium>1.2, Phenytoin>20)
+          <strong>Recheck เท่านั้น — ไม่ส่ง LINE</strong><br>
+          ดึงข้อมูลจาก <strong>lab_head + lab_order</strong> ใน HOSxP เฉพาะผลที่ถึงเกณฑ์วิกฤต
+          (INR≥5, Depakin>150, Lithium>1.2, Phenytoin>20) แล้วแสดงในตาราง
+          <u>โดยไม่ส่งการแจ้งเตือน</u>
         </div>
         <div id="plSyncResult"></div>
       </div>

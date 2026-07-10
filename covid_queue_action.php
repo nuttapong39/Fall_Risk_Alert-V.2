@@ -39,38 +39,8 @@ if ($action === 'import_hosxp') {
   }
 
   try {
-    $place = implode(',', array_fill(0, count($labCodes), '?'));
-
-    /* ── Query HOSxP (ใช้ $dbcon เดียวกัน — HOSxP อยู่บน server เดียวกัน) ── */
-    $sql = "SELECT
-               pt.hn,
-               CONCAT(pt.pname, pt.fname, ' ', pt.lname)       AS fullname,
-               TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE())      AS age,
-               pt.cid,
-               pt.informaddr,
-               pt.hometel,
-               DATE(ov.vstdate)                                  AS vstdate,
-               d.name                                            AS doctor,
-               ov.pdx,
-               l.lab_order_result,
-               h.lab_order_number
-            FROM   lab_order  l
-            INNER JOIN lab_head    h   ON h.lab_order_number = l.lab_order_number
-            LEFT  JOIN vn_stat     ov  ON ov.vn  = h.vn
-            LEFT  JOIN doctor      d   ON d.CODE  = ov.dx_doctor
-            INNER JOIN patient     pt  ON pt.hn   = ov.hn
-            WHERE  DATE(ov.vstdate) BETWEEN ? AND ?
-            AND    l.lab_items_code IN ($place)
-            AND    LOWER(l.lab_order_result) IN ('positive', 'detected', '+')
-            AND    h.lab_order_number IS NOT NULL
-            AND    h.lab_order_number != ''
-            ORDER  BY h.report_date DESC
-            LIMIT  2000";
-
-    $params = array_merge([$impStart, $impEnd], $labCodes);
-    $stmt   = $dbcon->prepare($sql);
-    $stmt->execute($params);
-    $hosxpRows = $stmt->fetchAll();
+    require_once __DIR__ . '/sources/covid_source.php';
+    $hosxpRows = covid_source_rows($impStart, $impEnd, $labCodes, true);
 
     /* ── Upsert into covid_queue ── */
     $ins = $dbcon->prepare(

@@ -152,70 +152,13 @@ if (strtotime($start) === false || strtotime($end) === false || $start > $end){
 logln("Effective range: $start -> $end");
 
 /* ==============================
- *  STEP 1: Ingest เข้าคิว (STRICT ตาม SQL ผู้ใช้)
+ *  STEP 1: Ingest เข้าคิว — อ่าน HOSxP ผ่าน Source Query provider (ADR 0001)
+ *    Condition: ทุก visit, อายุ >= 60, ICD W00–W19 + S-codes กระดูกหัก
+ *    กันซ้ำที่ฝั่งเขียน MedAlert_DB ด้วย ON DUPLICATE KEY ด้านล่าง
  * ============================== */
-$where  = [];
-$params = [];
-
-$where[] = "ov.age_y >= 60";
-$where[] = "ov.vstdate BETWEEN :start AND :end";
-$params[':start'] = $start;
-$params[':end']   = $end;
-
-// ถ้าต้องกรองรพ. ให้ใช้ ovst.hospsub
-if ($hosp !== ''){
-  $where[] = "ovst.hospsub = :hosp";
-  $params[':hosp'] = $hosp;
-}
-
-/* ===== คัดกรองตามที่ร้องขอ: ใช้เกณฑ์เดียวกับ fracture_queue_ui.php =====
-   - อายุ ≥ 60 ถูกกำหนดไว้แล้วด้านบน (ov.age_y >= 60)
-   - ICD10: เฉพาะ W00–W19 และ S-codes กลุ่มกระดูกหัก
-*/
-$dxConds = [];
-
-// W-ranges (W00–W19) เฉพาะ pdx
-$dxConds[] = "(UPPER(ov.pdx) BETWEEN 'W00' AND 'W19')";
-
-// S-code list เฉพาะ pdx
-foreach (['S720','S721','S722','S525','S526','S422','S220','S221','S320','S327'] as $prefix) {
-  $dxConds[] = "UPPER(ov.pdx) LIKE '{$prefix}%'";
-}
-
-// รวมเป็นเงื่อนไขเดียว
-$where[] = '(' . implode(' OR ', $dxConds) . ')';
-
-
-// === SELECT ตามเดิม ===
-$sql = $dbcon->prepare("
-  SELECT 
-    ov.vn AS visit_vn,
-    pt.hn,
-    CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname, ''), ' ', COALESCE(pt.lname,'')) AS fullname,
-    pt.cid,
-    pt.hometel,
-    ov.age_y AS age,  
-    se.name  AS sex,
-    pt.informaddr AS address,
-    ov.pdx   AS pdx_code,
-    ic.name  AS pdx_name,
-    ov.vstdate,
-    COALESCE(h.name, '') AS mainstation
-  FROM vn_stat ov
-  INNER JOIN er_regist e ON e.vn = ov.vn
-  INNER JOIN patient pt ON pt.hn = ov.hn
-  LEFT  JOIN sex    se ON pt.sex = se.code
-  LEFT  JOIN icd101 ic ON ov.pdx = ic.code
-  LEFT  JOIN ovst ovst ON ovst.vn = ov.vn
-  LEFT  JOIN hospcode h ON h.hospcode = ovst.hospsub
-  LEFT  JOIN fracture_queue q ON q.visit_vn = ov.vn
-  WHERE ".implode(' AND ', $where)."
-    AND q.visit_vn IS NULL
-  ORDER BY ov.vstdate DESC, ov.vn DESC
-");
-$sql->execute($params);
-$newRows = $sql->fetchAll();
-logln("Ingest: found ".count($newRows)." new rows.");
+require_once __DIR__ . '/sources/fracture_source.php';
+$newRows = fracture_source_rows($start, $end, 60);
+logln("Ingest: found ".count($newRows)." rows from HOSxP.");
 
 if (!$dryRun && $newRows){
   $ins = $dbcon->prepare("
@@ -285,12 +228,14 @@ $updErr = $dbcon->prepare("
   WHERE id=:id
 ");
 
+require_once __DIR__ . '/telegram_lib.php';
 foreach ($queue as $row){
   if ($dryRun){ logln("DRY-RUN: would send id={$row['id']} hn={$row['hn']}"); continue; }
   usleep(random_int(10,80) * 1000);
   [$ok, $ref, $err] = send_via_moph_alert_fracture($row);
   if ($ok){
     $updOk->execute([':id'=>$row['id'], ':ref'=>$ref]);
+    telegram_mirror('fracture', 'แจ้งเตือนผู้ป่วยหกล้ม/กระดูกหัก', $row);
     logln("OK id={$row['id']} ref=".($ref ?? '-'));
   } else {
     $updErr->execute([':id'=>$row['id'], ':err'=>$err]);

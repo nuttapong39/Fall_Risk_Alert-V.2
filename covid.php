@@ -43,49 +43,8 @@ function logln($msg){ if (PHP_SAPI === 'cli') echo '['.date('Y-m-d H:i:s')."] $m
 
 /* ========================= STEP 1: Ingest เข้าคิว ========================= */
 /* ใช้ DATE(ov.vstdate) เพื่อกันปัญหา DATETIME ปลายวันไม่ถูกนับ */
-$where  = [];
-$params = [];
-$where[] = "DATE(ov.vstdate) BETWEEN :start AND :end";
-$params[':start'] = $start;
-$params[':end']   = $end;
-$where[] = "l.lab_items_code IN ('3066','3082','3084','3088')";
-$where[] = "l.lab_order_result = 'Positive'";
-
-// กรองตามรพ.ถ้ามี
-if ($hosp !== '') {
-  $where[] = "ov.hospmain = :hosp";
-  $params[':hosp'] = $hosp;
-}
-
-$sql = $dbcon->prepare("
-  SELECT 
-    pt.hn,
-    CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
-    TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
-    pt.cid,
-    pt.informaddr,
-    pt.hometel,
-    ov.vstdate,
-    d.name AS doctor,
-    ov.pdx,
-    l.lab_order_result,
-    h.lab_order_number,
-    h.report_date
-  FROM lab_order l
-  INNER JOIN lab_head h ON l.lab_order_number = h.lab_order_number
-  LEFT JOIN vn_stat ov ON ov.vn = h.vn
-  LEFT JOIN doctor d ON ov.dx_doctor = d.CODE
-  INNER JOIN patient pt ON pt.hn = ov.hn
-  LEFT JOIN covid_queue q ON q.lab_order_number = h.lab_order_number
-  WHERE ".implode(' AND ', $where)."
-    AND q.lab_order_number IS NULL
-  GROUP BY
-    h.lab_order_number, pt.hn, fullname, age, pt.cid, pt.informaddr, pt.hometel,
-    ov.vstdate, d.name, ov.pdx, l.lab_order_result, h.report_date
-  ORDER BY h.report_date DESC
-");
-$sql->execute($params);
-$newRows = $sql->fetchAll();
+require_once __DIR__ . '/sources/covid_source.php';
+$newRows = covid_source_rows($start, $end);
 logln("Ingest: found ".count($newRows)." new rows.");
 
 if (!$dryRun && $newRows) {

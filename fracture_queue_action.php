@@ -23,41 +23,8 @@ if ($action === 'import_hosxp') {
   $minAge   = max(0, (int)($_POST['min_age'] ?? 60));
 
   try {
-    $sql = "SELECT
-              vs.vn                                                       AS visit_vn,
-              vs.hn,
-              CONCAT(pt.pname, pt.fname, ' ', pt.lname)                  AS fullname,
-              pt.cid,
-              pt.hometel,
-              TIMESTAMPDIFF(YEAR, pt.birthday, vs.vstdate)               AS age,
-              CASE WHEN pt.sex='1' THEN 'ชาย'
-                   WHEN pt.sex='2' THEN 'หญิง' ELSE '' END               AS sex,
-              pt.informaddr                                               AS address,
-              vs.pdx                                                      AS pdx_code,
-              i.name                                                      AS pdx_name,
-              vs.vstdate,
-              COALESCE(ksk.name, '')                                      AS mainstation
-            FROM   vn_stat vs
-            LEFT JOIN patient       pt  ON pt.hn       = vs.hn
-            LEFT JOIN icd101        i   ON i.code      = vs.pdx
-            LEFT JOIN kskdepartment ksk ON ksk.depcode = vs.main_dep_code
-            WHERE  vs.vstdate BETWEEN ? AND ?
-            AND    TIMESTAMPDIFF(YEAR, pt.birthday, vs.vstdate) >= ?
-            AND    (
-              (UPPER(vs.pdx) BETWEEN 'W00' AND 'W19')
-              OR UPPER(vs.pdx) LIKE 'S720%' OR UPPER(vs.pdx) LIKE 'S721%'
-              OR UPPER(vs.pdx) LIKE 'S722%' OR UPPER(vs.pdx) LIKE 'S525%'
-              OR UPPER(vs.pdx) LIKE 'S526%' OR UPPER(vs.pdx) LIKE 'S422%'
-              OR UPPER(vs.pdx) LIKE 'S220%' OR UPPER(vs.pdx) LIKE 'S221%'
-              OR UPPER(vs.pdx) LIKE 'S320%' OR UPPER(vs.pdx) LIKE 'S327%'
-            )
-            AND    vs.hn IS NOT NULL AND vs.hn != ''
-            ORDER  BY vs.vstdate DESC
-            LIMIT  2000";
-
-    $stmt = $dbcon->prepare($sql);
-    $stmt->execute([$impStart, $impEnd, $minAge]);
-    $hosxpRows = $stmt->fetchAll();
+    require_once __DIR__ . '/sources/fracture_source.php';
+    $hosxpRows = fracture_source_rows($impStart, $impEnd, $minAge);
 
     $ins = $dbcon->prepare(
       "INSERT INTO fracture_queue

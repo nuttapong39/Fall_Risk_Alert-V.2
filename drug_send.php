@@ -202,48 +202,8 @@ if ($withSync) {
   } else {
     logln("Sync: icodes=[" . implode(',', $icodeArr) . "]  range: $start → $end");
     try {
-      $place = implode(',', array_fill(0, count($icodeArr), '?'));
-      /*
-       * JOIN ovst ด้วย hn+vstdate (ไม่ใช่ vn เพราะ opitemrece.vn อาจเป็น NULL)
-       * สร้าง synthetic visit_vn = hn-YYYYMMDD-icode เมื่อ opi.vn ว่าง
-       */
-      $sqlHosxp = "SELECT
-                     COALESCE(
-                       NULLIF(TRIM(opi.vn), ''),
-                       CONCAT(opi.hn, '-', DATE_FORMAT(opi.vstdate,'%Y%m%d'), '-', opi.icode)
-                     )                                                             AS visit_vn,
-                     opi.hn,
-                     CONCAT(pt.pname, pt.fname, ' ', pt.lname)                    AS fullname,
-                     pt.cid,
-                     pt.hometel,
-                     TIMESTAMPDIFF(YEAR, pt.birthday, opi.vstdate)                AS age,
-                     CASE WHEN pt.sex='1' THEN 'ชาย'
-                          WHEN pt.sex='2' THEN 'หญิง' ELSE '' END                 AS sex,
-                     pt.addrpart                                                   AS address,
-                     opi.icode                                                     AS drug_code,
-                     d.name                                                        AS drug_name,
-                     opi.vstdate,
-                     CONCAT(COALESCE(ost.name,''), ' : ', COALESCE(dep.department,'')) AS department,
-                     ''                                                            AS mainstation
-                   FROM   opitemrece opi
-                   LEFT JOIN patient        pt  ON pt.hn        = opi.hn
-                   LEFT JOIN drugitems      d   ON d.icode      = opi.icode
-                   LEFT JOIN ovst           ov  ON ov.hn        = opi.hn
-                                               AND ov.vstdate   = opi.vstdate
-                   LEFT JOIN ovstost        ost ON ost.ovstost  = ov.ovstost
-                   LEFT JOIN kskdepartment  dep ON dep.depcode  = ov.cur_dep
-                   WHERE  opi.vstdate BETWEEN ? AND ?
-                   AND    opi.icode   IN ($place)
-                   AND    opi.hn      IS NOT NULL
-                   AND    opi.hn      != ''
-                   GROUP  BY opi.hn, opi.vstdate, opi.icode
-                   ORDER  BY opi.vstdate DESC
-                   LIMIT  2000";
-
-      $params   = array_merge([$start, $end], $icodeArr);
-      $stmtH    = $dbcon->prepare($sqlHosxp);
-      $stmtH->execute($params);
-      $hosxpRows = $stmtH->fetchAll();
+      require_once __DIR__ . '/sources/drug_source.php';
+      $hosxpRows = drug_source_rows($start, $end, $icodeArr);
 
       logln("Sync: HOSxP returned " . count($hosxpRows) . " rows.");
 
@@ -348,6 +308,8 @@ try {
     [$ok, $ref, $err] = send_via_moph_alert_drug($row);
     if ($ok) {
       $updOk->execute([':id' => $row['id'], ':ref' => $ref]);
+      require_once __DIR__ . '/telegram_lib.php';
+      telegram_mirror('drug', '💊 แจ้งเตือนยาอันตราย', $row);
       logln("OK  id={$row['id']} hn={$row['hn']} ref=" . ($ref ?? '-'));
       $cntOk++;
     } else {

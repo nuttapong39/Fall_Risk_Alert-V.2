@@ -211,56 +211,11 @@ if (!defined('PHARM_LIB_ONLY')) {
     $codes = ['539','2368','697','2388','2370'];
     $placeholders = implode(',', array_fill(0, count($codes), '?'));
 
-    $sqlOPD = "
-      SELECT
-        pt.hn,
-        CONCAT(COALESCE(pt.pname,''),' ',COALESCE(pt.fname,''),' ',COALESCE(pt.lname,'')) AS fullname,
-        TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
-        h.report_date AS lab_date,
-        h.report_time AS lab_time,
-        d.name        AS doctor,
-        l.lab_items_code   AS lab_items_code,
-        l.lab_order_result AS result,
-        l.lab_order_number AS lab_order_number,
-        'OPD'         AS patient_type
-      FROM ovst s
-        INNER JOIN vn_stat  ov ON ov.vn = s.vn
-        LEFT  JOIN patient  pt ON pt.hn = s.hn
-        LEFT  JOIN doctor   d  ON d.code = ov.dx_doctor
-        INNER JOIN lab_head  h ON h.vn  = ov.vn
-        INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-      WHERE h.order_date BETWEEN ? AND ?
-        AND l.lab_items_code IN ($placeholders)
-        AND l.lab_order_result IS NOT NULL
-        AND l.lab_order_result <> ''
-    ";
-    $sqlIPD = "
-      SELECT
-        pt.hn,
-        CONCAT(COALESCE(pt.pname,''),' ',COALESCE(pt.fname,''),' ',COALESCE(pt.lname,'')) AS fullname,
-        TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
-        h1.report_date AS lab_date,
-        h1.report_time AS lab_time,
-        d.name         AS doctor,
-        l1.lab_items_code   AS lab_items_code,
-        l1.lab_order_result AS result,
-        l1.lab_order_number AS lab_order_number,
-        'IPD'          AS patient_type
-      FROM ovst s
-        INNER JOIN vn_stat  ov ON ov.vn = s.vn
-        LEFT  JOIN patient  pt ON pt.hn = s.hn
-        LEFT  JOIN doctor   d  ON d.code = ov.dx_doctor
-        INNER JOIN lab_head  h1 ON h1.vn = s.an
-        INNER JOIN lab_order l1 ON l1.lab_order_number = h1.lab_order_number
-      WHERE h1.order_date BETWEEN ? AND ?
-        AND s.an IS NOT NULL AND s.an <> ''
-        AND l1.lab_items_code IN ($placeholders)
-        AND l1.lab_order_result IS NOT NULL
-        AND l1.lab_order_result <> ''
-    ";
-
-    $stOPD = $dbcon->prepare($sqlOPD);
-    $stIPD = $dbcon->prepare($sqlIPD);
+    require_once __DIR__ . '/sources/pharm_lab_source.php';
+    $sqls  = pharm_lab_worker_sqls($placeholders);   // dialect-aware OPD/IPD (อ่านจาก HOSxP)
+    $hx    = hosxp_db();
+    $stOPD = $hx->prepare($sqls['opd']);
+    $stIPD = $hx->prepare($sqls['ipd']);
 
     $totalRows = 0; $totalKept = 0;
     $chunks = pharm_month_chunks($start, $end);
@@ -344,6 +299,8 @@ if (!defined('PHARM_LIB_ONLY')) {
       [$ok,$ref,$err] = send_via_moph_alert_pharm($row);
       if ($ok){
         $okU->execute([':r'=>$ref, ':id'=>$row['id']]);
+        require_once __DIR__ . '/telegram_lib.php';
+        telegram_mirror('pharm_lab', '🧪 แจ้งเตือน Lab วิกฤต/เฝ้าระวังห้องยา', $row);
         runlog("OK id={$row['id']} ref=".($ref??'-'));
       } else {
         $ngU->execute([':e'=>$err, ':id'=>$row['id']]);

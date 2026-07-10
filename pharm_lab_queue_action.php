@@ -39,51 +39,32 @@ if ($action === 'import_hosxp') {
   }
 
   // จัดประเภท lab_items_code → lab_name
+  // $v === null หมายความว่า lab_order_result เป็น text (เช่น "รายงานผลตามไฟล์รูปภาพ")
+  // → แจ้งเตือนเสมอเพราะมีผลอยู่แล้ว (เก็บเป็นรูปภาพ)
+  // $v เป็นตัวเลข → เช็ค threshold ตามปกติ
   $classifyPharm = function(string $code, ?string $result): ?string {
-    $v = is_numeric($result) ? (float)$result : null;
-    if ($v === null) return null;
-    if ($code === '539'  && $v >= 5)   return 'INR';
-    if ($code === '2368' && $v >  150) return 'Depakin level';
-    if (in_array($code, ['697','2388'], true) && $v > 1.2) return 'Lithium level';
-    if ($code === '2370' && $v >  20)  return 'Phenytoin level';
+    if (($result ?? '') === '') return null;
+    // ดึงตัวเลขออกจาก string เช่น "9.26 R" → 9.26, "5.04" → 5.04, "รายงาน..." → null
+    preg_match('/^\d+(?:\.\d+)?/', trim((string)$result), $_m);
+    $v = isset($_m[0]) ? (float)$_m[0] : null;
+
+    if ($code === '539')                         return ($v !== null && $v >= 5)   ? 'INR'            : null;
+    if ($code === '2368')                        return ($v === null || $v >  150) ? 'Depakin level'  : null;
+    if (in_array($code, ['697','2388'], true))   return ($v === null || $v >  1.2) ? 'Lithium level'  : null;
+    if ($code === '2370')                        return ($v === null || $v >  20)  ? 'Phenytoin level': null;
     return null;
   };
 
   try {
-    $place = implode(',', array_fill(0, count($codeArr), '?'));
-    $sql = "SELECT
-              h.lab_order_number,
-              ov.hn,
-              CONCAT(pt.pname, pt.fname, ' ', pt.lname)                  AS fullname,
-              TIMESTAMPDIFF(YEAR, pt.birthday, h.order_date)             AS age,
-              h.order_date                                                AS lab_date,
-              h.report_time                                               AS lab_time,
-              d.name                                                      AS doctor,
-              l.lab_items_code,
-              l.lab_order_result                                          AS result,
-              'OPD'                                                       AS patient_type
-            FROM   lab_head  h
-            INNER JOIN lab_order l   ON l.lab_order_number = h.lab_order_number
-            INNER JOIN ovst     ov   ON ov.vn              = h.vn
-            LEFT  JOIN patient  pt   ON pt.hn              = ov.hn
-            LEFT  JOIN doctor   d    ON d.code             = ov.dx_doctor
-            WHERE  h.order_date BETWEEN ? AND ?
-            AND    l.lab_items_code IN ($place)
-            AND    l.lab_order_result IS NOT NULL
-            AND    l.lab_order_result <> ''
-            ORDER  BY h.order_date DESC
-            LIMIT  2000";
+    require_once __DIR__ . '/sources/pharm_lab_source.php';
+    $hosxpRows = pharm_lab_source_rows($impStart, $impEnd);
 
-    $params = array_merge([$impStart, $impEnd], $codeArr);
-    $stmt   = $dbcon->prepare($sql);
-    $stmt->execute($params);
-    $hosxpRows = $stmt->fetchAll();
-
+    // status=1 ทันที — Sync นี้เป็น recheck เท่านั้น ไม่ให้ Worker ส่ง LINE
     $ins = $dbcon->prepare(
       "INSERT INTO pharm_lab_queue
          (hn, fullname, age, lab_date, lab_time, doctor,
-          lab_name, result, patient_type, lab_order_number)
-       VALUES (:hn,:fn,:age,:ld,:lt,:dr,:ln,:res,:pt,:lon)
+          lab_name, result, patient_type, lab_order_number, status)
+       VALUES (:hn,:fn,:age,:ld,:lt,:dr,:ln,:res,:pt,:lon, 1)
        ON DUPLICATE KEY UPDATE
          fullname=VALUES(fullname), result=VALUES(result), doctor=VALUES(doctor)"
     );

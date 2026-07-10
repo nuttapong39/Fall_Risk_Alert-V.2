@@ -345,36 +345,8 @@ if($gotLock!==1){
 }
 
 /* ===================== STEP 1: Ingest ===================== */
-$where  = [];
-$params = [];
-$where[] = "ipt.regdate BETWEEN :s AND :e";
-$params[':s'] = $start;
-$params[':e'] = $end;
-
-// pttype placeholders
-$ptPH = [];
-foreach($ptList as $i=>$code){ $ptPH[]=":pt{$i}"; $params[":pt{$i}"]=$code; }
-
-$sql = $dbcon->prepare("
-  SELECT
-    pt.hn,
-    ipt.an,
-    ipt.regdate,
-    ipt.regtime,
-    ipt.pttype,
-    ptt.name AS pttname,
-    CONCAT(COALESCE(pt.pname,''),' ',COALESCE(pt.fname,''),' ',COALESCE(pt.lname,'')) AS fullname
-  FROM ipt
-  LEFT JOIN patient pt    ON pt.hn      = ipt.hn
-  LEFT JOIN pttype  ptt   ON ptt.pttype = ipt.pttype
-  LEFT JOIN accident_queue q ON q.an    = ipt.an
-  WHERE ".implode(' AND ',$where)." 
-    AND ipt.pttype IN (".implode(',',$ptPH).")
-    AND q.an IS NULL
-  ORDER BY ipt.regdate DESC, ipt.an DESC
-");
-$sql->execute($params);
-$newRows = $sql->fetchAll() ?: [];
+require_once __DIR__ . '/sources/accident_source.php';
+$newRows = accident_source_ipt_rows($start, $end, $ptList) ?: [];
 runlog("Ingest: found ".count($newRows)." new rows.");
 
 if($newRows){

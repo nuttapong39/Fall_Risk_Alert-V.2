@@ -20,76 +20,108 @@ if (!defined('UI_ACTION_TOKEN')) {
 }
 
 /* =========================================================
- *  Database Config (อ่านจาก secrets/db_config.json ได้)
+ *  Database Config — สอง datastore (ดู docs/adr/0001)
+ *    - HOSxP      : แหล่งข้อมูลต้นทาง อ่านอย่างเดียว (MySQL V3 หรือ PostgreSQL XE4)
+ *                   เข้าถึงผ่าน hosxp_db() แบบ lazy
+ *    - MedAlert_DB: ฐานข้อมูลของระบบเอง อ่าน-เขียน (MySQL เสมอ)
+ *                   เข้าถึงผ่าน $dbcon
+ *  อ่านค่าจาก secrets/db_config.json (รูปแบบ 2 ก้อน: hosxp + medalert)
+ *  รองรับไฟล์รูปแบบเก่า (flat ก้อนเดียว) โดยตีความเป็น hosxp อัตโนมัติ
  * ========================================================= */
 $DB_CFG_DIR  = __DIR__ . DIRECTORY_SEPARATOR . 'secrets';
 $DB_CFG_FILE = $DB_CFG_DIR . DIRECTORY_SEPARATOR . 'db_config.json';
 
-// ค่า default เผื่อกรณียังไม่เคยตั้งผ่านหน้าเว็บ
-$dbCfg = [
-  'driver' => 'mysql',
-  'host'   => '192.168.1.249',
-  'port'   => 3306,
-  'name'   => 'hosxp',
-  'user'   => 'root',
-  'pass'   => 'comsci',
-];
+// normalize หนึ่งก้อน connection ให้ครบทุก key พร้อม default
+if (!function_exists('_db_normalize_conn')) {
+  function _db_normalize_conn($c, array $def): array {
+    $c = is_array($c) ? $c : [];
+    return [
+      'driver' => in_array($c['driver'] ?? '', ['mysql','pgsql'], true) ? $c['driver'] : $def['driver'],
+      'host'   => $c['host'] ?? $def['host'],
+      'port'   => isset($c['port']) ? (int)$c['port'] : $def['port'],
+      'name'   => $c['name'] ?? $def['name'],
+      'user'   => $c['user'] ?? $def['user'],
+      'pass'   => $c['pass'] ?? $def['pass'],
+    ];
+  }
+}
+
+$rawCfg = is_readable($DB_CFG_FILE) ? json_decode(@file_get_contents($DB_CFG_FILE), true) : null;
+if (!is_array($rawCfg)) $rawCfg = [];
+
+// ไฟล์เก่า = flat ก้อนเดียว (มี driver ที่ระดับบนสุด ไม่มี hosxp/medalert)
+$isLegacyFlat = isset($rawCfg['driver']) && !isset($rawCfg['hosxp']) && !isset($rawCfg['medalert']);
+
+$DB_HOSXP = _db_normalize_conn(
+  $isLegacyFlat ? $rawCfg : ($rawCfg['hosxp'] ?? []),
+  ['driver'=>'mysql','host'=>'192.168.1.246','port'=>3306,'name'=>'hosxp','user'=>'root','pass'=>'sa']
+);
+$DB_MEDALERT = _db_normalize_conn(
+  $isLegacyFlat ? [] : ($rawCfg['medalert'] ?? []),
+  ['driver'=>'mysql','host'=>'127.0.0.1','port'=>3306,'name'=>'MedAlert_DB','user'=>'root','pass'=>'']
+);
+$DB_MEDALERT['driver'] = 'mysql'; // ล็อก — MedAlert_DB เป็น MySQL เสมอ (ADR 0001)
+
+// MedAlert_DB ถูกตั้งค่าแล้วหรือยัง (ใช้ตัดสิน first-run)
+$medalertConfigured = !$isLegacyFlat
+  && isset($rawCfg['medalert']) && is_array($rawCfg['medalert'])
+  && !empty($rawCfg['medalert']['host']) && !empty($rawCfg['medalert']['name']);
 
 // ======================================================
-//  First-run detection: ถ้าไม่มีไฟล์ config ให้ redirect
-//  ไปหน้า setup ทันที (ยกเว้นกรณี CONFIG_SKIP_DB = ตั้งค่า
-//  หรือ CONFIG_SETUP_PAGE = เราอยู่บนหน้า setup อยู่แล้ว)
+//  First-run detection: ถ้ายังไม่ได้ตั้งค่า MedAlert_DB
+//  ให้ redirect ไปหน้า setup (ยกเว้น CONFIG_SKIP_DB / CONFIG_SETUP_PAGE)
 // ======================================================
-if (!is_readable($DB_CFG_FILE)
+if (!$medalertConfigured
     && !defined('CONFIG_SKIP_DB')
     && !defined('CONFIG_SETUP_PAGE')) {
-  // ยังไม่มีการตั้งค่า DB → ส่งไปหน้า setup
   header('Location: db_config_admin.php');
   exit;
 }
 
-// ถ้ามีไฟล์ config จากหน้าเว็บให้โหลดทับค่า default
-if (is_readable($DB_CFG_FILE)) {
-  $j = json_decode(@file_get_contents($DB_CFG_FILE), true);
-  if (is_array($j)) {
-    $dbCfg['driver'] = in_array($j['driver'] ?? '', ['mysql','pgsql'], true)
-                       ? $j['driver'] : $dbCfg['driver'];
-    $dbCfg['host'] = $j['host'] ?? $dbCfg['host'];
-    $dbCfg['port'] = isset($j['port']) ? (int)$j['port'] : $dbCfg['port'];
-    $dbCfg['name'] = $j['name'] ?? $dbCfg['name'];
-    $dbCfg['user'] = $j['user'] ?? $dbCfg['user'];
-    $dbCfg['pass'] = $j['pass'] ?? $dbCfg['pass'];
+$options = [
+  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+
+// สร้าง $dbcon = MedAlert_DB (MySQL, eager) เฉพาะเมื่อไม่ได้ขอข้าม DB
+if (!defined('CONFIG_SKIP_DB')) {
+  $dsn = "mysql:host={$DB_MEDALERT['host']};port={$DB_MEDALERT['port']};dbname={$DB_MEDALERT['name']};charset=utf8mb4";
+  try {
+    $dbcon = new PDO($dsn, $DB_MEDALERT['user'], $DB_MEDALERT['pass'], $options);
+    $dbcon->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+  } catch (Throwable $e) {
+    http_response_code(500);
+    die("MedAlert_DB connect failed: ".$e->getMessage());
   }
 }
 
-// กระจายเป็นตัวแปรเดิมเพื่อให้ไฟล์อื่นใช้ต่อได้
-$DB_DRIVER = $dbCfg['driver'];
-$DB_HOST   = $dbCfg['host'];
-$DB_PORT   = $dbCfg['port'];
-$DB_NAME   = $dbCfg['name'];
-$DB_USER   = $dbCfg['user'];
-$DB_PASS   = $dbCfg['pass'];
-
-// สร้าง PDO เฉพาะกรณีที่ไม่ได้ขอให้ข้ามการต่อ DB
-if (!defined('CONFIG_SKIP_DB')) {
-  // สร้าง DSN ตาม driver ที่เลือก
-  if ($DB_DRIVER === 'pgsql') {
-    $dsn = "pgsql:host={$DB_HOST};port={$DB_PORT};dbname={$DB_NAME}";
-  } else {
-    $dsn = "mysql:host={$DB_HOST};port={$DB_PORT};dbname={$DB_NAME};charset=utf8mb4";
-  }
-  $options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  ];
-  try {
-    $dbcon = new PDO($dsn, $DB_USER, $DB_PASS, $options);
-  } catch (Throwable $e) {
-    http_response_code(500);
-    die("DB connect failed: ".$e->getMessage());
-  }
-  if ($DB_DRIVER === 'mysql') {
-    $dbcon->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+/**
+ * hosxp_db() — connection ไป HOSxP source (อ่านอย่างเดียว) แบบ lazy
+ * เชื่อมต่อครั้งแรกที่เรียกเท่านั้น เพื่อให้หน้าที่ไม่แตะ HOSxP ไม่ล่มถ้า source ดับ
+ * ฝั่ง PostgreSQL บังคับ read-only ระดับ session (ADR 0001 ชั้น 2)
+ */
+if (!function_exists('hosxp_db')) {
+  function hosxp_db(): PDO {
+    static $pdo = null;
+    if ($pdo instanceof PDO) return $pdo;
+    global $DB_HOSXP;
+    $c = $DB_HOSXP;
+    if (($c['driver'] ?? 'mysql') === 'pgsql') {
+      $dsn = "pgsql:host={$c['host']};port={$c['port']};dbname={$c['name']}";
+    } else {
+      $dsn = "mysql:host={$c['host']};port={$c['port']};dbname={$c['name']};charset=utf8mb4";
+    }
+    $pdo = new PDO($dsn, $c['user'], $c['pass'], [
+      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+    if (($c['driver'] ?? 'mysql') === 'pgsql') {
+      $pdo->exec("SET client_encoding TO 'UTF8'");   // HOSxPXE4 server_encoding มักเป็น WIN874 → ให้ PG แปลงเป็น UTF-8 ให้
+      $pdo->exec("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY");
+    } else {
+      $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+    }
+    return $pdo;
   }
 }
 

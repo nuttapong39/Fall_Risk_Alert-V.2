@@ -18,41 +18,8 @@ $end   = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-
 $rows       = [];
 $queryError = null;
 try {
-  $stmt = $dbcon->prepare(
-    "SELECT
-       ov.vn,
-       ov.hn,
-       CONCAT(pt.pname, pt.fname, ' ', pt.lname)            AS fullname,
-       TIMESTAMPDIFF(YEAR, pt.birthday, ov.vstdate)          AS age,
-       CASE WHEN pt.sex='1' THEN 'ชาย'
-            WHEN pt.sex='2' THEN 'หญิง' ELSE '' END          AS sex,
-       ov.cid,
-       pt.hometel,
-       ov.vstdate,
-       d.name                                                 AS doctor,
-       i.name                                                 AS disease,
-       ov.pdx                                                 AS icd10,
-       l.lab_order_result                                     AS result
-     FROM   vn_stat ov
-     LEFT  JOIN patient pt ON pt.hn  = ov.hn
-     LEFT  JOIN icd101  i  ON i.code = ov.pdx
-     LEFT  JOIN doctor  d  ON d.code = ov.dx_doctor
-     INNER JOIN lab_head  h ON h.vn              = ov.vn
-     INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-     WHERE  ov.vstdate          BETWEEN ? AND ?
-       AND  l.lab_items_code    = '2891'
-       AND  (l.lab_order_result = 'Positive' OR l.lab_order_result = 'Weakly Positive IgM')
-       AND  (   ov.pdx  >= 'A90' AND ov.pdx  <= 'A99'
-             OR ov.dx0  >= 'A90' AND ov.dx0  <= 'A99'
-             OR ov.dx1  >= 'A90' AND ov.dx1  <= 'A99'
-             OR ov.dx2  >= 'A90' AND ov.dx2  <= 'A99'
-             OR ov.dx3  >= 'A90' AND ov.dx3  <= 'A99')
-     GROUP BY ov.vn
-     ORDER BY ov.vstdate DESC
-     LIMIT 500"
-  );
-  $stmt->execute([$start, $end]);
-  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  require_once __DIR__ . '/sources/dengue_source.php';
+  $rows = dengue_source_rows($start, $end);
 } catch (Throwable $e) {
   $queryError = $e->getMessage();
 }
@@ -138,6 +105,10 @@ require_once __DIR__ . '/partials/header.php';
           style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
       <span class="msi me-1" style="font-size:.9em">science</span>
       Lab code: 2891
+    </span>
+    <span class="badge rounded-pill"
+          style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
+      ICD-10: A90–A99
     </span>
     <a href="dengue.php" class="btn btn-outline-secondary btn-sm">
       <span class="msi me-1">refresh</span> รีเซ็ต

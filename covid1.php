@@ -9,37 +9,8 @@ $filterEnd = $_GET['end_date'] ?? date('Y-m-d');
 $doctorStmt = $dbcon->query("SELECT DISTINCT d.name FROM doctor d INNER JOIN vn_stat ov ON ov.dx_doctor = d.CODE");
 $doctorList = $doctorStmt->fetchAll(PDO::FETCH_COLUMN);
 
-$sql = $dbcon->prepare("
-  SELECT pt.hn,
-         CONCAT(pt.pname, pt.fname, ' ', pt.lname) AS fullname,
-         TIMESTAMPDIFF(YEAR, pt.birthday, CURDATE()) AS age,
-         pt.cid,
-         pt.informaddr,
-         pt.hometel,
-         ov.vstdate,
-         d.name AS doctor,
-         ov.pdx,
-         l.lab_order_result
-  FROM lab_order l
-  INNER JOIN lab_head h ON l.lab_order_number = h.lab_order_number
-  LEFT JOIN vn_stat ov ON ov.vn = h.vn
-  LEFT JOIN doctor d ON ov.dx_doctor = d.CODE
-  INNER JOIN patient pt ON pt.hn = ov.hn
-  WHERE ov.vstdate BETWEEN :start AND :end
-    AND l.lab_items_code IN ('3066','3082','3084','3088')
-    AND l.lab_order_result = 'Positive'
-    " . ($filterDoctor ? "AND d.name = :doctor" : "") . "
-  GROUP BY h.lab_order_number
-  ORDER BY h.report_date DESC
-  LIMIT 100
-");
-
-$sql->bindParam(':start', $filterStart);
-$sql->bindParam(':end', $filterEnd);
-if ($filterDoctor) $sql->bindParam(':doctor', $filterDoctor);
-
-$sql->execute();
-$data = $sql->fetchAll();
+require_once __DIR__ . '/sources/covid_source.php';
+$data = covid_source_rows($filterStart, $filterEnd, ['3066','3082','3084','3088'], false, $filterDoctor ?: '');
 ?>
 
 <!DOCTYPE html>

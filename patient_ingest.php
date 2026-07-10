@@ -171,58 +171,9 @@ p_logln("Effective range: $start -> $end");
  *  STEP 1: Ingest เข้าคิว
  *  เงื่อนไข: ICD-10 กลุ่ม T71, X60–X69, X70, X84 (พบใน pdx หรือ dx0..dx3)
  * ============================== */
-$where  = [];
-$params = [];
-
-$where[] = "ov.vstdate BETWEEN :start AND :end";
-$params[':start'] = $start;
-$params[':end']   = $end;
-
-if ($hosp !== ''){
-  $where[] = "ovst.hospsub = :hosp";
-  $params[':hosp'] = $hosp;
-}
-
-/* สร้างเงื่อนไข ICD10 — ต้องเช็คทั้ง pdx, dx0..dx3 */
-$codeCols = ['ov.pdx','ov.dx0','ov.dx1','ov.dx2','ov.dx3'];
-$codeConds = [];
-foreach ($codeCols as $col){
-  $codeConds[] = "UPPER($col) = 'T71'";
-  foreach (['X60','X61','X62','X63','X64','X65','X66','X67','X68','X69','X70','X84'] as $pfx){
-    $codeConds[] = "UPPER($col) LIKE '{$pfx}%'";
-  }
-}
-$where[] = '(' . implode(' OR ', $codeConds) . ')';
-
-// === SELECT ===
-$sql = $dbcon->prepare("
-  SELECT
-    ov.vn AS visit_vn,
-    pt.hn,
-    CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
-    pt.cid,
-    pt.hometel,
-    ov.age_y AS age,
-    se.name  AS sex,
-    pt.informaddr AS address,
-    ov.pdx   AS pdx_code,
-    ic.name  AS pdx_name,
-    ov.vstdate,
-    COALESCE(h.name, '') AS mainstation
-  FROM vn_stat ov
-  LEFT  JOIN patient pt ON pt.hn = ov.hn      -- เดิมเป็น LEFT OUTER JOIN ใน patient.php เก่า (กัน vn_stat ที่ไม่มี patient record)
-  LEFT  JOIN sex    se  ON pt.sex = se.code
-  LEFT  JOIN icd101 ic  ON ov.pdx = ic.code
-  LEFT  JOIN ovst ovst  ON ovst.vn = ov.vn
-  LEFT  JOIN hospcode h ON h.hospcode = ovst.hospsub
-  LEFT  JOIN patient_queue q ON q.visit_vn = ov.vn
-  WHERE ".implode(' AND ', $where)."
-    AND q.visit_vn IS NULL
-  ORDER BY ov.vstdate DESC, ov.vn DESC
-");
-$sql->execute($params);
-$newRows = $sql->fetchAll();
-p_logln("Ingest: found ".count($newRows)." new rows.");
+require_once __DIR__ . '/sources/patient_source.php';
+$newRows = patient_source_rows($start, $end);
+p_logln("Ingest: found ".count($newRows)." rows from HOSxP.");
 
 if (!$dryRun && $newRows){
   $ins = $dbcon->prepare("
@@ -295,6 +246,8 @@ foreach ($queue as $row){
   [$ok, $ref, $err] = send_via_moph_alert_patient($row);
   if ($ok){
     $updOk->execute([':id'=>$row['id'], ':ref'=>$ref]);
+    require_once __DIR__ . '/telegram_lib.php';
+    telegram_mirror('patient', '🩹 แจ้งเตือนผู้ป่วยกลุ่มเสี่ยง', $row);
     $okN++;
     p_logln("OK id={$row['id']} ref=".($ref ?? '-'));
   } else {

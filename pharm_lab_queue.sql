@@ -60,7 +60,7 @@ CREATE TABLE `pharm_lab_queue` (
   INDEX        `idx_lab_name`        (`lab_name`)                         USING BTREE,
   INDEX        `idx_lab_date`        (`lab_date`)                         USING BTREE,
   INDEX        `idx_reported_at`     (`reported_at`)                      USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Compact;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for pharm_reporters (ใช้กับ pharm_lab_report.php)
@@ -73,7 +73,7 @@ CREATE TABLE `pharm_reporters` (
   `created_at` timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_name` (`name`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Compact;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- Sample reporters (ลบทิ้งเมื่อเริ่มใช้จริง)
 INSERT INTO `pharm_reporters` (`name`) VALUES

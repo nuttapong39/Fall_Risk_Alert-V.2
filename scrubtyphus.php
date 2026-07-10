@@ -18,37 +18,8 @@ $end   = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-
 $rows       = [];
 $queryError = null;
 try {
-  $stmt = $dbcon->prepare(
-    "SELECT
-       ov.vn,
-       ov.hn,
-       CONCAT(pt.pname, pt.fname, ' ', pt.lname)            AS fullname,
-       TIMESTAMPDIFF(YEAR, pt.birthday, ov.vstdate)          AS age,
-       CASE WHEN pt.sex='1' THEN 'ชาย'
-            WHEN pt.sex='2' THEN 'หญิง' ELSE '' END          AS sex,
-       ov.cid,
-       pt.hometel,
-       ov.vstdate,
-       d.name                                                 AS doctor,
-       i.name                                                 AS disease,
-       ov.pdx                                                 AS icd10,
-       l.lab_order_result                                     AS result
-     FROM   vn_stat ov
-     LEFT  JOIN patient pt ON pt.hn  = ov.hn
-     LEFT  JOIN icd101  i  ON i.code = ov.pdx
-     LEFT  JOIN doctor  d  ON d.code = ov.dx_doctor
-     INNER JOIN lab_head  h ON h.vn              = ov.vn
-     INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
-     WHERE  ov.vstdate          BETWEEN ? AND ?
-       AND  l.lab_items_code    = '291'
-       AND  l.lab_order_result  = 'Positive'
-       AND  ov.pdx              = 'A753'
-     GROUP BY ov.vn
-     ORDER BY ov.vstdate DESC
-     LIMIT 500"
-  );
-  $stmt->execute([$start, $end]);
-  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  require_once __DIR__ . '/sources/scrub_source.php';
+  $rows = scrub_source_rows($start, $end);
 } catch (Throwable $e) {
   $queryError = $e->getMessage();
 }
