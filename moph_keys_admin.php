@@ -14,11 +14,17 @@ $flashMsg = $flashErr = '';
 
 // ─── โหลดค่าปัจจุบัน ────────────────────────────────────────────────────────
 $modules = [
-  'default'   => ['label'=>'ค่าเริ่มต้น (Default)',  'icon'=>'settings',       'color'=>'#64748b', 'grad'=>'135deg,#64748b,#334155'],
-  'covid'     => ['label'=>'COVID-19',               'icon'=>'coronavirus',     'color'=>'#ea580c', 'grad'=>'135deg,#f97316,#ea580c'],
-  'fracture'  => ['label'=>'พลัดตก / หกล้ม',          'icon'=>'falling',         'color'=>'#059669', 'grad'=>'135deg,#10b981,#059669'],
-  'accident'  => ['label'=>'พ.ร.บ. / อุบัติเหตุ',    'icon'=>'car_crash',       'color'=>'#d97706', 'grad'=>'135deg,#f59e0b,#d97706'],
-  'pharm_lab' => ['label'=>'เภสัชกรรม / Lab',         'icon'=>'medication',      'color'=>'#0891b2', 'grad'=>'135deg,#22d3ee,#0891b2'],
+  'default'   => ['label'=>'ค่าเริ่มต้น (Default)',              'icon'=>'settings',           'color'=>'#64748b', 'grad'=>'135deg,#64748b,#334155'],
+  'covid'     => ['label'=>'COVID-19',                          'icon'=>'coronavirus',        'color'=>'#ea580c', 'grad'=>'135deg,#f97316,#ea580c'],
+  'fracture'  => ['label'=>'พลัดตก / หกล้ม',                   'icon'=>'falling',            'color'=>'#059669', 'grad'=>'135deg,#10b981,#059669'],
+  'accident'  => ['label'=>'พ.ร.บ. / อุบัติเหตุ',             'icon'=>'car_crash',          'color'=>'#d97706', 'grad'=>'135deg,#f59e0b,#d97706'],
+  'pharm_lab' => ['label'=>'เภสัชกรรม / Lab',                  'icon'=>'medication',         'color'=>'#0891b2', 'grad'=>'135deg,#22d3ee,#0891b2'],
+  'drug'      => ['label'=>'ยาอันตราย (Drug Alert)',            'icon'=>'medication_liquid',  'color'=>'#7c3aed', 'grad'=>'135deg,#8b5cf6,#7c3aed'],
+  'dengue'    => ['label'=>'ไข้เลือดออก (Dengue)',              'icon'=>'bug_report',         'color'=>'#dc2626', 'grad'=>'135deg,#ef4444,#dc2626'],
+  'patient'   => ['label'=>'ผู้ป่วย OPD ทั่วไป (Patient)',     'icon'=>'personal_injury',    'color'=>'#0369a1', 'grad'=>'135deg,#0ea5e9,#0369a1'],
+  'lepto'     => ['label'=>'เลปโตสไปโรซิส (Lepto)',             'icon'=>'water_drop',         'color'=>'#0f766e', 'grad'=>'135deg,#14b8a6,#0f766e'],
+  'scrub'     => ['label'=>'สครับไทฟัส (Scrub Typhus)',         'icon'=>'pest_control',       'color'=>'#854d0e', 'grad'=>'135deg,#d97706,#854d0e'],
+  'sexual'    => ['label'=>'โรคติดต่อทางเพศสัมพันธ์ (STI)',    'icon'=>'health_and_safety',  'color'=>'#be185d', 'grad'=>'135deg,#ec4899,#be185d'],
 ];
 
 $current = [];
@@ -36,28 +42,85 @@ if (is_readable($file)) {
   }
 }
 
+// ─── โหลดค่า Telegram ปัจจุบัน ───────────────────────────────────────────────
+$tg = ['enabled'=>false, 'default'=>['token'=>'','chat_id'=>'']];
+foreach (array_keys($modules) as $k) { if ($k !== 'default') $tg[$k] = ['chat_id'=>'']; }
+if (is_readable($file)) {
+  $jt = json_decode(@file_get_contents($file), true);
+  if (is_array($jt) && isset($jt['telegram']) && is_array($jt['telegram'])) {
+    $t = $jt['telegram'];
+    $tg['enabled']            = !empty($t['enabled']);
+    $tg['default']['token']   = $t['default']['token']   ?? '';
+    $tg['default']['chat_id'] = $t['default']['chat_id'] ?? '';
+    foreach (array_keys($modules) as $k) {
+      if ($k !== 'default') $tg[$k]['chat_id'] = $t[$k]['chat_id'] ?? '';
+    }
+  }
+}
+
+// ─── AJAX: ทดสอบส่ง Telegram (ใช้ค่าที่กรอกในฟอร์ม ยังไม่ต้องบันทึก) ──────────
+if (($_POST['action'] ?? '') === 'tg_test') {
+  header('Content-Type: application/json; charset=utf-8');
+  if (($_POST['csrf'] ?? '') !== (defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '')) {
+    echo json_encode(['ok'=>false,'msg'=>'Invalid token — refresh แล้วลองใหม่']); exit;
+  }
+  $botToken = trim($_POST['bot_token'] ?? '');
+  $chat     = trim($_POST['chat_id']   ?? '');
+  if ($botToken === '' || $chat === '') { echo json_encode(['ok'=>false,'msg'=>'กรอก Bot Token และ Chat ID ก่อนทดสอบ']); exit; }
+  $ch = curl_init("https://api.telegram.org/bot{$botToken}/sendMessage");
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_TIMEOUT => 15,
+    CURLOPT_POSTFIELDS => http_build_query([
+      'chat_id' => $chat,
+      'text'    => "✅ <b>ทดสอบ Telegram</b>\nMedAlert (รพ.เชียงกลาง) เชื่อมต่อสำเร็จ",
+      'parse_mode' => 'HTML',
+    ]),
+  ]);
+  $res = curl_exec($ch); $err = curl_error($ch); curl_close($ch);
+  if ($err) { echo json_encode(['ok'=>false,'msg'=>"curl: {$err}"]); exit; }
+  $d = json_decode((string)$res, true);
+  echo json_encode(!empty($d['ok'])
+    ? ['ok'=>true,  'msg'=>'ส่งสำเร็จ ✓ ตรวจดูข้อความใน Telegram']
+    : ['ok'=>false, 'msg'=>$d['description'] ?? 'ส่งไม่สำเร็จ']);
+  exit;
+}
+
 // ─── Handle POST ─────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!isset($_POST['token']) || $_POST['token'] !== (defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '')) {
     http_response_code(403);
     $flashErr = 'Invalid token — กรุณา refresh หน้าแล้วลองใหม่';
   } else {
+    $tgModules = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual'];
+    $tgPayload = [
+      'enabled' => !empty($_POST['tg_enabled']),
+      'default' => ['token'=>trim($_POST['tg_default_token']??''), 'chat_id'=>trim($_POST['tg_default_chat']??'')],
+    ];
+    foreach ($tgModules as $tm) { $tgPayload[$tm] = ['chat_id'=>trim($_POST['tg_'.$tm.'_chat']??'')]; }
     $payload = [
       'default'   => ['client'=>trim($_POST['default_client']??''),   'secret'=>trim($_POST['default_secret']??'')],
       'covid'     => ['client'=>trim($_POST['covid_client']??''),     'secret'=>trim($_POST['covid_secret']??'')],
       'fracture'  => ['client'=>trim($_POST['fracture_client']??''),  'secret'=>trim($_POST['fracture_secret']??'')],
       'accident'  => ['client'=>trim($_POST['accident_client']??''),  'secret'=>trim($_POST['accident_secret']??'')],
       'pharm_lab' => ['client'=>trim($_POST['pharm_client']??''),     'secret'=>trim($_POST['pharm_secret']??'')],
+      'drug'      => ['client'=>trim($_POST['drug_client']??''),      'secret'=>trim($_POST['drug_secret']??'')],
+      'dengue'    => ['client'=>trim($_POST['dengue_client']??''),    'secret'=>trim($_POST['dengue_secret']??'')],
+      'patient'   => ['client'=>trim($_POST['patient_client']??''),   'secret'=>trim($_POST['patient_secret']??'')],
+      'lepto'     => ['client'=>trim($_POST['lepto_client']??''),     'secret'=>trim($_POST['lepto_secret']??'')],
+      'scrub'     => ['client'=>trim($_POST['scrub_client']??''),     'secret'=>trim($_POST['scrub_secret']??'')],
+      'sexual'    => ['client'=>trim($_POST['sexual_client']??''),    'secret'=>trim($_POST['sexual_secret']??'')],
+      'telegram'  => $tgPayload,
       '_meta'     => ['updated_at'=>$now],
     ];
     if (!is_dir($dir)) @mkdir($dir, 0775, true);
     $ok = @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     if ($ok !== false) {
       @chmod($file, 0660);
-      $flashMsg = 'บันทึก MOPH Keys สำเร็จ';
+      $flashMsg = 'บันทึก MOPH Keys + Telegram สำเร็จ';
       foreach (array_keys($current) as $k) {
         $current[$k] = $payload[$k] ?? $current[$k];
       }
+      $tg = $tgPayload;
     } else {
       $flashErr = 'บันทึกไม่สำเร็จ — กรุณาตรวจสิทธิ์โฟลเดอร์ secrets/';
     }
@@ -277,12 +340,18 @@ require_once __DIR__ . '/partials/header.php';
       <!-- ② Module keys (2×2 grid) -->
       <div class="row g-3">
         <?php
-        $moduleKeys = ['covid','fracture','accident','pharm_lab'];
+        $moduleKeys = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual'];
         $fieldMap   = [
           'covid'     => ['client'=>'covid_client',    'secret'=>'covid_secret'],
           'fracture'  => ['client'=>'fracture_client', 'secret'=>'fracture_secret'],
           'accident'  => ['client'=>'accident_client', 'secret'=>'accident_secret'],
           'pharm_lab' => ['client'=>'pharm_client',    'secret'=>'pharm_secret'],
+          'drug'      => ['client'=>'drug_client',     'secret'=>'drug_secret'],
+          'dengue'    => ['client'=>'dengue_client',   'secret'=>'dengue_secret'],
+          'patient'   => ['client'=>'patient_client',  'secret'=>'patient_secret'],
+          'lepto'     => ['client'=>'lepto_client',    'secret'=>'lepto_secret'],
+          'scrub'     => ['client'=>'scrub_client',    'secret'=>'scrub_secret'],
+          'sexual'    => ['client'=>'sexual_client',   'secret'=>'sexual_secret'],
         ];
         foreach ($moduleKeys as $mk):
           $m = $modules[$mk];
@@ -334,6 +403,73 @@ require_once __DIR__ . '/partials/header.php';
         </div>
         <?php endforeach; ?>
       </div><!-- /.row module cards -->
+
+      <!-- ③ Telegram (mirror patient alerts) -->
+      <div class="module-card mt-3">
+        <div class="module-card-header">
+          <div class="module-icon" style="background:linear-gradient(135deg,#22a7f0,#0088cc)">
+            <span class="msi">send</span>
+          </div>
+          <div>
+            <div class="module-card-title">Telegram แจ้งเตือน (mirror)</div>
+            <div style="font-size:.75rem; color:var(--muted)">
+              ส่ง alert ผู้ป่วยเข้า Telegram คู่กับ LINE/MOPH — Chat ID แยกตาม feature
+            </div>
+          </div>
+          <div class="ms-auto form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="tgEnabled" name="tg_enabled" value="1"
+                   <?= $tg['enabled'] ? 'checked' : '' ?>>
+            <label class="form-check-label" for="tgEnabled" style="font-size:.8rem">เปิดใช้งาน</label>
+          </div>
+        </div>
+        <div class="module-card-body">
+          <div class="row g-3 mb-2">
+            <div class="col-md-7">
+              <label class="form-label fw-semibold" style="font-size:.82rem">
+                <span class="msi me-1" style="font-size:.95rem">smart_toy</span>Bot Token (ใช้ร่วมทุก feature)
+              </label>
+              <div class="pw-wrap">
+                <input type="password" id="tgDefaultToken" name="tg_default_token" class="form-control"
+                       value="<?= htmlspecialchars($tg['default']['token']) ?>" placeholder="123456789:ABC-DEF...">
+                <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="แสดง/ซ่อน">
+                  <span class="msi">visibility</span>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-semibold" style="font-size:.82rem">
+                <span class="msi me-1" style="font-size:.95rem">groups</span>Default Chat ID
+              </label>
+              <input type="text" id="tgDefaultChat" name="tg_default_chat" class="form-control client-field"
+                     value="<?= htmlspecialchars($tg['default']['chat_id']) ?>" placeholder="-100... (fallback)">
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline-info btn-sm mb-3" onclick="tgTest('tgDefaultChat')">
+            <span class="msi me-1">send</span>ทดสอบส่ง (Default)
+          </button>
+
+          <div style="font-size:.78rem; color:var(--muted); margin-bottom:8px">
+            Chat ID แยกตาม feature (เว้นว่าง = ใช้ Default):
+          </div>
+          <div class="row g-2">
+            <?php foreach ($moduleKeys as $mk): $m = $modules[$mk]; ?>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size:.78rem">
+                <span class="msi me-1" style="font-size:.9rem; color:<?= $m['color'] ?>"><?= $m['icon'] ?></span><?= htmlspecialchars($m['label']) ?>
+              </label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="tgChat_<?= $mk ?>" name="tg_<?= $mk ?>_chat" class="form-control client-field"
+                       value="<?= htmlspecialchars($tg[$mk]['chat_id'] ?? '') ?>" placeholder="(ใช้ Default)">
+                <button type="button" class="btn btn-outline-secondary" onclick="tgTest('tgChat_<?= $mk ?>')" title="ทดสอบส่ง">
+                  <span class="msi">send</span>
+                </button>
+              </div>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <div id="tgTestResult" style="display:none; border-radius:8px; padding:8px 12px; font-size:.82rem; margin-top:10px"></div>
+        </div>
+      </div>
 
       <!-- Action buttons -->
       <div class="d-flex gap-2 mt-3 flex-wrap">
@@ -438,6 +574,12 @@ require_once __DIR__ . '/partials/header.php';
             'fracture'  => ['FRACTURE_CLIENT_KEY', 'FRACTURE_SECRET_KEY'],
             'accident'  => ['ACCIDENT_CLIENT_KEY', 'ACCIDENT_SECRET_KEY'],
             'pharm_lab' => ['PHARM_CLIENT_KEY',    'PHARM_SECRET_KEY'],
+            'drug'      => ['DRUG_CLIENT_KEY',     'DRUG_SECRET_KEY'],
+            'dengue'    => ['DENGUE_CLIENT_KEY',   'DENGUE_SECRET_KEY'],
+            'patient'   => ['PATIENT_CLIENT_KEY',  'PATIENT_SECRET_KEY'],
+            'lepto'     => ['LEPTO_CLIENT_KEY',    'LEPTO_SECRET_KEY'],
+            'scrub'     => ['SCRUB_CLIENT_KEY',    'SCRUB_SECRET_KEY'],
+            'sexual'    => ['SEXUAL_CLIENT_KEY',   'SEXUAL_SECRET_KEY'],
           ];
           foreach ($constMap as $mk => [$c, $s]):
           ?>
@@ -505,6 +647,33 @@ function toggleAllSecrets() {
   });
   document.getElementById('toggleAllIcon').textContent = allShown ? 'visibility_off' : 'visibility';
   document.getElementById('toggleAllText').textContent = allShown ? 'ซ่อน Secret Keys' : 'แสดง Secret Keys';
+}
+
+// ── ทดสอบส่ง Telegram ────────────────────────────────────────────────────────
+function tgTest(chatFieldId) {
+  const token = document.getElementById('tgDefaultToken').value.trim();
+  let chat = document.getElementById(chatFieldId).value.trim();
+  if (!chat) chat = document.getElementById('tgDefaultChat').value.trim();
+  const box = document.getElementById('tgTestResult');
+  box.style.display = 'block';
+  box.style.background = '#eff6ff'; box.style.color = '#1e40af';
+  box.textContent = 'กำลังส่ง...';
+  const fd = new FormData();
+  fd.append('action', 'tg_test');
+  fd.append('csrf', document.querySelector('input[name="token"]').value);
+  fd.append('bot_token', token);
+  fd.append('chat_id', chat);
+  fetch('moph_keys_admin.php', { method:'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      box.style.background = d.ok ? '#dcfce7' : '#fee2e2';
+      box.style.color      = d.ok ? '#166534' : '#991b1b';
+      box.textContent = d.msg;
+    })
+    .catch(e => {
+      box.style.background = '#fee2e2'; box.style.color = '#991b1b';
+      box.textContent = 'ผิดพลาด: ' + e;
+    });
 }
 </script>
 JS;
