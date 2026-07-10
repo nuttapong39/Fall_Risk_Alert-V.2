@@ -356,7 +356,7 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 
   <div class="col-12 col-sm-6 col-xl-4">
-    <a href="covid.php" class="shortcut-card"
+    <a href="covid_queue_ui.php" class="shortcut-card"
        data-label="โควิด covid ผู้ติดเชื้อ เคส">
       <div class="sc-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">
         <span class="msi">coronavirus</span>

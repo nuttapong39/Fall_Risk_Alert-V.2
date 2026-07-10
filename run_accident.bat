@@ -1,8 +1,9 @@
 @echo off
 setlocal
 set "PHP_EXE=C:\xampp\php\php.exe"
-set "APP_DIR=C:\xampp\htdocs\HOSxLine"
-set "SCRIPT=%APP_DIR%\accident.php"
+set "APP_DIR=C:\xampp\htdocs\Fall_Risk_Alert-main"
+set "SCRIPT=%APP_DIR%\ac
+cident_worker.php"
 set "LOGDIR=%APP_DIR%\logs"
 if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 set "RUNLOG=%LOGDIR%\accident_task_run.log"

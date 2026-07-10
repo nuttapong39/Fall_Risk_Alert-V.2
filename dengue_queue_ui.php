@@ -1,44 +1,42 @@
 <?php
 /**
- * sexual.php — คิวแจ้งเตือนผู้ถูกกระทำความรุนแรง / ข่มขืน (Queue mode)
- *  - อ่านข้อมูลจาก sexual_alert_queue (local queue)
- *  - Sync จาก HOSxP ผ่านปุ่ม Modal → sexual_action.php (import_hosxp)
- *  - ส่ง LINE Flex ทีละราย หรือ Bulk (send_now) ผ่าน sexual_action.php
+ * dengue_queue_ui.php — คิวแจ้งเตือนผู้ป่วยไข้เลือดออก (Dengue Fever)
+ *  - อ่านข้อมูลจาก dengue_queue (local queue)
+ *  - Sync จาก HOSxP ผ่าน Modal → dengue_queue_action.php (import_hosxp)
+ *  - ส่ง LINE Flex ทีละราย หรือ Bulk (send_now) ผ่าน dengue_queue_action.php
  *  - Bulk: requeue, clear_error
  */
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
-require_once __DIR__ . '/flex_sexual.php';
 date_default_timezone_set('Asia/Bangkok');
 
 /* ── UI Action Token ─────────────────────────────────────────── */
-if (!defined('SEXUAL_UI_TOKEN')) {
-  define('SEXUAL_UI_TOKEN', hash('sha256', __DIR__ . '/sexual.php' . php_uname() . date('Y-m-d')));
+if (!defined('DENGUE_Q_UI_TOKEN')) {
+  define('DENGUE_Q_UI_TOKEN', hash('sha256', __DIR__ . '/dengue_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
 /* ── Filters ─────────────────────────────────────────────────── */
-$DEFAULT_START = date('Y-m-d', strtotime('-30 days'));
-$start  = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : $DEFAULT_START;
+$start  = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-30 days'));
 $end    = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-d');
 $status = isset($_GET['status'])                    ? $_GET['status'] : 'all';
 
-$w = ["lab_date BETWEEN :s AND :e"];
+$w = ["vstdate BETWEEN :s AND :e"];
 $p = [':s' => $start, ':e' => $end];
 if ($status === '0') { $w[] = 'status = 0'; }
 if ($status === '1') { $w[] = 'status = 1'; }
 
-/* ── Query local queue ───────────────────────────────────────── */
+/* ── Query dengue_queue ──────────────────────────────────────── */
 $rows       = [];
 $queryError = null;
 try {
-  $sql = "SELECT id, vn, hn, fullname, cid, age, sex, hometel,
-                 lab_date, lab_time, lab_items_name_ref, lab_order_result,
-                 lab_order_number, status, attempt, last_attempt_at,
-                 last_error, out_ref, line_message_id, sent_at, created_at
-          FROM   sexual_alert_queue
+  $sql = "SELECT id, vn, lab_order_number, hn, fullname, age, sex, cid, hometel,
+                 vstdate, doctor, pdx, icd10_name, lab_order_result,
+                 status, attempt, last_attempt_at, out_ref, last_error,
+                 created_at, sent_at, line_message_id
+          FROM   dengue_queue
           WHERE  " . implode(' AND ', $w) . "
-          ORDER  BY lab_date DESC, id DESC
+          ORDER  BY vstdate DESC, id DESC
           LIMIT  2000";
   $stmt = $dbcon->prepare($sql);
   $stmt->execute($p);
@@ -49,13 +47,12 @@ try {
 
 /* ── KPI ─────────────────────────────────────────────────────── */
 $today = date('Y-m-d');
-$kpi   = ['total' => 0, 'pending' => 0, 'sent' => 0, 'failed' => 0, 'today' => 0];
+$kpi   = ['total' => 0, 'pending' => 0, 'sent' => 0, 'today' => 0];
 foreach ($rows as $r) {
   $kpi['total']++;
   if ((int)$r['status'] === 1) $kpi['sent']++;
   else                         $kpi['pending']++;
-  if (!empty($r['last_error']))                              $kpi['failed']++;
-  if (substr((string)($r['lab_date'] ?? ''), 0, 10) === $today) $kpi['today']++;
+  if (substr((string)($r['vstdate'] ?? ''), 0, 10) === $today) $kpi['today']++;
 }
 
 /* ── Flash message ───────────────────────────────────────────── */
@@ -92,8 +89,8 @@ if (!function_exists('to_utf8')) {
 }
 
 /* ── Page setup ──────────────────────────────────────────────── */
-$PAGE_TITLE = 'คิวแจ้งเตือน ผู้ถูกกระทำความรุนแรง';
-$PAGE_KEY   = 'sexual';
+$PAGE_TITLE = 'คิวแจ้งเตือน ไข้เลือดออก';
+$PAGE_KEY   = 'dengue';
 $EXTRA_HEAD = '
 <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
@@ -116,11 +113,11 @@ $EXTRA_HEAD = '
     display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
   }
   .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
-  .form-check-input:focus { box-shadow:0 0 0 .2rem rgba(219,39,119,.2) }
+  .form-check-input:focus { box-shadow:0 0 0 .2rem rgba(217,119,6,.3) }
 
-  /* ── Send button (per row) ── */
+  /* ── Send button (per row) — amber dengue theme ── */
   .btn-send-row {
-    background:linear-gradient(135deg,#db2777,#be185d);
+    background:linear-gradient(135deg,#f59e0b,#d97706);
     border:none; color:#fff; border-radius:8px;
     font-size:.8rem; padding:.28rem .7rem;
     display:inline-flex; align-items:center; gap:.3rem;
@@ -135,14 +132,14 @@ $EXTRA_HEAD = '
   }
 
   /* ── Sync modal result ── */
-  #sxSyncResult { display:none; border-radius:8px; padding:10px 14px;
+  #dqSyncResult { display:none; border-radius:8px; padding:10px 14px;
                   font-size:.85rem; font-weight:500; margin-top:10px }
-  #sxSyncResult.ok  { background:#dcfce7; color:#166534 }
-  #sxSyncResult.err { background:#fee2e2; color:#991b1b }
+  #dqSyncResult.ok  { background:#dcfce7; color:#166534 }
+  #dqSyncResult.err { background:#fee2e2; color:#991b1b }
 
   /* ── Query error ── */
   .setup-alert {
-    background:linear-gradient(135deg,#be185d,#9f1239);
+    background:linear-gradient(135deg,#d97706,#92400e);
     color:#fff; border-radius:14px; padding:20px 24px;
     display:flex; align-items:flex-start; gap:16px;
   }
@@ -150,6 +147,12 @@ $EXTRA_HEAD = '
   .setup-alert h5   { font-size:1rem; font-weight:700; margin:0 0 4px }
   .setup-alert p    { font-size:.83rem; margin:0; opacity:.9 }
   .setup-alert code { background:rgba(0,0,0,.25); padding:2px 6px; border-radius:4px }
+
+  /* ── Result badge ── */
+  .result-positive { color:#92400e; font-weight:700 }
+  .icd-code { font-family:monospace; font-size:.82rem; color:#78350f;
+              background:#fffbeb; border:1px solid #fde68a;
+              padding:.1rem .4rem; border-radius:.4rem }
 </style>
 ';
 
@@ -170,34 +173,37 @@ require_once __DIR__ . '/partials/header.php';
 <!-- ── Page header ───────────────────────────────────────────── -->
 <div class="page-header">
   <h1>
-    <span class="msi me-2" style="color:#db2777">shield_person</span>
+    <span class="msi me-2" style="color:#d97706">pest_control</span>
     <?= htmlspecialchars($PAGE_TITLE) ?>
   </h1>
   <div class="d-flex gap-2 flex-wrap">
     <button type="button" class="btn btn-sm"
-            style="background:linear-gradient(135deg,#db2777,#9d174d);color:#fff;border:none;border-radius:8px"
-            data-bs-toggle="modal" data-bs-target="#sxSyncModal">
+            style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px"
+            data-bs-toggle="modal" data-bs-target="#dqSyncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
     <span class="badge rounded-pill align-self-center"
-          style="background:#fdf2f8;color:#9d174d;border:1px solid #fbcfe8;font-size:.78rem;padding:.35rem .75rem">
+          style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
       <span class="msi me-1" style="font-size:.9em">science</span>
-      Lab code: <?= htmlspecialchars(LAB_CODE_SEXUAL) ?>
+      Lab code: 2891
     </span>
-    <a href="sexual.php" class="btn btn-outline-secondary btn-sm">
+    <span class="badge rounded-pill align-self-center"
+          style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
+      ICD-10: A90–A99
+    </span>
+    <a href="dengue_queue_ui.php" class="btn btn-outline-secondary btn-sm">
       <span class="msi me-1">refresh</span> รีเซ็ต
     </a>
   </div>
 </div>
 
 <?php if ($queryError): ?>
-<!-- ── ตาราง sexual_alert_queue ยังไม่ถูกสร้าง ── -->
 <div class="setup-alert mb-4">
   <div class="setup-alert-icon"><span class="msi">error_outline</span></div>
   <div>
     <h5>ไม่สามารถดึงข้อมูลจากคิว</h5>
-    <p>ตรวจสอบว่าสร้างตาราง <code>sexual_alert_queue</code> แล้วหรือไม่</p>
-    <p class="mt-1">รัน SQL ได้จากไฟล์ <code>sexual_alert_queue.sql</code>
+    <p>ตรวจสอบว่าสร้างตาราง <code>dengue_queue</code> แล้วหรือไม่</p>
+    <p class="mt-1">รัน SQL ได้จากไฟล์ <code>dengue_queue.sql</code>
        หรือใน <a href="db_config_admin.php" class="text-white fw-bold">ตั้งค่าฐานข้อมูล</a></p>
     <p class="mt-2"><code><?= htmlspecialchars($queryError) ?></code></p>
   </div>
@@ -208,18 +214,18 @@ require_once __DIR__ . '/partials/header.php';
 <div class="row g-3 mb-3">
   <div class="col-6 col-lg-3">
     <div class="kpi-card">
-      <div class="kpi-icon" style="background:linear-gradient(135deg,#db2777,#9d174d)">
-        <span class="msi">shield_person</span>
-      </div>
+      <div class="kpi-icon bg-amber"><span class="msi">pest_control</span></div>
       <div>
         <p class="kpi-label">ทั้งหมด</p>
-        <p class="kpi-value"><?= number_format($kpi['total']) ?></p>
+        <p class="kpi-value" style="color:#d97706"><?= number_format($kpi['total']) ?></p>
       </div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-card">
-      <div class="kpi-icon bg-amber"><span class="msi">schedule</span></div>
+      <div class="kpi-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+        <span class="msi">schedule</span>
+      </div>
       <div>
         <p class="kpi-label">ค้างส่ง</p>
         <p class="kpi-value text-warning"><?= number_format($kpi['pending']) ?></p>
@@ -269,10 +275,10 @@ require_once __DIR__ . '/partials/header.php';
     </div>
     <div class="col-sm-6 col-md-4 d-flex gap-2 align-items-end">
       <button class="btn btn-sm flex-grow-1"
-              style="background:linear-gradient(135deg,#db2777,#9d174d);color:#fff;border:none;border-radius:8px">
+              style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px">
         <span class="msi me-1">search</span> ค้นหา
       </button>
-      <a class="btn btn-sm btn-outline-secondary" href="sexual.php" title="รีเซ็ตตัวกรอง">
+      <a class="btn btn-sm btn-outline-secondary" href="dengue_queue_ui.php" title="รีเซ็ตตัวกรอง">
         <span class="msi">undo</span>
       </a>
       <small class="text-muted align-self-center ms-1">
@@ -283,12 +289,12 @@ require_once __DIR__ . '/partials/header.php';
 </div>
 
 <!-- ── Table + Bulk Actions ───────────────────────────────────── -->
-<form method="post" action="sexual_action.php" id="sxActionForm">
-  <input type="hidden" name="token" value="<?= htmlspecialchars(SEXUAL_UI_TOKEN) ?>">
+<form method="post" action="dengue_queue_action.php" id="dqActionForm">
+  <input type="hidden" name="token" value="<?= htmlspecialchars(DENGUE_Q_UI_TOKEN) ?>">
 
   <div class="card p-3 mb-3">
     <div class="table-responsive">
-      <table id="tblSexual" class="table table-hover align-middle nowrap" style="width:100%">
+      <table id="tblDengueQ" class="table table-hover align-middle nowrap" style="width:100%">
         <thead>
           <tr>
             <th style="width:30px">
@@ -296,14 +302,15 @@ require_once __DIR__ . '/partials/header.php';
             </th>
             <th>ID</th>
             <th>สถานะ</th>
+            <th>VN</th>
             <th>HN</th>
             <th>ชื่อ-สกุล</th>
             <th>อายุ</th>
             <th>เพศ</th>
-            <th>เบอร์โทร</th>
+            <th>วันรับบริการ</th>
+            <th>แพทย์</th>
+            <th>ICD-10</th>
             <th>ผลตรวจ</th>
-            <th>รายการ LAB</th>
-            <th>วันที่ LAB</th>
             <th>Attempt</th>
             <th>Last Attempt</th>
             <th>Error</th>
@@ -324,13 +331,14 @@ require_once __DIR__ . '/partials/header.php';
           } else {
             $badge = '<span class="status-badge status-pending"><span class="msi">schedule</span> ค้างส่ง</span>';
           }
-          $isToday = (substr((string)($r['lab_date'] ?? ''), 0, 10) === $today);
+          $isToday = (substr((string)($r['vstdate'] ?? ''), 0, 10) === $today);
           $sex     = $r['sex'] ?? '';
         ?>
           <tr>
             <td><input type="checkbox" class="form-check-input chk" name="ids[]" value="<?= $r['id'] ?>"></td>
             <td class="text-center"><small class="text-muted"><?= $r['id'] ?></small></td>
             <td><?= $badge ?></td>
+            <td><code style="font-size:.78rem;color:#374151"><?= htmlspecialchars($r['vn'] ?? '') ?></code></td>
             <td><strong><?= htmlspecialchars($r['hn'] ?? '') ?></strong></td>
             <td><?= htmlspecialchars($r['fullname'] ?? '') ?></td>
             <td class="text-center"><?= $r['age'] ? $r['age'] . ' ปี' : '-' ?></td>
@@ -344,24 +352,31 @@ require_once __DIR__ . '/partials/header.php';
                 </span>
               <?php else: echo '-'; endif; ?>
             </td>
-            <td style="font-size:.85rem"><?= htmlspecialchars($r['hometel'] ?? '') ?: '-' ?></td>
-            <td class="text-center">
-              <span class="badge rounded-pill"
-                    style="background:#fef2f2;color:#991b1b;font-size:.8rem;padding:.22rem .6rem;font-weight:600">
-                <?= htmlspecialchars($r['lab_order_result'] ?? '') ?: '-' ?>
-              </span>
-            </td>
-            <td style="font-size:.82rem;max-width:160px;white-space:normal">
-              <?= htmlspecialchars($r['lab_items_name_ref'] ?? '') ?>
-            </td>
             <td>
               <span style="font-size:.85rem;<?= $isToday ? 'color:#dc2626;font-weight:600' : '' ?>">
-                <?= htmlspecialchars($r['lab_date'] ?? '') ?>
+                <?= htmlspecialchars($r['vstdate'] ?? '') ?>
               </span>
               <?php if ($isToday): ?>
                 <span class="badge rounded-pill ms-1"
                       style="background:#fef2f2;color:#dc2626;font-size:.7rem">วันนี้</span>
               <?php endif; ?>
+            </td>
+            <td style="font-size:.85rem"><?= htmlspecialchars($r['doctor'] ?? '') ?: '-' ?></td>
+            <td>
+              <?php if ($r['pdx']): ?>
+                <span class="icd-code"><?= htmlspecialchars($r['pdx']) ?></span>
+              <?php endif; ?>
+              <?php if ($r['icd10_name']): ?>
+                <div style="font-size:.78rem;color:#6b7280;margin-top:.15rem;max-width:120px;white-space:normal">
+                  <?= htmlspecialchars($r['icd10_name']) ?>
+                </div>
+              <?php endif; ?>
+            </td>
+            <td class="text-center">
+              <span class="badge rounded-pill"
+                    style="background:#fffbeb;color:#92400e;font-size:.8rem;padding:.22rem .6rem;font-weight:600">
+                <?= htmlspecialchars($r['lab_order_result'] ?? '') ?: '-' ?>
+              </span>
             </td>
             <td class="text-center"><?= (int)$r['attempt'] ?></td>
             <td class="small-text"><?= htmlspecialchars(substr((string)($r['last_attempt_at'] ?? ''), 0, 16)) ?></td>
@@ -395,7 +410,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="action-bar">
     <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
     <button type="button" class="btn btn-sm"
-            style="background:linear-gradient(135deg,#db2777,#be185d);color:#fff;border:none;border-radius:8px"
+            style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px"
             data-action="send_now" data-label="ส่งแจ้งเตือนทันที" data-confirm-icon="question">
       <span class="msi me-1">send</span> ส่งทันที
     </button>
@@ -413,12 +428,12 @@ require_once __DIR__ . '/partials/header.php';
 <?php endif; ?>
 
 <!-- ═══ Sync from HOSxP Modal ══════════════════════════════════ -->
-<div class="modal fade" id="sxSyncModal" tabindex="-1" aria-labelledby="sxSyncModalLabel" aria-hidden="true">
+<div class="modal fade" id="dqSyncModal" tabindex="-1" aria-labelledby="dqSyncModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:14px; overflow:hidden">
       <div class="modal-header border-0"
-           style="background:linear-gradient(135deg,#db2777,#9d174d); color:#fff">
-        <h5 class="modal-title" id="sxSyncModalLabel">
+           style="background:linear-gradient(135deg,#f59e0b,#92400e); color:#fff">
+        <h5 class="modal-title" id="dqSyncModalLabel">
           <span class="msi me-2">sync</span>Sync ข้อมูลจาก HOSxP
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -430,33 +445,33 @@ require_once __DIR__ . '/partials/header.php';
           </label>
           <div class="row g-2">
             <div class="col">
-              <input type="date" id="sxSyncStart" class="form-control"
-                     value="<?= date('Y-m-d', strtotime('-30 days')) ?>">
+              <input type="date" id="dqSyncStart" class="form-control"
+                     value="<?= date('Y-m-d', strtotime('-7 days')) ?>">
             </div>
             <div class="col-auto d-flex align-items-center text-muted">ถึง</div>
             <div class="col">
-              <input type="date" id="sxSyncEnd" class="form-control"
+              <input type="date" id="dqSyncEnd" class="form-control"
                      value="<?= date('Y-m-d') ?>">
             </div>
           </div>
         </div>
         <div class="p-2 rounded mb-2"
-             style="background:#fdf2f8; border:1px solid #fbcfe8; font-size:.82rem; color:#9d174d">
+             style="background:#fffbeb; border:1px solid #fde68a; font-size:.82rem; color:#92400e">
           <span class="msi me-1">info</span>
-          Query จาก <strong>lab_head + lab_order + patient</strong> ใน HOSxP
-          เฉพาะ <code>lab_items_code = <?= htmlspecialchars(LAB_CODE_SEXUAL) ?></code>
-          แล้ว Upsert เข้า <code>sexual_alert_queue</code>
-          — ไม่ส่ง LINE ทันที ต้องกด "ส่งแจ้งเตือน" ในตารางหลัง Sync เสร็จ
+          Query จาก <strong>vn_stat + lab_head + lab_order</strong> ใน HOSxP
+          เฉพาะ <code>lab_items_code = 2891</code> และผล <strong>Positive / Weakly Positive IgM</strong>
+          แล้ว Upsert เข้า <code>dengue_queue</code>
+          — ไม่ส่ง LINE ทันที ต้องกด "ส่งแจ้งเตือน" หลัง Sync เสร็จ
         </div>
-        <div id="sxSyncResult"></div>
+        <div id="dqSyncResult"></div>
       </div>
       <div class="modal-footer border-0" style="padding-top:0">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-        <button type="button" class="btn btn-sm px-4" id="sxSyncBtn"
-                style="background:linear-gradient(135deg,#db2777,#9d174d);color:#fff;border:none;border-radius:8px"
-                onclick="doSxSync()">
-          <span class="msi me-1" id="sxSyncIcon">sync</span>
-          <span id="sxSyncBtnText">Sync ข้อมูล</span>
+        <button type="button" class="btn btn-sm px-4" id="dqSyncBtn"
+                style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px"
+                onclick="doDqSync()">
+          <span class="msi me-1" id="dqSyncIcon">sync</span>
+          <span id="dqSyncBtnText">Sync ข้อมูล</span>
         </button>
       </div>
     </div>
@@ -479,16 +494,16 @@ $EXTRA_FOOTER = '
 <script>
 $(function(){
   /* ── DataTable ── */
-  const table = $("#tblSexual").DataTable({
+  const table = $("#tblDengueQ").DataTable({
     responsive: true,
     autoWidth:  false,
     pageLength: 25,
-    order: [[10, "desc"]],
+    order: [[8, "desc"]],
     dom: "<\"row mb-2\"<\"col-sm-4\"l><\"col-sm-4 text-center\"B><\"col-sm-4\"f>>tip",
     buttons: [
       { extend:"excel", text:"<span class=\"msi me-1\">table_view<\/span> Excel",
         className:"btn btn-sm btn-outline-success",
-        title:"sexual_alert_" + new Date().toLocaleDateString("th-TH") },
+        title:"dengue_queue_" + new Date().toLocaleDateString("th-TH") },
       { extend:"print", text:"<span class=\"msi me-1\">print<\/span> พิมพ์",
         className:"btn btn-sm btn-outline-secondary" },
       { extend:"colvis", text:"<span class=\"msi\">view_column<\/span> คอลัมน์",
@@ -500,19 +515,19 @@ $(function(){
       infoEmpty:"ไม่มีรายการ", zeroRecords:"ไม่พบรายการที่ตรงกับคำค้น",
       paginate:{first:"หน้าแรก",last:"หน้าสุดท้าย",next:"ถัดไป",previous:"ก่อนหน้า"}
     },
-    columnDefs:[{ targets:[0,1,2,5,6,8,11], className:"text-nowrap text-center" }]
+    columnDefs:[{ targets:[0,1,2,6,7,12], className:"text-nowrap text-center" }]
   });
 
   /* ── Checkbox all ── */
   const $chkAll = $("#chkAll");
   $chkAll.on("change", function(){
-    $("#tblSexual tbody .chk").prop("checked", this.checked);
+    $("#tblDengueQ tbody .chk").prop("checked", this.checked);
     updateCount();
   });
   $(document).on("change", ".chk", updateCount);
   table.on("draw", function(){ $chkAll.prop("checked", false); updateCount(); });
   function updateCount(){
-    const n = $("#tblSexual tbody .chk:checked").length;
+    const n = $("#tblDengueQ tbody .chk:checked").length;
     $("#selectedCount").text("เลือก " + n + " รายการ");
   }
 
@@ -521,7 +536,7 @@ $(function(){
     const action = $(this).data("action");
     const label  = $(this).data("label");
     const icon   = $(this).data("confirm-icon") || "question";
-    const n      = $("#tblSexual tbody .chk:checked").length;
+    const n      = $("#tblDengueQ tbody .chk:checked").length;
     if (n === 0){
       Swal.fire({ icon:"info", title:"ยังไม่ได้เลือกรายการ",
                   text:"กรุณาติ๊กเลือกรายการในตารางก่อน" });
@@ -532,10 +547,10 @@ $(function(){
       text:"จะดำเนินการกับรายการที่เลือก " + n + " รายการ",
       showCancelButton:true, confirmButtonText:label,
       cancelButtonText:"ยกเลิก", reverseButtons:true, focusCancel:true,
-      confirmButtonColor:"#db2777"
+      confirmButtonColor:"#d97706"
     }).then(r => {
       if (!r.isConfirmed) return;
-      const $form = $("#sxActionForm");
+      const $form = $("#dqActionForm");
       $form.append("<input type=\"hidden\" name=\"action\" value=\"" + action + "\">");
       $form[0].submit();
     });
@@ -550,7 +565,7 @@ $(function(){
     const name = btn.dataset.name;
 
     Swal.fire({
-      title:"ส่งแจ้งเตือน?",
+      title:"ส่งแจ้งเตือนไข้เลือดออก?",
       html:`<div class="text-start" style="font-size:.9rem">
               <div><strong>ID:</strong> ${id}</div>
               <div><strong>HN:</strong> ${hn}</div>
@@ -559,14 +574,14 @@ $(function(){
       icon:"question", showCancelButton:true,
       confirmButtonText:"<span class=\"msi me-1\">send<\/span> ส่งเลย",
       cancelButtonText:"ยกเลิก",
-      confirmButtonColor:"#db2777", reverseButtons:true, focusCancel:true,
+      confirmButtonColor:"#d97706", reverseButtons:true, focusCancel:true,
     }).then(r => {
       if (!r.isConfirmed) return;
       btn.disabled = true;
       btn.innerHTML = "<span class=\"msi msi-spin\">progress_activity<\/span> กำลังส่ง…";
       btn.style.background = "#cbd5e1";
 
-      fetch("sexual_action.php", {
+      fetch("dengue_queue_action.php", {
         method:"POST",
         headers:{"Content-Type":"application/x-www-form-urlencoded"},
         body: new URLSearchParams({ action:"send_queue_item", id })
@@ -584,7 +599,7 @@ $(function(){
           btn.innerHTML = "<span class=\"msi\">send<\/span> ส่งแจ้งเตือน";
           btn.style.background = "";
           Swal.fire({ icon:"error", title:"ส่งไม่สำเร็จ",
-            text:json.msg ?? "เกิดข้อผิดพลาด", confirmButtonColor:"#db2777" });
+            text:json.msg ?? "เกิดข้อผิดพลาด", confirmButtonColor:"#d97706" });
         }
       })
       .catch(err => {
@@ -592,22 +607,22 @@ $(function(){
         btn.innerHTML = "<span class=\"msi\">send<\/span> ส่งแจ้งเตือน";
         btn.style.background = "";
         Swal.fire({ icon:"error", title:"Network error",
-          text:err.message, confirmButtonColor:"#db2777" });
+          text:err.message, confirmButtonColor:"#d97706" });
       });
     });
   });
 });
 
 /* ── Sync from HOSxP ── */
-function doSxSync() {
-  const btn     = document.getElementById("sxSyncBtn");
-  const icon    = document.getElementById("sxSyncIcon");
-  const btnText = document.getElementById("sxSyncBtnText");
-  const result  = document.getElementById("sxSyncResult");
-  const start   = document.getElementById("sxSyncStart").value;
-  const end     = document.getElementById("sxSyncEnd").value;
+function doDqSync() {
+  const btn     = document.getElementById("dqSyncBtn");
+  const icon    = document.getElementById("dqSyncIcon");
+  const btnText = document.getElementById("dqSyncBtnText");
+  const result  = document.getElementById("dqSyncResult");
+  const start   = document.getElementById("dqSyncStart").value;
+  const end     = document.getElementById("dqSyncEnd").value;
 
-  btn.disabled       = true;
+  btn.disabled        = true;
   icon.classList.add("msi-spin");
   btnText.textContent = "กำลัง Sync...";
   result.style.display = "none";
@@ -617,7 +632,7 @@ function doSxSync() {
   fd.append("start",  start);
   fd.append("end",    end);
 
-  fetch("sexual_action.php", { method:"POST", body:fd })
+  fetch("dengue_queue_action.php", { method:"POST", body:fd })
     .then(r => r.json())
     .then(data => {
       btn.disabled = false;
@@ -630,7 +645,7 @@ function doSxSync() {
         : "<span class=\"msi me-1\">error<\/span>") + data.msg;
       if (data.ok) {
         setTimeout(() => {
-          window.location.href = "sexual.php?msg=imported&imported="
+          window.location.href = "dengue_queue_ui.php?msg=imported&imported="
             + (data.imported || 0) + "&new=" + (data.new || 0);
         }, 1600);
       }

@@ -6,7 +6,7 @@
  *   $PAGE_TITLE — page title (also shown in topbar breadcrumb)
  *   $PAGE_KEY   — active nav key: home, fracture_dash, patient, drug, sexual,
  *                  accident, fracture, covid, dengue, lepto, scrub, pharm,
- *                  db_config, moph_keys
+ *                  db_config, moph_keys, settings
  *   $EXTRA_HEAD — extra HTML injected into <head>
  */
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -606,8 +606,8 @@ a.nav-item.logout-item:hover .nav-ic {
       <span class="nav-ic" style="color:#ea580c"><span class="msi">coronavirus</span></span>
       <span>Covid-19</span>
     </a>
-    <a href="dengue.php" class="nav-item<?= ckh_active('dengue', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#1d4ed8"><span class="msi">pest_control</span></span>
+    <a href="dengue_queue_ui.php" class="nav-item<?= ckh_active('dengue', $PAGE_KEY) ?>">
+      <span class="nav-ic" style="color:#d97706"><span class="msi">pest_control</span></span>
       <span>ไข้เลือดออก</span>
     </a>
     <a href="Leptospira.php" class="nav-item<?= ckh_active('lepto', $PAGE_KEY) ?>">
