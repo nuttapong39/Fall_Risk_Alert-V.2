@@ -1,0 +1,47 @@
+================================================================
+  TECHSTACK — MedAlert (รพ.เชียงกลาง)
+  สร้างเมื่อ: 2026-06-11
+================================================================
+
+BACKEND
+-------
+ภาษาหลัก     : PHP (>= 5.4, ใช้จริง ~7.x/8.x)
+Web Server    : Apache ผ่าน XAMPP
+Database      : MySQL (HOSxP HIS + Queue tables ของระบบ)
+PHP Library   : rundiz/php-scheduler (PHP-based cron/scheduler)
+Session/Auth  : PHP native session ($_SESSION)
+Timezone      : Asia/Bangkok
+
+FRONTEND
+--------
+Admin UI      : AdminLTE 3
+CSS Framework : Bootstrap 5
+JavaScript    : Vanilla JS + AdminLTE plugins
+Icons         : Font Awesome
+
+NOTIFICATION LAYER (การแจ้งเตือน)
+-----------------------------------
+ช่องทางส่ง   : LINE ผ่าน MOPHAlert API (กระทรวงสาธารณสุข)
+รูปแบบข้อความ: LINE Flex Message (สร้างจาก flex_*.php)
+Authentication: Client Key + Secret Key (secrets/moph_keys.json)
+
+AUTOMATION / SCHEDULING
+------------------------
+Task Runner   : Windows Task Scheduler
+Trigger Script: .bat files (รัน PHP Worker แต่ละ Alert Module)
+Worker Pattern: PHP CLI (php worker.php)
+
+แหล่งข้อมูล
+-----------
+HIS ต้นทาง   : HOSxP (MySQL database)
+Queue Storage : MySQL tables (fracture_queue, accident_queue,
+                dengue_queue, sexual_alert_queue ฯลฯ)
+
+DEV ENVIRONMENT
+---------------
+Local Server  : XAMPP (Windows)
+OS            : Windows 11
+Package Manager: Composer (PHP)
+Version Control: Git / GitHub (nuttapong39/Fall_Risk_Alert-V.2)
+
+================================================================

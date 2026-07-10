@@ -19,3 +19,7 @@ vendor/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# --- Agent / skill scaffolding (dev tooling เฉพาะเครื่อง ไม่ share) ---
+.agents/
+.claude/
