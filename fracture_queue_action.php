@@ -26,11 +26,12 @@ if ($action === 'import_hosxp') {
     require_once __DIR__ . '/sources/fracture_source.php';
     $hosxpRows = fracture_source_rows($impStart, $impEnd, $minAge);
 
+    // status=1 ทันที — Sync นี้เป็น recheck เท่านั้น ไม่ให้ Worker ส่ง LINE (ตรงกับฝั่ง pharm)
     $ins = $dbcon->prepare(
       "INSERT INTO fracture_queue
          (visit_vn, hn, fullname, cid, hometel, age, sex, address,
-          pdx_code, pdx_name, vstdate, mainstation)
-       VALUES (:vn,:hn,:fn,:cid,:tel,:age,:sex,:addr,:dc,:dn,:vd,:ms)
+          pdx_code, pdx_name, vstdate, mainstation, status)
+       VALUES (:vn,:hn,:fn,:cid,:tel,:age,:sex,:addr,:dc,:dn,:vd,:ms, 1)
        ON DUPLICATE KEY UPDATE
          fullname=VALUES(fullname), hometel=VALUES(hometel),
          pdx_name=VALUES(pdx_name), mainstation=VALUES(mainstation)"
