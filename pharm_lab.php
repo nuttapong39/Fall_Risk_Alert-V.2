@@ -179,15 +179,20 @@ if (!defined('PHARM_LIB_ONLY')) {
       }
     }
 
-    /* helper: ใช้ผลแถวเดียวผ่าน rules เพื่อตัดสิน lab_name + ตรวจค่าเกินเกณฑ์ */
+    /* helper: ใช้ผลแถวเดียวผ่าน rules เพื่อตัดสิน lab_name + ตรวจค่าเกินเกณฑ์
+       เกณฑ์เดียวกับ sources/pharm_lab_source.php + ปุ่ม Sync (queue_action/queue_ui):
+         - ดึงเลขนำหน้าออกจากผลที่มี flag เช่น "9.26 R" / "10.10  R" / "9.77*" → 9.26/10.10/9.77
+         - ผล text ล้วน (เช่น "รายงานผลตามไฟล์รูปภาพ") ของ 2368/697/2388/2370 = แจ้งเสมอ
+       เดิมใช้ is_numeric() ทำให้ผลที่มี flag ถูกทิ้งเงียบ (cron รายวันเก็บ INR วิกฤตไม่ครบ) */
     if (!function_exists('pharm_classify_row')) {
       function pharm_classify_row(string $lab_items_code, ?string $result_text): ?string {
-        $v = is_numeric($result_text) ? (float)$result_text : null;
-        if ($v === null) return null;
-        if ($lab_items_code === '539'  && $v >= 5)   return 'INR';
-        if ($lab_items_code === '2368' && $v >  150) return 'Depakin level';
-        if (in_array($lab_items_code, ['697','2388'], true) && $v > 1.2) return 'Lithium level';
-        if ($lab_items_code === '2370' && $v >  20)  return 'Phenytoin level';
+        if (($result_text ?? '') === '') return null;
+        preg_match('/^\d+(?:\.\d+)?/', trim((string)$result_text), $m);
+        $v = isset($m[0]) ? (float)$m[0] : null;
+        if ($lab_items_code === '539')                       return ($v !== null && $v >= 5)  ? 'INR'             : null;
+        if ($lab_items_code === '2368')                      return ($v === null || $v > 150) ? 'Depakin level'   : null;
+        if (in_array($lab_items_code, ['697','2388'], true)) return ($v === null || $v > 1.2) ? 'Lithium level'   : null;
+        if ($lab_items_code === '2370')                      return ($v === null || $v > 20)  ? 'Phenytoin level' : null;
         return null;
       }
     }
