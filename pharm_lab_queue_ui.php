@@ -2,7 +2,7 @@
 /**
  * pharm_lab_queue_ui.php — คิวแจ้งเตือน Lab วิกฤต / ต้องเฝ้าระวังห้องยา
  *  - อ่านข้อมูลจาก pharm_lab_queue
- *  - กรอง INR (≥5 / ≥3.5), Depakin (>150), Lithium (>1.2), Phenytoin (>20) ถูกคัดมาจาก ingest แล้ว
+ *  - กรอง INR (≥5), Depakin (>150), Lithium (>1.2), Phenytoin (>20) ถูกคัดมาจาก ingest แล้ว
  *  - ใช้ partials/header.php + footer.php (AdminLTE + Bootstrap5)
  *  - ใช้ DataTables + SweetAlert + Bulk action bar
  */
@@ -152,10 +152,10 @@ if (isset($_GET['msg'])) {
 /* Map lab_name → risk color class (UI preview เท่านั้น — payload จริงใช้ pharmRisk() ใน flex_pharm) */
 function pharm_ui_chip($labName, $result){
   $ln = mb_strtolower((string)$labName, 'UTF-8');
-  $x  = (is_numeric($result)) ? (float)$result : null;
+  // ดึงเลขนำหน้าออกจากผลที่มี flag เช่น "10.10 R" → 10.10 (ให้ตรงกับ classifier ฝั่ง ingest)
+  $x  = (preg_match('/^\d+(?:\.\d+)?/', trim((string)$result), $m)) ? (float)$m[0] : null;
   if (strpos($ln,'inr')!==false){
     if ($x!==null && $x>=5.0)  return ['วิกฤต','status-fail'];
-    if ($x!==null && $x>=3.5)  return ['สูง','status-pending'];
   }
   if (strpos($ln,'depakin')!==false && $x!==null && $x>150)   return ['สูง','status-fail'];
   if (strpos($ln,'lithium')!==false && $x!==null && $x>1.2)   return ['สูง','status-fail'];

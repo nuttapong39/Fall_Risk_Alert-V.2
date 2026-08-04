@@ -48,7 +48,7 @@ if (!function_exists('pharm_lab_source_rows')) {
               h.hn,
               CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
               {$ageExpr} AS age,
-              h.order_date  AS lab_date,
+              h.report_date AS lab_date,
               h.report_time AS lab_time,
               d.name        AS doctor,
               l.lab_items_code,
