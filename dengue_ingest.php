@@ -26,8 +26,6 @@ define('DENGUE_LAB_CODE', '2891');
 
 if (!defined('MOPH_API_URL'))       define('MOPH_API_URL',       'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))       define('MOPH_TIMEOUT',       30);
-if (!defined('DENGUE_CLIENT_KEY'))  define('DENGUE_CLIENT_KEY',  defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
-if (!defined('DENGUE_SECRET_KEY'))  define('DENGUE_SECRET_KEY',  defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : '');
 
 /* ── Parse CLI args ────────────────────────────────────────────── */
 $args  = array_slice($argv ?? [], 1);
@@ -43,6 +41,11 @@ for ($i = 0; $i < count($args); $i++) {
 /* ── Bootstrap ─────────────────────────────────────────────────── */
 require_once APP_DIR . '/config.php';
 require_once APP_DIR . '/flex_disease.php';
+
+// key ต้อง define หลัง config.php (moph_keys_loader โหลด MOPH_CLIENT_KEY/SECRET default ก่อน)
+// ไม่งั้น fallback ได้ค่าว่าง → MOPH ตอบ 401 Unauthorized
+if (!defined('DENGUE_CLIENT_KEY'))  define('DENGUE_CLIENT_KEY',  defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
+if (!defined('DENGUE_SECRET_KEY'))  define('DENGUE_SECRET_KEY',  defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : '');
 
 /* ── Logging ───────────────────────────────────────────────────── */
 $LOG_DIR  = APP_DIR . '/logs';
