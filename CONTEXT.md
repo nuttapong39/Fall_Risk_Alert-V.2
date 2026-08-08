@@ -44,6 +44,10 @@ _Avoid_: MOPH Alert, LINE Notify, MOPH API, LINE API
 รูปแบบข้อความ LINE ที่ MedAlert ใช้แจ้งเตือน สร้างจาก flex_*.php library ของแต่ละ Alert Module
 _Avoid_: การ์ดแจ้งเตือน, LINE message, notification card
 
+**Flex Theme**:
+อัตลักษณ์ภาพประจำ Alert Module หนึ่งของ Flex Message — สี gradient หัวการ์ด, สี accent, ข้อความหัว/ป้ายความด่วน, footer และ icon watermark ที่เจ้าหน้าที่แก้เองได้ผ่านหน้า "ปรับแต่ง Flex Message" โดยไม่แตะโค้ด (เก็บใน secrets/flex_themes.json)
+_Avoid_: สกิน, template, สีการ์ด
+
 **Token Key**:
 คู่ Client Key + Secret Key ที่ใช้ authenticate กับ MOPHAlert แต่ละ Alert Module มี Token Key แยกของตัวเองเก็บใน secrets/moph_keys.json หากโมดูลใดไม่มี Token Key กำหนดไว้จะ fallback ไปใช้ Default Key แทน
 _Avoid_: API Key, credential, MOPH Key, Client Key, Secret Key
