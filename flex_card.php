@@ -60,12 +60,10 @@ if (!function_exists('flex_render_card')) {
         ]];
       }
       if ($type === 'pill') {
-        return ["type"=>"box","layout"=>"horizontal","spacing"=>"sm","margin"=>"md","contents"=>[
-          ["type"=>"text","text"=>$k,"size"=>"sm","color"=>"#6B7280","flex"=>1],
-          ["type"=>"box","layout"=>"horizontal","flex"=>0,
-           "paddingStart"=>"10px","paddingEnd"=>"10px","paddingTop"=>"3px","paddingBottom"=>"3px",
-           "backgroundColor"=>$accent,"cornerRadius"=>"6px",
-           "contents"=>[["type"=>"text","text"=>$v,"size"=>"sm","weight"=>"bold","color"=>"#FFFFFF","wrap"=>true]]],
+        // ค่าผลตรวจ = ข้อความสี accent ตัวหนา (flex:0 box ใน LINE ยุบจนตัวอักษรหาย จึงใช้ text)
+        return ["type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"md","contents"=>[
+          ["type"=>"text","text"=>$k,"size"=>"sm","color"=>"#6B7280","flex"=>4],
+          ["type"=>"text","text"=>$v,"size"=>"md","weight"=>"bold","color"=>$accent,"align"=>"end","wrap"=>true,"flex"=>6],
         ]];
       }
       if ($type === 'kvlight') return $kv($k, $v, ['weight'=>'regular','color'=>'#374151']);
