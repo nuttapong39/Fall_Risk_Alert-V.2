@@ -189,12 +189,12 @@ function buildDiseasePayload(array $row, string $type = 'dengue'): array {
         ["type"=>"text","text"=>$cfg['emoji'].'  '.$cfg['title'],
          "size"=>"sm","color"=>"#FFFFFF","weight"=>"bold","flex"=>1],
         ["type"=>"text","text"=>$cfg['badge'],
-         "size"=>"sm","color"=>"rgba(255,255,255,.7)","align"=>"end","flex"=>0],
+         "size"=>"sm","color"=>"#FFFFFFB3","align"=>"end","flex"=>0],
       ]],
       ["type"=>"text","text"=>$cfg['title'],
        "size"=>"xxl","color"=>"#FFFFFF","weight"=>"bold","wrap"=>true,"margin"=>"sm"],
       ["type"=>"text","text"=>$cfg['subtitle'],
-       "size"=>"sm","color"=>"rgba(255,255,255,.75)","wrap"=>true,"margin"=>"xs"],
+       "size"=>"sm","color"=>"#FFFFFFBF","wrap"=>true,"margin"=>"xs"],
     ],
   ];
 
