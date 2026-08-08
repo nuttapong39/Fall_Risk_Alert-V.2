@@ -27,6 +27,8 @@ if (!defined('PHARM_REPORT_URL_BASE')) define('PHARM_REPORT_URL_BASE', 'http://1
 if (!defined('PHARM_REPORT_SIGN_KEY')) define('PHARM_REPORT_SIGN_KEY', 'put_a_random_secret_here');
 
 /* -------------------- Encoding helpers (guarded) -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // buildPharmPayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;
@@ -256,7 +258,7 @@ if (!function_exists('buildPharmPayload')) {
  * รูปแบบเดียวกับ flex_fracture / flex_patient (title strip + sections + footer signature)
  * แต่เพิ่ม risk chip + ปุ่ม "รายงานการแจ้งเตือน" เฉพาะงานเภสัช
  */
-function buildPharmPayload(array $r): array {
+function buildPharmPayload_legacy(array $r): array {
   $r = row_to_utf8($r);
 
   /* ---------- Normalize values ---------- */

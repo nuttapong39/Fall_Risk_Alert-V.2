@@ -26,6 +26,8 @@ if (!defined('PSYCH_ICON_URL'))   define('PSYCH_ICON_URL',   defined('FALL_ICON_
 if (!defined('PSYCH_SYSTEM_NAME')) define('PSYCH_SYSTEM_NAME', 'ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง • รพ.เชียงกลาง');
 
 /* -------------------- Encoding helpers (guarded — shared with flex_fracture) -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // buildPatientPayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;
@@ -117,7 +119,7 @@ if (!function_exists('buildPatientPayload')) {
  * @param array $row
  * @return array  payload พร้อมส่ง MOPH Alert (มี messages[])
  */
-function buildPatientPayload(array $row): array {
+function buildPatientPayload_legacy(array $row): array {
   $row = row_to_utf8($row);
 
   /* ---------- Normalize values ---------- */

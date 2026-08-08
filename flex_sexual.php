@@ -16,6 +16,8 @@ if (!defined('SEXUAL_ICON_URL'))    define('SEXUAL_ICON_URL',    'https://www.ck
 if (!defined('SEXUAL_SYSTEM_NAME')) define('SEXUAL_SYSTEM_NAME', 'ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง • รพ.เชียงกลาง');
 
 /* -------------------- Encoding helpers (guarded) -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // buildSexualPayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;
@@ -96,7 +98,7 @@ if (!function_exists('buildSexualPayload')) {
  * @param  array $row  — แถวจาก HOSxP (lab_order JOIN lab_head JOIN patient)
  * @return array       — payload พร้อมส่ง MOPH Alert
  */
-function buildSexualPayload(array $row): array {
+function buildSexualPayload_legacy(array $row): array {
   $row = row_to_utf8($row);
 
   /* ---------- Normalize ---------- */

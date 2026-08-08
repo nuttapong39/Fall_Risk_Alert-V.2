@@ -20,6 +20,8 @@ if (!defined('FALL_HEADER_URL'))  define('FALL_HEADER_URL', 'https://www.ckhospi
 if (!defined('FALL_ICON_URL'))    define('FALL_ICON_URL',   'https://www.ckhospital.net/home/PDF/Logo_ck.png');
 
 /* ==================== Encoding helpers ==================== */
+require_once __DIR__ . '/flex_builders.php';  // buildAccidentPayload (config-driven) — original ถูก guard ข้าม
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;

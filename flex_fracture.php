@@ -19,6 +19,8 @@ if (!defined('FALL_ICON_URL'))   define('FALL_ICON_URL',   'https://www.ckhospit
 if (!defined('FALL_SYSTEM_NAME')) define('FALL_SYSTEM_NAME', 'ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง • รพ.เชียงกลาง');
 
 /* -------------------- Encoding helpers (guarded) -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // buildFracturePayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;
@@ -123,7 +125,7 @@ if (!function_exists('buildFracturePayload')) {
  * @param  array $row  แถวจาก fracture_queue
  * @return array       payload พร้อมส่ง MOPH Alert (มี messages[])
  */
-function buildFracturePayload(array $row): array {
+function buildFracturePayload_legacy(array $row): array {
   $row = row_to_utf8($row);
 
   /* ── Normalize ─────────────────────────────────────────────────────── */

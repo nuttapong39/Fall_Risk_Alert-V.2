@@ -17,6 +17,8 @@ if (!defined('DRUG_ICON_URL'))    define('DRUG_ICON_URL',    'https://www.ckhosp
 if (!defined('DRUG_SYSTEM_NAME')) define('DRUG_SYSTEM_NAME', 'ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง • รพ.เชียงกลาง');
 
 /* -------------------- Encoding helpers (guarded) -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // buildDrugPayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '' || !is_string($s)) return $s;
@@ -97,7 +99,7 @@ if (!function_exists('buildDrugPayload')) {
  * @param  array $row  — แถวจาก drug_queue
  * @return array       — payload พร้อมส่ง MOPH Alert (มี messages[])
  */
-function buildDrugPayload(array $row): array {
+function buildDrugPayload_legacy(array $row): array {
   $row = row_to_utf8($row);
 
   /* ---------- Normalize ---------- */

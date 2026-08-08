@@ -3,6 +3,8 @@
 date_default_timezone_set('Asia/Bangkok');
 
 /* -------------------- Encoding helpers -------------------- */
+require_once __DIR__ . '/flex_builders.php';  // covid_buildMophPayload (config-driven) — ตัวด้านล่างเป็น legacy
+
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
     if ($s === null || $s === '') return $s;
@@ -111,7 +113,7 @@ if (!function_exists('covid_flex_section')) {
 }
 
 /* -------------------- Flex (COVID) — New Design v2 -------------------- */
-function covid_buildMophPayload(array $row): array {
+function covid_buildMophPayload_legacy(array $row): array {
   $row = row_to_utf8($row);
 
   // ── Constants ──────────────────────────────────────────────────
