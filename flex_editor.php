@@ -113,6 +113,7 @@ $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 <input type="hidden" name="module" value="<?=$e($cur)?>">
 
 <div class="top">
+  <a href="index.php" style="color:#cbd5e1;text-decoration:none;font-size:14px">← กลับ</a>
   <h1>🎨 Flex Theme Editor</h1>
   <label style="color:#cbd5e1;margin:0;font-weight:600">Module:</label>
   <select onchange="location.href='flex_editor.php?m='+this.value">

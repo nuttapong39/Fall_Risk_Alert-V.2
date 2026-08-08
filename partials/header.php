@@ -642,6 +642,10 @@ a.nav-item.logout-item:hover .nav-ic {
       <span class="nav-ic" style="color:#64748b"><span class="msi">key</span></span>
       <span>MOPH Keys</span>
     </a>
+    <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
+      <span class="nav-ic" style="color:#db2777"><span class="msi">palette</span></span>
+      <span>ปรับแต่ง Flex Message</span>
+    </a>
 
   </nav>
 
