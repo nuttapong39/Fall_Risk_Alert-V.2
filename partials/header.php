@@ -286,6 +286,7 @@ a.nav-item:hover .nav-ic {
   display: grid; place-items: center;
   font-size: .82rem;
   flex-shrink: 0;
+  color: #64748b;                 /* default icon color (rgb 100,116,139) — override ได้ที่ settings.php */
   background: var(--nav-ic-bg);
   transition: background .15s;
 }
@@ -567,11 +568,11 @@ a.nav-item.logout-item:hover .nav-ic {
     <div class="nav-section-label">เมนูหลัก</div>
 
     <a href="index.php" class="nav-item<?= ckh_active('home', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#1d4ed8"><span class="msi">home</span></span>
+      <span class="nav-ic"><span class="msi">home</span></span>
       <span>หน้าหลัก</span>
     </a>
     <a href="fracture_dashboard.php" class="nav-item<?= ckh_active('fracture_dash', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#7c3aed"><span class="msi">show_chart</span></span>
+      <span class="nav-ic"><span class="msi">show_chart</span></span>
       <span>Dashboard</span>
     </a>
 
@@ -579,23 +580,23 @@ a.nav-item.logout-item:hover .nav-ic {
     <div class="nav-section-label">กลุ่มคนไข้</div>
 
     <a href="patient.php" class="nav-item<?= ckh_active('patient', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#dc2626"><span class="msi">stethoscope</span></span>
+      <span class="nav-ic"><span class="msi">stethoscope</span></span>
       <span>กลุ่มเสี่ยงจิตเวช</span>
     </a>
     <a href="drugitems01.php" class="nav-item<?= ckh_active('drug', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#ea580c"><span class="msi">medical_services</span></span>
+      <span class="nav-ic"><span class="msi">medical_services</span></span>
       <span>กลุ่มเสี่ยงยาอันตราย</span>
     </a>
     <a href="sexual.php" class="nav-item<?= ckh_active('sexual', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#db2777"><span class="msi">shield_person</span></span>
+      <span class="nav-ic"><span class="msi">shield_person</span></span>
       <span>ผู้ถูกข่มขืน / ทำร้าย</span>
     </a>
     <a href="accident_queue_ui.php" class="nav-item<?= ckh_active('accident', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#d97706"><span class="msi">car_crash</span></span>
+      <span class="nav-ic"><span class="msi">car_crash</span></span>
       <span>คนไข้ พ.ร.บ.</span>
     </a>
     <a href="fracture_queue_ui.php" class="nav-item<?= ckh_active('fracture', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#059669"><span class="msi">falling</span></span>
+      <span class="nav-ic"><span class="msi">falling</span></span>
       <span>พลัดตก / หกล้ม</span>
     </a>
 
@@ -603,19 +604,19 @@ a.nav-item.logout-item:hover .nav-ic {
     <div class="nav-section-label">เฝ้าระวังโรคติดต่อ</div>
 
     <a href="covid_queue_ui.php" class="nav-item<?= ckh_active('covid', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#ea580c"><span class="msi">coronavirus</span></span>
+      <span class="nav-ic"><span class="msi">coronavirus</span></span>
       <span>Covid-19</span>
     </a>
     <a href="dengue_queue_ui.php" class="nav-item<?= ckh_active('dengue', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#d97706"><span class="msi">pest_control</span></span>
+      <span class="nav-ic"><span class="msi">pest_control</span></span>
       <span>ไข้เลือดออก</span>
     </a>
     <a href="Leptospira.php" class="nav-item<?= ckh_active('lepto', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#0891b2"><span class="msi">pets</span></span>
+      <span class="nav-ic"><span class="msi">pets</span></span>
       <span>เลปโตสไปโรสิส</span>
     </a>
     <a href="scrubtyphus.php" class="nav-item<?= ckh_active('scrub', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#0891b2"><span class="msi">bug_report</span></span>
+      <span class="nav-ic"><span class="msi">bug_report</span></span>
       <span>สครับไทฟัส</span>
     </a>
 
@@ -623,7 +624,7 @@ a.nav-item.logout-item:hover .nav-ic {
     <div class="nav-section-label">งานสนับสนุน</div>
 
     <a href="pharm_lab_queue_ui.php" class="nav-item<?= ckh_active('pharm', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#0891b2"><span class="msi">medication</span></span>
+      <span class="nav-ic"><span class="msi">medication</span></span>
       <span>งานเภสัชกรรม</span>
     </a>
 
@@ -631,19 +632,19 @@ a.nav-item.logout-item:hover .nav-ic {
     <div class="nav-section-label">ตั้งค่าระบบ</div>
 
     <a href="settings.php" class="nav-item<?= ckh_active('settings', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#7c3aed"><span class="msi">tune</span></span>
+      <span class="nav-ic"><span class="msi">tune</span></span>
       <span>ตั้งค่าระบบ</span>
     </a>
     <a href="db_config_admin.php" class="nav-item<?= ckh_active('db_config', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#64748b"><span class="msi">storage</span></span>
+      <span class="nav-ic"><span class="msi">storage</span></span>
       <span>ตั้งค่าฐานข้อมูล</span>
     </a>
     <a href="moph_keys_admin.php" class="nav-item<?= ckh_active('moph_keys', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#64748b"><span class="msi">key</span></span>
+      <span class="nav-ic"><span class="msi">key</span></span>
       <span>MOPH Keys</span>
     </a>
     <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
-      <span class="nav-ic" style="color:#db2777"><span class="msi">palette</span></span>
+      <span class="nav-ic"><span class="msi">palette</span></span>
       <span>ปรับแต่ง Flex Message</span>
     </a>
 
