@@ -1,17 +1,17 @@
 <?php
 /**
  * flex_disease.php
- * ไลบรารีกลาง: ประกอบ LINE Flex message สำหรับโรคติดต่อ
- * รองรับ: dengue (ไข้เลือดออก), lepto (เลปโตสไปโรสิส), scrub (สครับไทฟัส)
+ * ไลบรารีกลาง: ประกอบ LINE Flex message สำหรับโรคติดต่อ (dengue / lepto / scrub)
  *
- * Usage: buildDiseasePayload(array $row, string $type): array
- *   $type = 'dengue' | 'lepto' | 'scrub'
+ * Usage: buildDiseasePayload(array $row, string $type): array   ($type = 'dengue'|'lepto'|'scrub')
+ *
+ * ดีไซน์ (config-driven): หัวการ์ด gradient + สี/ข้อความจาก secrets/flex_themes.json (แก้ผ่าน flex_editor.php)
+ *   - ไม่มีรูป banner (ใช้ได้หลาย รพ.) · ไม่มี section คำแนะนำ
+ *   - label เทา + value เข้ม, ช่องว่างแบ่ง section, icon monochrome (☎)
+ *   - สีทั้งหมดเป็น hex เท่านั้น (LINE reject rgba/ชื่อสีเงียบ ๆ)
  */
 
-if (!defined('DISEASE_SYSTEM_NAME'))
-  define('DISEASE_SYSTEM_NAME', 'ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง • รพ.เชียงกลาง');
-if (!defined('DISEASE_HEADER_URL'))
-  define('DISEASE_HEADER_URL', 'https://www.ckhospital.net/home/PDF/moph-flex-header-2.jpg');
+require_once __DIR__ . '/flex_theme.php';
 
 /* ─── Encoding helpers (guarded) ─────────────────────────────────────────── */
 if (!function_exists('to_utf8')) {
@@ -46,267 +46,111 @@ if (!function_exists('dis_thai_date')) {
   }
 }
 
-/* ─── Row / Section helpers ─────────────────────────────────────────────── */
-if (!function_exists('dis_row')) {
-  function dis_row(string $label, ?string $value, array $opts = []): array {
-    $v = ($value === null || $value === '') ? '-' : (string)$value;
-    return [
-      "type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"sm",
-      "contents"=>[
-        ["type"=>"text","text"=>$label,"size"=>"md","color"=>"#6B7280","flex"=>3,"weight"=>"regular"],
-        ["type"=>"text","text"=>$v,"size"=>$opts['value_size']??"md","color"=>$opts['value_color']??"#111827",
-         "weight"=>$opts['value_weight']??"regular","flex"=>5,"wrap"=>true,"align"=>"end"],
-      ]
-    ];
-  }
-}
-if (!function_exists('dis_section')) {
-  function dis_section(string $title, array $rows, array $opts = []): array {
-    $bg   = $opts['bg']     ?? '#FFFFFF';
-    $bd   = $opts['bd']     ?? '#E5E7EB';
-    $icon = $opts['icon']   ?? '';
-    $acc  = $opts['accent'] ?? '#1d4ed8';
-    return [
-      "type"=>"box","layout"=>"vertical",
-      "paddingAll"=>"14px","cornerRadius"=>"12px","margin"=>"md","spacing"=>"xs",
-      "backgroundColor"=>$bg,"borderColor"=>$bd,"borderWidth"=>"1px",
-      "contents"=>array_merge([[
-        "type"=>"box","layout"=>"baseline","spacing"=>"sm",
-        "contents"=>[
-          ["type"=>"text","text"=>($icon?"$icon  ":'').$title,
-           "size"=>"sm","color"=>$acc,"weight"=>"bold","flex"=>1],
-        ]
-      ]], $rows),
-    ];
-  }
-}
-
-/* ─── Disease config ────────────────────────────────────────────────────── */
-function _disease_cfg(string $type): array {
-  return match(true) {
-    $type === 'dengue' => [
-      'emoji'       => '🦟',
-      'badge'       => 'Dengue Fever',
-      'title'       => 'แจ้งเตือนผู้ป่วยไข้เลือดออก',
-      'subtitle'    => 'Dengue Fever Alert · รพ.เชียงกลาง',
-      'color'       => '#92400E',
-      'color_bg'    => '#FEF3C7',
-      'color_bd'    => '#FDE68A',
-      'color_head'  => '#78350F',
-      'priority'    => 'ผู้ป่วยได้รับการวินิจฉัยโรคไข้เลือดออก กรุณาติดตามและรายงานหน่วยงานที่เกี่ยวข้อง',
-      'priority_bg' => '#FFFBEB',
-      'priority_co' => '#92400E',
-      'instructions'=> [
-        'รายงาน สสจ. / สสอ. ภายใน 24 ชั่วโมง',
-        'ประสานทีมควบคุมโรค (DC) เพื่อสอบสวนโรค',
-        'ให้คำแนะนำการป้องกันยุงแก่ผู้ป่วยและครอบครัว',
-        'บันทึกข้อมูลรายงาน 506 ใน HDC',
-      ],
-    ],
-    $type === 'lepto' => [
-      'emoji'       => '🐀',
-      'badge'       => 'Leptospirosis',
-      'title'       => 'แจ้งเตือนผู้ป่วยเลปโตสไปโรสิส',
-      'subtitle'    => 'Leptospirosis Alert · รพ.เชียงกลาง',
-      'color'       => '#0E7490',
-      'color_bg'    => '#ECFEFF',
-      'color_bd'    => '#A5F3FC',
-      'color_head'  => '#164E63',
-      'priority'    => 'ผู้ป่วยได้รับการวินิจฉัยโรคเลปโตสไปโรสิส กรุณาติดตามและรายงานหน่วยงานที่เกี่ยวข้อง',
-      'priority_bg' => '#ECFEFF',
-      'priority_co' => '#0E7490',
-      'instructions'=> [
-        'รายงาน สสจ. / สสอ. ภายใน 24 ชั่วโมง',
-        'ประสานทีมควบคุมโรค (DC) เพื่อสอบสวนโรค',
-        'แนะนำการหลีกเลี่ยงการสัมผัสน้ำขังหรือโคลนตม',
-        'บันทึกข้อมูลรายงาน 506 ใน HDC',
-      ],
-    ],
-    default /* scrub */ => [
-      'emoji'       => '🦗',
-      'badge'       => 'Scrub Typhus',
-      'title'       => 'แจ้งเตือนผู้ป่วยสครับไทฟัส',
-      'subtitle'    => 'Scrub Typhus Alert · รพ.เชียงกลาง',
-      'color'       => '#065F46',
-      'color_bg'    => '#ECFDF5',
-      'color_bd'    => '#A7F3D0',
-      'color_head'  => '#064E3B',
-      'priority'    => 'ผู้ป่วยได้รับการวินิจฉัยโรคสครับไทฟัส กรุณาติดตามและรายงานหน่วยงานที่เกี่ยวข้อง',
-      'priority_bg' => '#ECFDF5',
-      'priority_co' => '#065F46',
-      'instructions'=> [
-        'รายงาน สสจ. / สสอ. ภายใน 24 ชั่วโมง',
-        'ประสานทีมควบคุมโรค (DC) เพื่อสอบสวนโรค',
-        'แนะนำการหลีกเลี่ยงพื้นที่รก ป่าทึบ',
-        'บันทึกข้อมูลรายงาน 506 ใน HDC',
-      ],
-    ],
-  };
-}
-
-/* ─── MAIN builder ───────────────────────────────────────────────────────── */
+/* ─── MAIN builder (config-driven, clean) ────────────────────────────────── */
 if (!function_exists('buildDiseasePayload')) {
-function buildDiseasePayload(array $row, string $type = 'dengue'): array {
-  $row = row_to_utf8($row);
-  $cfg = _disease_cfg($type);
+  function buildDiseasePayload(array $row, string $type = 'dengue'): array {
+    $row = row_to_utf8($row);
+    $t   = flex_theme($type);
+    $g   = flex_theme_global();
+    $L   = $g['labels'];
 
-  $hn       = $row['hn']        ?? '-';
-  $fullname = $row['fullname']  ?? '-';
-  $age      = $row['age']       ?? '';
-  $sex      = $row['sex']       ?? '';
-  $cid      = $row['cid']       ?? '-';
-  $address  = $row['address']   ?? ($row['informaddr'] ?? '-');
-  $tel      = $row['hometel']   ?? '-';
-  $vstdate  = dis_thai_date($row['vstdate'] ?? null);
-  $doctor   = $row['doctor']    ?? '-';
-  $disease  = $row['disease']   ?? '-';
-  $icd10    = $row['icd10']     ?? '-';
-  $result   = $row['result']    ?? '-';
-  $vn       = $row['vn']        ?? '';
+    $hn       = $row['hn']       ?? '-';
+    $fullname = $row['fullname'] ?? '-';
+    $age      = $row['age']      ?? '';
+    $sex      = $row['sex']      ?? '';
+    $cid      = $row['cid']      ?? '-';
+    $address  = $row['address']  ?? ($row['informaddr'] ?? '-');
+    $tel      = $row['hometel']  ?? '-';
+    $vstdate  = dis_thai_date($row['vstdate'] ?? null);
+    $doctor   = $row['doctor']   ?? '-';
+    $disease  = $row['disease']  ?? '-';
+    $icd10    = $row['icd10']    ?? '-';
+    $result   = $row['result']   ?? '-';
+    $vn       = $row['vn']       ?? '';
 
-  $ageSex = match(true) {
-    $age !== '' && $sex !== '' => "{$age} ปี · {$sex}",
-    $age !== ''                => "{$age} ปี",
-    $sex !== ''                => (string)$sex,
-    default                    => '-',
-  };
+    $accent   = $t['accent'];
+    $accentBg = (strlen($accent) === 7) ? $accent.'22' : '#FEE2E2';  // สีพื้น pill = accent จาง (~13% alpha)
+    $ageSex = trim(($age!==''?"{$age} ปี":'').($age!==''&&$sex!==''?' · ':'').($sex!==''?(string)$sex:'')) ?: '-';
 
-  /* HEADER */
-  $header = [
-    "type"=>"box","layout"=>"vertical","paddingAll"=>"0px",
-    "contents"=> DISEASE_HEADER_URL ? [[
-      "type"=>"image","url"=>DISEASE_HEADER_URL,
-      "size"=>"full","aspectRatio"=>"3120:885","aspectMode"=>"cover",
-    ]] : [],
-  ];
+    // kv row: label เทา (flex 4) / value เข้ม align end (flex 6)
+    $kv = function(string $k, ?string $v, array $o = []) {
+      $v = ($v === null || $v === '') ? '-' : (string)$v;
+      return ["type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"md","contents"=>[
+        ["type"=>"text","text"=>$k,"size"=>"sm","color"=>"#6B7280","flex"=>4],
+        ["type"=>"text","text"=>$v,"size"=>$o['size']??"sm","color"=>$o['color']??"#111827",
+         "weight"=>$o['weight']??"bold","align"=>"end","wrap"=>true,"flex"=>6],
+      ]];
+    };
+    // section label (เทาตัวเล็ก + ช่องว่างด้านบน)
+    $seclabel = fn(string $s) => ["type"=>"text","text"=>$s,"size"=>"xs","weight"=>"bold","color"=>"#9CA3AF","margin"=>"xl"];
 
-  /* TITLE STRIP */
-  $titleStrip = [
-    "type"=>"box","layout"=>"vertical",
-    "paddingAll"=>"16px","backgroundColor"=>$cfg['color_head'],"cornerRadius"=>"0px",
-    "contents"=>[
-      ["type"=>"box","layout"=>"horizontal","contents"=>[
-        ["type"=>"text","text"=>$cfg['emoji'].'  '.$cfg['title'],
-         "size"=>"sm","color"=>"#FFFFFF","weight"=>"bold","flex"=>1],
-        ["type"=>"text","text"=>$cfg['badge'],
-         "size"=>"sm","color"=>"#FFFFFFB3","align"=>"end","flex"=>0],
-      ]],
-      ["type"=>"text","text"=>$cfg['title'],
-       "size"=>"xxl","color"=>"#FFFFFF","weight"=>"bold","wrap"=>true,"margin"=>"sm"],
-      ["type"=>"text","text"=>$cfg['subtitle'],
-       "size"=>"sm","color"=>"#FFFFFFBF","wrap"=>true,"margin"=>"xs"],
-    ],
-  ];
+    /* HEADER — gradient + watermark icon (absolute, ข้างหลัง text เมื่อมี bg_icon_url) */
+    $sub = trim(($t['subtitle']??'') . ((($t['subtitle']??'')!=='' && ($t['urgency']??'')!=='') ? '   ·   ' : '') . ($t['urgency']??''));
+    $headerContents = [];
+    if (($t['bg_icon_url'] ?? '') !== '') {
+      $headerContents[] = ["type"=>"image","url"=>$t['bg_icon_url'],
+        "size"=>"72px","aspectMode"=>"cover","aspectRatio"=>"1:1",
+        "position"=>"absolute","offsetTop"=>"6px","offsetEnd"=>"4px"];
+    }
+    $headerContents[] = ["type"=>"text","text"=>$t['title'],"size"=>"md","weight"=>"bold","color"=>"#FFFFFF","wrap"=>true];
+    if ($sub !== '') {
+      $headerContents[] = ["type"=>"text","text"=>$sub,"size"=>"xs","color"=>"#FFFFFFDD","wrap"=>true,"margin"=>"xs"];
+    }
+    $header = ["type"=>"box","layout"=>"vertical","paddingAll"=>"13px","cornerRadius"=>"14px",
+               "background"=>flex_gradient($t),"contents"=>$headerContents];
 
-  /* PRIORITY BADGE */
-  $priority = [
-    "type"=>"box","layout"=>"baseline","spacing"=>"sm",
-    "paddingAll"=>"10px","backgroundColor"=>$cfg['priority_bg'],"cornerRadius"=>"8px","margin"=>"md",
-    "contents"=>[
-      ["type"=>"text","text"=>"⚠","size"=>"lg","flex"=>0,"color"=>$cfg['priority_co']],
-      ["type"=>"text","text"=>$cfg['priority'],
-       "size"=>"sm","color"=>$cfg['color_head'],"weight"=>"bold","wrap"=>true,"flex"=>1],
-    ],
-  ];
+    /* BODY */
+    $c = [];
+    // ผู้ป่วย
+    $c[] = ["type"=>"text","text"=>$L['sec_patient'],"size"=>"xs","weight"=>"bold","color"=>"#9CA3AF"];
+    $c[] = ["type"=>"text","text"=>"HN {$hn}","size"=>"sm","weight"=>"bold","color"=>"#111827","margin"=>"xs"];
+    $c[] = ["type"=>"text","text"=>$fullname,"size"=>"md","weight"=>"bold","color"=>"#111827","wrap"=>true,"margin"=>"xs"];
+    $c[] = ["type"=>"text","text"=>"{$ageSex}   ·   {$cid}","size"=>"xs","color"=>"#6B7280","wrap"=>true,"margin"=>"xs"];
+    // การวินิจฉัย
+    $c[] = $seclabel($L['sec_diagnosis']);
+    $c[] = ["type"=>"box","layout"=>"baseline","margin"=>"sm","contents"=>[
+        ["type"=>"text","text"=>$L['icd'],"size"=>"sm","weight"=>"bold","color"=>$accent,"flex"=>1],
+        ["type"=>"text","text"=>$icd10,"size"=>"xxl","weight"=>"bold","color"=>"#111827","align"=>"end","flex"=>0],
+      ]];
+    $c[] = $kv($L['disease'], $disease);
+    // ผล LAB — pill โค้ง (bg accent จาง)
+    $c[] = ["type"=>"box","layout"=>"horizontal","spacing"=>"sm","margin"=>"md","contents"=>[
+        ["type"=>"text","text"=>$L['lab'],"size"=>"sm","color"=>"#6B7280","flex"=>1],
+        ["type"=>"box","layout"=>"horizontal","flex"=>0,
+         "paddingStart"=>"10px","paddingEnd"=>"10px","paddingTop"=>"3px","paddingBottom"=>"3px",
+         "backgroundColor"=>$accent,"cornerRadius"=>"6px",
+         "contents"=>[["type"=>"text","text"=>($result===''?'-':$result),"size"=>"sm","weight"=>"bold","color"=>"#FFFFFF","wrap"=>true]]],
+      ]];
+    $c[] = $kv($L['vstdate'], $vstdate, ['weight'=>'regular','color'=>'#374151']);
+    $c[] = $kv($L['doctor'], $doctor, ['weight'=>'regular','color'=>'#374151']);
+    // ติดตาม
+    $c[] = $seclabel($L['sec_contact']);
+    $c[] = $kv($L['address'], $address, ['weight'=>'regular','color'=>'#374151']);
+    $c[] = ["type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"md","contents"=>[
+        ["type"=>"text","text"=>"☎","size"=>"sm","color"=>"#9CA3AF","flex"=>0],
+        ["type"=>"text","text"=>($tel?:'-'),"size"=>"md","weight"=>"bold","color"=>"#111827","flex"=>1,"margin"=>"sm"],
+      ]];
 
-  /* SECTION 1: ข้อมูลผู้ป่วย */
-  $sPatient = dis_section('ข้อมูลผู้ป่วย', [
-    dis_row('HN', $hn, ['value_weight'=>'bold','value_size'=>'lg']),
-    ["type"=>"separator","margin"=>"sm","color"=>"#F3F4F6"],
-    dis_row('ชื่อ-สกุล', $fullname, ['value_weight'=>'bold']),
-    ["type"=>"separator","margin"=>"sm","color"=>"#F3F4F6"],
-    dis_row('อายุ / เพศ', $ageSex),
-    ["type"=>"separator","margin"=>"sm","color"=>"#F3F4F6"],
-    dis_row('เลขบัตรประชาชน', $cid),
-  ], ['icon'=>'🧑‍⚕️','accent'=>$cfg['color_head']]);
+    $content = ["type"=>"box","layout"=>"vertical","spacing"=>"none",
+                "paddingStart"=>"4px","paddingEnd"=>"4px","paddingTop"=>"14px","contents"=>$c];
 
-  /* SECTION 2: ผลตรวจ */
-  $diagBox = [
-    "type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"sm",
-    "contents"=>[
-      ["type"=>"text","text"=>"ICD-10","size"=>"sm","color"=>$cfg['color'],"weight"=>"bold","flex"=>0],
-      ["type"=>"text","text"=>$icd10,"size"=>"xl","color"=>$cfg['color_head'],
-       "weight"=>"bold","flex"=>1,"align"=>"end"],
-    ]
-  ];
-  $sDiag = dis_section('ผลการวินิจฉัยและตรวจ', [
-    $diagBox,
-    ["type"=>"separator","margin"=>"sm","color"=>$cfg['color_bd']],
-    dis_row('ชื่อโรค', $disease, ['value_weight'=>'bold','value_color'=>$cfg['color_head'],'value_size'=>'md']),
-    dis_row('ผล LAB', $result, ['value_weight'=>'bold','value_color'=>$cfg['color']]),
-    dis_row('วันที่รับบริการ', $vstdate),
-    dis_row('แพทย์ผู้ตรวจ', $doctor),
-  ], ['icon'=>'🔬','accent'=>$cfg['color'],'bg'=>$cfg['color_bg'],'bd'=>$cfg['color_bd']]);
+    /* FOOTER (ในการ์ด) */
+    $footText = $g['footer_text'] . (($g['hospital_name']??'')!=='' ? '  ·  '.$g['hospital_name'] : '');
+    $footer = ["type"=>"box","layout"=>"horizontal","paddingTop"=>"14px","paddingStart"=>"4px","paddingEnd"=>"4px","contents"=>[
+        ["type"=>"text","text"=>$footText,"size"=>"xxs","color"=>"#9CA3AF","flex"=>1,"wrap"=>true],
+        ["type"=>"text","text"=>date('j M Y'),"size"=>"xxs","color"=>"#9CA3AF","align"=>"end","flex"=>0],
+      ]];
 
-  /* SECTION 3: ติดต่อ */
-  $sContact = dis_section('ข้อมูลสำหรับติดตาม', [
-    ["type"=>"box","layout"=>"vertical","spacing"=>"xs","margin"=>"sm","contents"=>[
-      ["type"=>"text","text"=>"📍 ที่อยู่","size"=>"sm","color"=>"#6B7280","weight"=>"bold"],
-      ["type"=>"text","text"=>$address,"size"=>"md","color"=>"#111827","wrap"=>true],
-    ]],
-    ["type"=>"box","layout"=>"baseline","spacing"=>"sm","margin"=>"md","contents"=>[
-      ["type"=>"text","text"=>"📞 เบอร์โทร","size"=>"sm","color"=>"#6B7280","weight"=>"bold","flex"=>3],
-      ["type"=>"text","text"=>($tel?:'-'),"size"=>"lg","color"=>"#065F46",
-       "weight"=>"bold","flex"=>5,"align"=>"end","wrap"=>true],
-    ]],
-  ], ['icon'=>'🏠','accent'=>'#065F46','bg'=>'#ECFDF5','bd'=>'#A7F3D0']);
+    // การ์ด: bubble mega + body ขาว + header gradient โค้งมนลอยในการ์ด → ขอบโค้งขึ้น + เล็กลง
+    $bubble = ["type"=>"bubble","size"=>"mega",
+      "body"=>["type"=>"box","layout"=>"vertical","spacing"=>"none","paddingAll"=>"12px","backgroundColor"=>"#FFFFFF",
+               "contents"=>[$header,$content,$footer]]];
 
-  /* SECTION 4: คำแนะนำ */
-  $items = [
-    ["type"=>"text","text"=>"โปรดดำเนินการภายใน 24 ชั่วโมง",
-     "size"=>"md","color"=>"#1E3A8A","weight"=>"bold","margin"=>"sm"],
-  ];
-  foreach ($cfg['instructions'] as $ins) {
-    $items[] = ["type"=>"text","text"=>"• $ins",
-                "size"=>"sm","color"=>"#1F2937","wrap"=>true,"margin"=>"xs"];
+    $altText = sprintf('[แจ้งเตือน] %s HN %s %s (%s)', $t['title'], $hn, $fullname, $icd10);
+    if (mb_strlen($altText) > 400) $altText = mb_substr($altText, 0, 397).'...';
+    return ["messages"=>[["type"=>"flex","altText"=>$altText,"contents"=>$bubble]]];
   }
-  $sAction = dis_section('คำแนะนำสำหรับเจ้าหน้าที่', $items,
-    ['icon'=>'📋','accent'=>'#1E3A8A','bg'=>'#EFF6FF','bd'=>'#BFDBFE']);
-
-  /* BODY */
-  $body = [
-    "type"=>"box","layout"=>"vertical","spacing"=>"none","paddingAll"=>"0px",
-    "contents"=>[
-      $titleStrip,
-      ["type"=>"box","layout"=>"vertical","paddingAll"=>"14px","spacing"=>"none",
-       "backgroundColor"=>"#F9FAFB",
-       "contents"=>[$priority, $sPatient, $sDiag, $sContact, $sAction]],
-    ],
-  ];
-
-  /* FOOTER */
-  $footer = [
-    "type"=>"box","layout"=>"vertical",
-    "paddingStart"=>"14px","paddingEnd"=>"14px","paddingTop"=>"10px","paddingBottom"=>"12px",
-    "backgroundColor"=>"#F3F4F6",
-    "contents"=>[
-      ["type"=>"separator","color"=>"#E5E7EB"],
-      ["type"=>"box","layout"=>"horizontal","margin"=>"md","contents"=>[
-        ["type"=>"text","text"=>DISEASE_SYSTEM_NAME,"size"=>"xs","color"=>"#6B7280","flex"=>3,"wrap"=>true],
-        ["type"=>"text","text"=>date('j M Y H:i'),"size"=>"xs","color"=>"#6B7280","align"=>"end","flex"=>2],
-      ]],
-      $vn ? ["type"=>"text","text"=>"Ref VN: $vn","size"=>"xs","color"=>"#9CA3AF","margin"=>"xs"]
-           : ["type"=>"filler"],
-    ],
-  ];
-
-  /* BUBBLE */
-  $bubble = [
-    "type"=>"bubble","size"=>"giga",
-    "header"=>$header,"body"=>$body,"footer"=>$footer,
-    "styles"=>[
-      "header"=>["backgroundColor"=>"#FFFFFF"],
-      "body"=>  ["backgroundColor"=>"#F9FAFB"],
-      "footer"=>["backgroundColor"=>"#F3F4F6"],
-    ],
-  ];
-
-  $altText = sprintf('[แจ้งเตือน] %s HN %s %s (%s)', $cfg['badge'], $hn, $fullname, $icd10);
-  if (mb_strlen($altText) > 400) $altText = mb_substr($altText, 0, 397).'...';
-
-  return ["messages"=>[["type"=>"flex","altText"=>$altText,"contents"=>$bubble]]];
 }
-} // end function_exists guard
 
 /* ─── extract_moph_message_id (guarded) ─────────────────────────────────── */
 if (!function_exists('extract_moph_message_id')) {

@@ -1,0 +1,19 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round">
+  <!-- legs (4 ต่อข้าง) -->
+  <g stroke="#FFFFFF" fill="none">
+    <path d="M46 50 L24 36"/>
+    <path d="M44 60 L18 54"/>
+    <path d="M45 70 L20 74"/>
+    <path d="M48 80 L28 94"/>
+    <path d="M74 50 L96 36"/>
+    <path d="M76 60 L102 54"/>
+    <path d="M75 70 L100 74"/>
+    <path d="M72 80 L92 94"/>
+  </g>
+  <!-- body -->
+  <ellipse cx="60" cy="66" rx="22" ry="18" stroke="none"/>
+  <!-- capitulum (หัว) -->
+  <ellipse cx="60" cy="42" rx="8" ry="7" stroke="none"/>
+  <!-- mouthparts -->
+  <path d="M60 35 L60 28" stroke="#FFFFFF"/>
+</svg>

@@ -1,0 +1,18 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <!-- proboscis -->
+  <path d="M40 60 L18 84"/>
+  <!-- head -->
+  <circle cx="44" cy="58" r="6" fill="#FFFFFF" stroke="none"/>
+  <!-- antennae -->
+  <path d="M42 53 L30 40"/>
+  <path d="M47 53 L40 38"/>
+  <!-- thorax + abdomen (tapering body) -->
+  <path d="M50 60 Q74 54 98 44" stroke-width="9"/>
+  <!-- wings -->
+  <path d="M54 56 Q66 30 92 34 Q70 48 56 58 Z" fill="#FFFFFF" fill-opacity="0.45" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M56 60 Q70 38 96 44 Q74 54 58 62 Z" fill="#FFFFFF" fill-opacity="0.45" stroke="#FFFFFF" stroke-width="3"/>
+  <!-- legs -->
+  <path d="M48 64 L36 84 L26 90"/>
+  <path d="M56 64 L54 88 L46 96"/>
+  <path d="M64 62 L72 86 L66 96"/>
+</svg>
