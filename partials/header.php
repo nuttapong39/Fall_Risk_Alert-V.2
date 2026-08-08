@@ -240,6 +240,25 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; }
 /* Nav area */
 .sidebar-nav { flex: 1; padding: 10px 8px 8px; overflow-y: auto; }
 
+/* ---- Collapsible nav groups ---- */
+.nav-group-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: none; border: 0; cursor: pointer; font-family: inherit;
+  padding: 14px 8px 4px;
+  font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--section-lbl);
+}
+.nav-group-head:hover { color: var(--muted); }
+.nav-group-arrow { font-size: 1rem; transition: transform .2s; }
+.nav-group.collapsed .nav-group-arrow { transform: rotate(-90deg); }
+.nav-group-items { overflow: hidden; max-height: 640px; transition: max-height .25s ease; }
+.nav-group.collapsed .nav-group-items { max-height: 0; }
+.nav-badge {
+  margin-left: auto; font-size: .56rem; font-weight: 700; white-space: nowrap;
+  background: var(--blue-100); color: var(--blue);
+  padding: 1px 7px; border-radius: 999px;
+}
+
 .nav-section-label {
   padding: 14px 8px 4px;
   font-size: .68rem;
@@ -577,78 +596,101 @@ a.nav-item.logout-item:hover .nav-ic {
     </a>
 
     <!-- กลุ่มคนไข้ -->
-    <div class="nav-section-label">กลุ่มคนไข้</div>
-
-    <a href="patient.php" class="nav-item<?= ckh_active('patient', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">stethoscope</span></span>
-      <span>กลุ่มเสี่ยงจิตเวช</span>
-    </a>
-    <a href="drugitems01.php" class="nav-item<?= ckh_active('drug', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">medical_services</span></span>
-      <span>กลุ่มเสี่ยงยาอันตราย</span>
-    </a>
-    <a href="sexual.php" class="nav-item<?= ckh_active('sexual', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">shield_person</span></span>
-      <span>ผู้ถูกข่มขืน / ทำร้าย</span>
-    </a>
-    <a href="accident_queue_ui.php" class="nav-item<?= ckh_active('accident', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">car_crash</span></span>
-      <span>คนไข้ พ.ร.บ.</span>
-    </a>
-    <a href="fracture_queue_ui.php" class="nav-item<?= ckh_active('fracture', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">falling</span></span>
-      <span>พลัดตก / หกล้ม</span>
-    </a>
+    <div class="nav-group" data-grp="patient">
+      <button type="button" class="nav-group-head" onclick="toggleNavGroup(this)">
+        <span>กลุ่มคนไข้</span><span class="msi nav-group-arrow">expand_more</span>
+      </button>
+      <div class="nav-group-items">
+        <a href="patient.php" class="nav-item<?= ckh_active('patient', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">stethoscope</span></span><span>กลุ่มเสี่ยงจิตเวช</span>
+        </a>
+        <a href="drugitems01.php" class="nav-item<?= ckh_active('drug', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">medical_services</span></span><span>กลุ่มเสี่ยงยาอันตราย</span>
+        </a>
+        <a href="sexual.php" class="nav-item<?= ckh_active('sexual', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">shield_person</span></span><span>ผู้ถูกข่มขืน / ทำร้าย</span>
+        </a>
+        <a href="accident_queue_ui.php" class="nav-item<?= ckh_active('accident', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">car_crash</span></span><span>คนไข้ พ.ร.บ.</span>
+        </a>
+        <a href="fracture_queue_ui.php" class="nav-item<?= ckh_active('fracture', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">falling</span></span><span>พลัดตก / หกล้ม</span>
+          <span class="nav-badge">Feature หลัก</span>
+        </a>
+      </div>
+    </div>
 
     <!-- เฝ้าระวังโรคติดต่อ -->
-    <div class="nav-section-label">เฝ้าระวังโรคติดต่อ</div>
-
-    <a href="covid_queue_ui.php" class="nav-item<?= ckh_active('covid', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">coronavirus</span></span>
-      <span>Covid-19</span>
-    </a>
-    <a href="dengue_queue_ui.php" class="nav-item<?= ckh_active('dengue', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">pest_control</span></span>
-      <span>ไข้เลือดออก</span>
-    </a>
-    <a href="Leptospira.php" class="nav-item<?= ckh_active('lepto', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">pets</span></span>
-      <span>เลปโตสไปโรสิส</span>
-    </a>
-    <a href="scrubtyphus.php" class="nav-item<?= ckh_active('scrub', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">bug_report</span></span>
-      <span>สครับไทฟัส</span>
-    </a>
+    <div class="nav-group" data-grp="disease">
+      <button type="button" class="nav-group-head" onclick="toggleNavGroup(this)">
+        <span>เฝ้าระวังโรคติดต่อ</span><span class="msi nav-group-arrow">expand_more</span>
+      </button>
+      <div class="nav-group-items">
+        <a href="covid_queue_ui.php" class="nav-item<?= ckh_active('covid', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">coronavirus</span></span><span>Covid-19</span>
+        </a>
+        <a href="dengue_queue_ui.php" class="nav-item<?= ckh_active('dengue', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">pest_control</span></span><span>ไข้เลือดออก</span>
+        </a>
+        <a href="Leptospira.php" class="nav-item<?= ckh_active('lepto', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">pets</span></span><span>เลปโตสไปโรสิส</span>
+        </a>
+        <a href="scrubtyphus.php" class="nav-item<?= ckh_active('scrub', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">bug_report</span></span><span>สครับไทฟัส</span>
+        </a>
+      </div>
+    </div>
 
     <!-- งานสนับสนุน -->
-    <div class="nav-section-label">งานสนับสนุน</div>
-
-    <a href="pharm_lab_queue_ui.php" class="nav-item<?= ckh_active('pharm', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">medication</span></span>
-      <span>งานเภสัชกรรม</span>
-    </a>
+    <div class="nav-group" data-grp="support">
+      <button type="button" class="nav-group-head" onclick="toggleNavGroup(this)">
+        <span>งานสนับสนุน</span><span class="msi nav-group-arrow">expand_more</span>
+      </button>
+      <div class="nav-group-items">
+        <a href="pharm_lab_queue_ui.php" class="nav-item<?= ckh_active('pharm', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">medication</span></span><span>งานเภสัชกรรม</span>
+          <span class="nav-badge">Feature หลัก</span>
+        </a>
+      </div>
+    </div>
 
     <!-- ตั้งค่าระบบ -->
-    <div class="nav-section-label">ตั้งค่าระบบ</div>
-
-    <a href="settings.php" class="nav-item<?= ckh_active('settings', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">tune</span></span>
-      <span>ตั้งค่าระบบ</span>
-    </a>
-    <a href="db_config_admin.php" class="nav-item<?= ckh_active('db_config', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">storage</span></span>
-      <span>ตั้งค่าฐานข้อมูล</span>
-    </a>
-    <a href="moph_keys_admin.php" class="nav-item<?= ckh_active('moph_keys', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">key</span></span>
-      <span>MOPH Keys</span>
-    </a>
-    <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
-      <span class="nav-ic"><span class="msi">palette</span></span>
-      <span>ปรับแต่ง Flex Message</span>
-    </a>
+    <div class="nav-group" data-grp="settings">
+      <button type="button" class="nav-group-head" onclick="toggleNavGroup(this)">
+        <span>ตั้งค่าระบบ</span><span class="msi nav-group-arrow">expand_more</span>
+      </button>
+      <div class="nav-group-items">
+        <a href="settings.php" class="nav-item<?= ckh_active('settings', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">tune</span></span><span>ตั้งค่าระบบ</span>
+        </a>
+        <a href="db_config_admin.php" class="nav-item<?= ckh_active('db_config', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">storage</span></span><span>ตั้งค่าฐานข้อมูล</span>
+        </a>
+        <a href="moph_keys_admin.php" class="nav-item<?= ckh_active('moph_keys', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">key</span></span><span>MOPH Keys</span>
+        </a>
+        <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">palette</span></span><span>ปรับแต่ง Flex Message</span>
+        </a>
+      </div>
+    </div>
 
   </nav>
+  <script>
+  function toggleNavGroup(head){
+    var g = head.closest('.nav-group');
+    g.classList.toggle('collapsed');
+    try { localStorage.setItem('ckh-navgrp-'+g.dataset.grp, g.classList.contains('collapsed')?'1':'0'); } catch(e){}
+  }
+  (function(){
+    document.querySelectorAll('.nav-group').forEach(function(g){
+      var c = false;
+      try { c = localStorage.getItem('ckh-navgrp-'+g.dataset.grp) === '1'; } catch(e){}
+      if (g.querySelector('.nav-item.active')) c = false;  // กลุ่มที่มีหน้า active → เปิดเสมอ
+      g.classList.toggle('collapsed', c);
+    });
+  })();
+  </script>
 
   <!-- Sidebar footer: logout -->
   <div class="sidebar-footer">
