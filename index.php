@@ -151,7 +151,9 @@ $EXTRA_HEAD = '
   width: 56px; height: 56px;
   border-radius: 14px;
   display: grid; place-items: center;
-  font-size: 1.4rem; color: #fff;
+  font-size: 1.4rem;
+  color: #64748b;               /* default slate (rgb 100,116,139) — เหมือน sidebar, override ได้ที่ settings.php */
+  background: var(--nav-ic-bg);
   flex-shrink: 0;
 }
 .sc-title { font-weight: 700; font-size: .97rem; line-height: 1.3; }
@@ -267,7 +269,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="patient.php" class="shortcut-card"
        data-label="จิตเวช กลุ่มเสี่ยง ติดตาม เฝ้าระวัง">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#ff5a5f,#e11d48)">
+      <div class="sc-icon">
         <span class="msi">stethoscope</span>
       </div>
       <div>
@@ -280,7 +282,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="drugitems01.php" class="shortcut-card"
        data-label="ยาอันตราย กลุ่มเสี่ยง ตรวจสอบยา">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">
+      <div class="sc-icon">
         <span class="msi">medical_services</span>
       </div>
       <div>
@@ -293,7 +295,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="sexual.php" class="shortcut-card"
        data-label="ถูกข่มขืน ทำร้าย ร่างกาย เร่งด่วน">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#f472b6,#db2777)">
+      <div class="sc-icon">
         <span class="msi">shield_person</span>
       </div>
       <div>
@@ -306,7 +308,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="accident_queue_ui.php" class="shortcut-card"
        data-label="พ.ร.บ ประกัน อุบัติเหตุ รถ">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#fbbf24,#d97706)">
+      <div class="sc-icon">
         <span class="msi">car_crash</span>
       </div>
       <div>
@@ -319,7 +321,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="fracture_queue_ui.php" class="shortcut-card"
        data-label="พลัดตก หกล้ม กระดูก fall risk fracture">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#34d399,#059669)">
+      <div class="sc-icon">
         <span class="msi">falling</span>
       </div>
       <div>
@@ -332,7 +334,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="fracture_dashboard.php" class="shortcut-card"
        data-label="dashboard สรุป กราฟ สถิติ">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#60a5fa,#1d4ed8)">
+      <div class="sc-icon">
         <span class="msi">show_chart</span>
       </div>
       <div>
@@ -345,7 +347,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="pharm_lab_queue_ui.php" class="shortcut-card"
        data-label="เภสัช ยา คลังยา จ่ายยา">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#22d3ee,#0891b2)">
+      <div class="sc-icon">
         <span class="msi">medication</span>
       </div>
       <div>
@@ -358,7 +360,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="covid_queue_ui.php" class="shortcut-card"
        data-label="โควิด covid ผู้ติดเชื้อ เคส">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">
+      <div class="sc-icon">
         <span class="msi">coronavirus</span>
       </div>
       <div>
@@ -371,7 +373,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="col-12 col-sm-6 col-xl-4">
     <a href="dengue.php" class="shortcut-card"
        data-label="ไข้เลือดออก dengue ยุงลาย">
-      <div class="sc-icon" style="background:linear-gradient(135deg,#4da3ff,#1d4ed8)">
+      <div class="sc-icon">
         <span class="msi">pest_control</span>
       </div>
       <div>
