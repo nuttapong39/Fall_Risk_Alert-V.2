@@ -18,7 +18,7 @@ if (!defined('SEXUAL_UI_TOKEN')) {
 }
 
 /* ── Filters ─────────────────────────────────────────────────── */
-$DEFAULT_START = date('Y-m-d', strtotime('-30 days'));
+$DEFAULT_START = date('Y-m-d', strtotime('-90 days'));
 $start  = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : $DEFAULT_START;
 $end    = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-d');
 $status = isset($_GET['status'])                    ? $_GET['status'] : 'all';

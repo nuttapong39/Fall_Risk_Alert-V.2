@@ -35,6 +35,8 @@ function ckh_group_open($keys, $cur) { return in_array($cur, $keys, true) ? ' op
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4/dist/flatpickr.min.css">
+<style>.flatpickr-input[readonly]{background:var(--input-bg,#fff);cursor:pointer}</style>
 <!-- Apply theme & font-size before render to prevent flash -->
 <script>
 (function(){

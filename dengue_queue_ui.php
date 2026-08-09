@@ -17,7 +17,7 @@ if (!defined('DENGUE_Q_UI_TOKEN')) {
 }
 
 /* ── Filters ─────────────────────────────────────────────────── */
-$start  = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-30 days'));
+$start  = (isset($_GET['start']) && $_GET['start']) ? $_GET['start'] : date('Y-m-d', strtotime('-90 days'));
 $end    = (isset($_GET['end'])   && $_GET['end'])   ? $_GET['end']   : date('Y-m-d');
 $status = isset($_GET['status'])                    ? $_GET['status'] : 'all';
 

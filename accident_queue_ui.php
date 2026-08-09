@@ -12,7 +12,7 @@ date_default_timezone_set('Asia/Bangkok');
 mb_internal_encoding('UTF-8');
 
 /* ---------- Filters ---------- */
-$start   = isset($_GET['start']) && $_GET['start'] ? $_GET['start'] : date('Y-m-d', strtotime('-7 days'));
+$start   = isset($_GET['start']) && $_GET['start'] ? $_GET['start'] : date('Y-m-d', strtotime('-90 days'));
 $end     = isset($_GET['end'])   && $_GET['end']   ? $_GET['end']   : date('Y-m-d');
 $status  = isset($_GET['status']) ? $_GET['status'] : 'all';
 $pttypes = isset($_GET['pttypes']) ? trim($_GET['pttypes']) : '';
@@ -34,7 +34,7 @@ function to_utf8_acc($s) {
 }
 
 /* ---------- Query conditions ---------- */
-$w = ["created_at BETWEEN :s AND :e"];
+$w = ["regdate BETWEEN :s AND :e"];
 $p = [':s' => $start . ' 00:00:00', ':e' => $end . ' 23:59:59'];
 
 if ($status === '0') { $w[] = "status=0"; }

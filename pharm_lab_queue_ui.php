@@ -28,7 +28,7 @@ if (!function_exists('to_utf8')) {
  * ใช้ช่วงเวลาค่อนข้างกว้าง เพื่อให้ backfill / ประวัติเก่ายังมองเห็นได้เสมอ
  * (เทียบกับ patient.php ที่ default = 2025-06-01)
  */
-$DEFAULT_PHARM_START = '2025-06-01';
+$DEFAULT_PHARM_START = date('Y-m-d', strtotime('-90 days'));
 $start  = isset($_GET['start']) && $_GET['start'] ? $_GET['start'] : $DEFAULT_PHARM_START;
 $end    = isset($_GET['end'])   && $_GET['end']   ? $_GET['end']   : date('Y-m-d');
 $status = isset($_GET['status']) ? $_GET['status'] : 'all'; // all | 0 | 1

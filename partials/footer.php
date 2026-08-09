@@ -82,5 +82,35 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ckhCloseSidebar();
 });
 </script>
+
+<!-- ===== Thai datepicker (flatpickr) — แสดง พ.ศ./เดือนไทย, ค่าที่ส่งยังเป็น YYYY-MM-DD ===== -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4"></script>
+<script>
+(function(){
+  if (!window.flatpickr) return;
+  var M  = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var Ms = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var D  = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  var Ds = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  function beYear(inst){                       // แสดงปีในหัวปฏิทินเป็น พ.ศ.
+    try { var el = inst.calendarContainer.querySelector('.cur-year');
+          if (el) { el.value = inst.currentYear + 543; el.readOnly = true; } } catch(e){}
+  }
+  flatpickr('input[name="start"], input[name="end"]', {
+    dateFormat: 'Y-m-d', altInput: true, altFormat: 'thai',
+    disableMobile: true, allowInput: false,
+    locale: { firstDayOfWeek: 0, weekdays: { shorthand: Ds, longhand: D },
+              months: { shorthand: Ms, longhand: M }, rangeSeparator: ' ถึง ' },
+    formatDate: function(date, format){
+      if (format === 'thai') return date.getDate() + ' ' + M[date.getMonth()] + ' ' + (date.getFullYear() + 543);
+      var y = date.getFullYear(), m = ('0'+(date.getMonth()+1)).slice(-2), d = ('0'+date.getDate()).slice(-2);
+      return y + '-' + m + '-' + d;
+    },
+    onReady:       function(s,v,inst){ beYear(inst); },
+    onMonthChange: function(s,v,inst){ beYear(inst); },
+    onYearChange:  function(s,v,inst){ beYear(inst); }
+  });
+})();
+</script>
 </body>
 </html>

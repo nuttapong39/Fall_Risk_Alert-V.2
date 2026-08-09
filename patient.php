@@ -14,12 +14,12 @@ date_default_timezone_set('Asia/Bangkok');
 // default start = 2025-06-01 เพื่อให้เห็นผู้ป่วยเก่าตั้งแต่ พ.ศ. 2568 (ปี 2568–2569)
 // ตรงตามเจตนาเดิมของ patient.php เวอร์ชันก่อน update
 // *หมายเหตุ*: filter นี้ใช้กับ patient_queue.created_at (วันที่ถูกเพิ่มเข้าคิว) ไม่ใช่ vstdate
-$DEFAULT_PATIENT_START = '2025-06-01';
+$DEFAULT_PATIENT_START = date('Y-m-d', strtotime('-90 days'));
 $start  = isset($_GET['start']) && $_GET['start'] ? $_GET['start'] : $DEFAULT_PATIENT_START;
 $end    = isset($_GET['end'])   && $_GET['end']   ? $_GET['end']   : date('Y-m-d');
 $status = isset($_GET['status']) ? $_GET['status'] : 'all'; // all | 0 | 1
 
-$w = ["created_at BETWEEN :s AND :e"];
+$w = ["vstdate BETWEEN :s AND :e"];
 $p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
 if ($status==='0') { $w[] = "status=0"; }
 if ($status==='1') { $w[] = "status=1"; }
