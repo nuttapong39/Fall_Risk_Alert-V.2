@@ -23,3 +23,9 @@ Thumbs.db
 # --- Agent / skill scaffolding (dev tooling เฉพาะเครื่อง ไม่ share) ---
 .agents/
 .claude/
+
+# --- Local artifacts (ไฟล์เฉพาะเครื่อง ไม่ขึ้น repo) ---
+# รูปทดสอบ Flex
+flex-test*.png
+# Task Scheduler export (มี path/ผู้ใช้เฉพาะเครื่อง)
+*_Alert_Auto Sender.xml
