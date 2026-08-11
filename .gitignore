@@ -1,6 +1,7 @@
 # --- Secrets / credentials (ไฟล์จริงที่มี credentials) ---
 secrets/db_config.json
 secrets/moph_keys.json
+secrets/*.bak
 *.env
 .env
 .env.*

@@ -97,22 +97,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'default' => ['token'=>trim($_POST['tg_default_token']??''), 'chat_id'=>trim($_POST['tg_default_chat']??'')],
     ];
     foreach ($tgModules as $tm) { $tgPayload[$tm] = ['chat_id'=>trim($_POST['tg_'.$tm.'_chat']??'')]; }
+    /* field ว่าง = คงค่าเดิมไว้ (กัน stale-form/ช่องว่างเขียนทับ key เดิมด้วยค่าว่าง)
+       ถ้าต้องการล้าง key จริง ๆ ให้แก้ที่ secrets/moph_keys.json ตรง ๆ */
+    $keep = function(string $postKey, string $mod, string $field) use ($current): string {
+      $v = trim($_POST[$postKey] ?? '');
+      return $v !== '' ? $v : (string)($current[$mod][$field] ?? '');
+    };
+    $pair = fn(string $pc, string $ps, string $mod) => [
+      'client' => $keep($pc, $mod, 'client'),
+      'secret' => $keep($ps, $mod, 'secret'),
+    ];
     $payload = [
-      'default'   => ['client'=>trim($_POST['default_client']??''),   'secret'=>trim($_POST['default_secret']??'')],
-      'covid'     => ['client'=>trim($_POST['covid_client']??''),     'secret'=>trim($_POST['covid_secret']??'')],
-      'fracture'  => ['client'=>trim($_POST['fracture_client']??''),  'secret'=>trim($_POST['fracture_secret']??'')],
-      'accident'  => ['client'=>trim($_POST['accident_client']??''),  'secret'=>trim($_POST['accident_secret']??'')],
-      'pharm_lab' => ['client'=>trim($_POST['pharm_client']??''),     'secret'=>trim($_POST['pharm_secret']??'')],
-      'drug'      => ['client'=>trim($_POST['drug_client']??''),      'secret'=>trim($_POST['drug_secret']??'')],
-      'dengue'    => ['client'=>trim($_POST['dengue_client']??''),    'secret'=>trim($_POST['dengue_secret']??'')],
-      'patient'   => ['client'=>trim($_POST['patient_client']??''),   'secret'=>trim($_POST['patient_secret']??'')],
-      'lepto'     => ['client'=>trim($_POST['lepto_client']??''),     'secret'=>trim($_POST['lepto_secret']??'')],
-      'scrub'     => ['client'=>trim($_POST['scrub_client']??''),     'secret'=>trim($_POST['scrub_secret']??'')],
-      'sexual'    => ['client'=>trim($_POST['sexual_client']??''),    'secret'=>trim($_POST['sexual_secret']??'')],
+      'default'   => $pair('default_client',  'default_secret',  'default'),
+      'covid'     => $pair('covid_client',    'covid_secret',    'covid'),
+      'fracture'  => $pair('fracture_client', 'fracture_secret', 'fracture'),
+      'accident'  => $pair('accident_client', 'accident_secret', 'accident'),
+      'pharm_lab' => $pair('pharm_client',    'pharm_secret',    'pharm_lab'),
+      'drug'      => $pair('drug_client',     'drug_secret',     'drug'),
+      'dengue'    => $pair('dengue_client',   'dengue_secret',   'dengue'),
+      'patient'   => $pair('patient_client',  'patient_secret',  'patient'),
+      'lepto'     => $pair('lepto_client',    'lepto_secret',    'lepto'),
+      'scrub'     => $pair('scrub_client',    'scrub_secret',    'scrub'),
+      'sexual'    => $pair('sexual_client',   'sexual_secret',   'sexual'),
       'telegram'  => $tgPayload,
       '_meta'     => ['updated_at'=>$now],
     ];
     if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    // backup ไฟล์เดิมก่อนเขียนทับ (กู้คืนได้ถ้าพลาด)
+    if (is_file($file)) @copy($file, $file . '.bak');
     $ok = @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     if ($ok !== false) {
       @chmod($file, 0660);
