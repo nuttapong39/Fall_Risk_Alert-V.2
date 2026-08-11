@@ -24,22 +24,9 @@ $p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
 if ($status==='0') { $w[] = "status=0"; }
 if ($status==='1') { $w[] = "status=1"; }
 
-/* ---- เกณฑ์เดียวกับ patient_ingest.php: T71, X60–X69, X70, X84 ---- */
-$dxParts = [];
-// T71 ตรงตัว
-$dxParts[] = "UPPER(pdx_code) = 'T71'";
-// X60–X69 (self-poisoning)
-$xPoison = ['X60','X61','X62','X63','X64','X65','X66','X67','X68','X69'];
-foreach ($xPoison as $i => $prefix) {
-    $key = ":xp{$i}";
-    $dxParts[] = "UPPER(pdx_code) LIKE {$key}";
-    $p[$key] = $prefix . '%';
-}
-// X70 hanging / strangulation
-$dxParts[] = "UPPER(pdx_code) LIKE :x70";  $p[':x70'] = 'X70%';
-// X84 self-harm unspecified
-$dxParts[] = "UPPER(pdx_code) LIKE :x84";  $p[':x84'] = 'X84%';
-$w[] = '(' . implode(' OR ', $dxParts) . ')';
+/* ไม่กรอง pdx_code ที่หน้านี้ — patient_queue ถูกคัดกรอง ICD-10 โดย patient_ingest.php แล้ว
+   (การกรองซ้ำด้วย whitelist แคบ T71/X60–X69/X70/X84 ทำให้เคสที่ ingest+ส่งแล้ว
+   เช่น T399/T50x/T60x ไม่ขึ้นหน้าคิว) */
 
 // ---------------- Query ----------------
 $sql = "SELECT id, visit_vn, hn, fullname, cid, hometel, age, sex, address,
