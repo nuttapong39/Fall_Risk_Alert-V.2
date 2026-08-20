@@ -669,7 +669,7 @@ a.nav-item.logout-item:hover .nav-ic {
           <span class="nav-ic"><span class="msi">storage</span></span><span>ตั้งค่าฐานข้อมูล</span>
         </a>
         <a href="moph_keys_admin.php" class="nav-item<?= ckh_active('moph_keys', $PAGE_KEY) ?>">
-          <span class="nav-ic"><span class="msi">key</span></span><span>MOPH Keys</span>
+          <span class="nav-ic"><span class="msi">key</span></span><span>MOPH ALERT KEY</span>
         </a>
         <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
           <span class="nav-ic"><span class="msi">palette</span></span><span>ปรับแต่ง Flex Message</span>

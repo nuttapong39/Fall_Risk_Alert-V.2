@@ -505,9 +505,9 @@ require_once __DIR__ . '/partials/header.php';
         <div class="ic-color-swatch" id="icSwatch"></div>
         <div class="ic-color-input-wrap">
           <label for="icNative">เลือกสี (RGB)</label>
-          <input type="color" class="ic-color-native" id="icNative" value="#1d4ed8">
+          <input type="color" class="ic-color-native" id="icNative" value="#64748b">
         </div>
-        <div class="ic-rgb-badge" id="icRgb">R:29&nbsp; G:78&nbsp; B:216</div>
+        <div class="ic-rgb-badge" id="icRgb">R:100&nbsp; G:116&nbsp; B:139</div>
       </div>
       <button class="btn-ic-reset" onclick="clearIconColor()">
         <span class="msi">restart_alt</span> รีเซ็ตค่าเริ่มต้น
@@ -679,8 +679,8 @@ function clearIconColor() {
   localStorage.removeItem('ckh-icon-color');
   document.documentElement.style.removeProperty('--icon-color');
   document.documentElement.removeAttribute('data-iconcolor');
-  document.getElementById('icSwatch').style.background = 'var(--blue)';
-  document.getElementById('icRgb').innerHTML = 'ค่าเริ่มต้น (ตามธีม)';
+  document.getElementById('icSwatch').style.background = '#64748b';
+  document.getElementById('icRgb').innerHTML = 'ค่าเริ่มต้น · R:100 G:116 B:139';
   document.querySelectorAll('#icPreviewStrip .msi').forEach(el => el.style.color = '');
   document.querySelectorAll('#icPresets .ic-preset').forEach(el => el.classList.remove('active'));
   showToast('รีเซ็ตสีไอคอนแล้ว', 'info');
@@ -704,8 +704,8 @@ document.addEventListener('DOMContentLoaded', function () {
   if (saved) {
     applyIconColor(saved, false);
   } else {
-    /* Show default blue in swatch/preview without saving */
-    const def = '#1d4ed8';
+    /* Show default slate (R:100 G:116 B:139) in swatch/preview without saving */
+    const def = '#64748b';
     document.getElementById('icSwatch').style.background = def;
     const { r, g, b } = hexToRgbParts(def);
     document.getElementById('icRgb').innerHTML =

@@ -32,29 +32,27 @@ foreach (array_keys($modules) as $k) {
   $current[$k] = ['client'=>'', 'secret'=>''];
 }
 
+// โหลด moph_keys.json รอบเดียว ใช้ทั้ง keys และ telegram ด้านล่าง
+$stored = [];
 if (is_readable($file)) {
-  $j = json_decode(@file_get_contents($file), true);
-  if (is_array($j)) {
-    foreach ($current as $k => $_) {
-      $current[$k]['client'] = $j[$k]['client'] ?? '';
-      $current[$k]['secret'] = $j[$k]['secret'] ?? '';
-    }
-  }
+  $decoded = json_decode(@file_get_contents($file), true);
+  if (is_array($decoded)) $stored = $decoded;
+}
+foreach ($current as $k => $_) {
+  $current[$k]['client'] = $stored[$k]['client'] ?? '';
+  $current[$k]['secret'] = $stored[$k]['secret'] ?? '';
 }
 
 // ─── โหลดค่า Telegram ปัจจุบัน ───────────────────────────────────────────────
 $tg = ['enabled'=>false, 'default'=>['token'=>'','chat_id'=>'']];
 foreach (array_keys($modules) as $k) { if ($k !== 'default') $tg[$k] = ['chat_id'=>'']; }
-if (is_readable($file)) {
-  $jt = json_decode(@file_get_contents($file), true);
-  if (is_array($jt) && isset($jt['telegram']) && is_array($jt['telegram'])) {
-    $t = $jt['telegram'];
-    $tg['enabled']            = !empty($t['enabled']);
-    $tg['default']['token']   = $t['default']['token']   ?? '';
-    $tg['default']['chat_id'] = $t['default']['chat_id'] ?? '';
-    foreach (array_keys($modules) as $k) {
-      if ($k !== 'default') $tg[$k]['chat_id'] = $t[$k]['chat_id'] ?? '';
-    }
+if (isset($stored['telegram']) && is_array($stored['telegram'])) {
+  $t = $stored['telegram'];
+  $tg['enabled']            = !empty($t['enabled']);
+  $tg['default']['token']   = $t['default']['token']   ?? '';
+  $tg['default']['chat_id'] = $t['default']['chat_id'] ?? '';
+  foreach (array_keys($modules) as $k) {
+    if ($k !== 'default') $tg[$k]['chat_id'] = $t[$k]['chat_id'] ?? '';
   }
 }
 
@@ -92,9 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $flashErr = 'Invalid token — กรุณา refresh หน้าแล้วลองใหม่';
   } else {
     $tgModules = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual'];
+    // Bot Token ว่าง = คงค่าเดิม (กันเผลอ submit ตอนช่อง token ว่าง แล้วล้าง token ที่ใช้ร่วมทุก feature ทิ้ง)
+    // chat_id ปล่อยให้เขียนทับได้ตามเดิม เพราะ "ว่าง = ใช้ Default" เป็น UX ที่ตั้งใจ
+    $tgToken = trim($_POST['tg_default_token'] ?? '');
+    if ($tgToken === '') $tgToken = (string)($tg['default']['token'] ?? '');
     $tgPayload = [
       'enabled' => !empty($_POST['tg_enabled']),
-      'default' => ['token'=>trim($_POST['tg_default_token']??''), 'chat_id'=>trim($_POST['tg_default_chat']??'')],
+      'default' => ['token'=>$tgToken, 'chat_id'=>trim($_POST['tg_default_chat']??'')],
     ];
     foreach ($tgModules as $tm) { $tgPayload[$tm] = ['chat_id'=>trim($_POST['tg_'.$tm.'_chat']??'')]; }
     /* field ว่าง = คงค่าเดิมไว้ (กัน stale-form/ช่องว่างเขียนทับ key เดิมด้วยค่าว่าง)
