@@ -1,6 +1,7 @@
 # --- Secrets / credentials (ไฟล์จริงที่มี credentials) ---
 secrets/db_config.json
 secrets/moph_keys.json
+secrets/site_config.json
 secrets/*.bak
 *.env
 .env
@@ -8,6 +9,7 @@ secrets/*.bak
 # อนุญาต .example.json ให้อยู่ใน git เพื่อเป็น template สำหรับผู้ติดตั้ง
 !secrets/db_config.example.json
 !secrets/moph_keys.example.json
+!secrets/site_config.example.json
 
 # --- Logs ---
 logs/

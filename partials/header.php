@@ -28,7 +28,7 @@ function ckh_group_open($keys, $cur) { return in_array($cur, $keys, true) ? ' op
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= htmlspecialchars($PAGE_TITLE) ?> | Fall Risk Alert · รพ.เชียงกลาง</title>
+<title><?= htmlspecialchars($PAGE_TITLE) ?> | Fall Risk Alert · <?= htmlspecialchars(defined('HOSPITAL_SHORT') ? HOSPITAL_SHORT : 'รพ.เชียงกลาง') ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -577,7 +577,7 @@ a.nav-item.logout-item:hover .nav-ic {
       <div class="brand-logo-ic" style="display:none"><span class="msi">monitor_heart</span></div>
       <div>
         <div class="brand-title">Fall Risk Alert</div>
-        <div class="brand-sub">รพ.เชียงกลาง</div>
+        <div class="brand-sub"><?= htmlspecialchars(defined('HOSPITAL_SHORT') ? HOSPITAL_SHORT : 'รพ.เชียงกลาง') ?></div>
       </div>
     </a>
   </div>

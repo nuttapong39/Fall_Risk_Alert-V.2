@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>เข้าสู่ระบบ | MedAlert · รพ.เชียงกลาง</title>
+<title>เข้าสู่ระบบ | MedAlert · <?= htmlspecialchars(defined('HOSPITAL_SHORT') ? HOSPITAL_SHORT : 'รพ.เชียงกลาง') ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -337,7 +337,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
   <h1 class="ll-title">Med<em>Alert</em></h1>
   <p class="ll-sub">
     ระบบแจ้งเตือนทางการแพทย์<br>
-    โรงพยาบาลเชียงกลาง จ.น่าน
+    <?= htmlspecialchars(defined('HOSPITAL_FULL') ? HOSPITAL_FULL : 'โรงพยาบาลเชียงกลาง · จ.น่าน') ?>
   </p>
 
   <div class="ll-divider"></div>
@@ -361,7 +361,7 @@ label.lbl { font-weight: 600; font-size: .85rem; color: #334155; margin-bottom: 
       </div>
       <div class="form-brand">Med<em>Alert</em></div>
       <div class="form-title">เข้าสู่ระบบ</div>
-      <div class="form-sub">โรงพยาบาลเชียงกลาง · จ.น่าน</div>
+      <div class="form-sub"><?= htmlspecialchars(defined('HOSPITAL_FULL') ? HOSPITAL_FULL : 'โรงพยาบาลเชียงกลาง · จ.น่าน') ?></div>
     </div>
 
     <form method="post" id="loginForm" novalidate>

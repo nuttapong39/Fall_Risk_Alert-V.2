@@ -14,6 +14,9 @@ date_default_timezone_set('Asia/Bangkok');
 // โหลดคีย์ MOPH ALERT จาก secrets/moph_keys.json
 require_once __DIR__ . '/moph_keys_loader.php';
 
+// โหลดชื่อโรงพยาบาลจาก secrets/site_config.json → HOSPITAL_SHORT / HOSPITAL_FULL
+require_once __DIR__ . '/site_config_loader.php';
+
 // สำหรับปุ่มใน UI (เปลี่ยนเป็นค่าเฉพาะของคุณ)
 if (!defined('UI_ACTION_TOKEN')) {
   define('UI_ACTION_TOKEN', 'change-me-very-secret');

@@ -5,6 +5,29 @@ if (empty($_SESSION['user']) && empty($_SESSION['user_id'])) {
     header('Location: login.php'); exit;
 }
 
+require_once __DIR__ . '/config.php';   // โหลด HOSPITAL_SHORT/FULL + UI_ACTION_TOKEN
+
+/* ── บันทึกชื่อโรงพยาบาล (server-side, PRG) ── */
+$siteFile = __DIR__ . '/secrets/site_config.json';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_hospital') {
+  if (($_POST['token'] ?? '') !== (defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '')) {
+    header('Location: settings.php?saved=err_token'); exit;
+  }
+  $short = trim($_POST['hospital_short'] ?? '');
+  $full  = trim($_POST['hospital_full']  ?? '');
+  if ($short === '' || $full === '') {
+    header('Location: settings.php?saved=err_empty'); exit;
+  }
+  if (!is_dir(__DIR__ . '/secrets')) @mkdir(__DIR__ . '/secrets', 0775, true);
+  $ok = @file_put_contents($siteFile, json_encode(
+    ['hospital_short' => $short, 'hospital_full' => $full, 'updated_at' => date('Y-m-d H:i:s')],
+    JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+  header('Location: settings.php?saved=' . ($ok !== false ? 'ok' : 'err_write')); exit;
+}
+$savedFlag = $_GET['saved'] ?? '';
+$curShort  = defined('HOSPITAL_SHORT') ? HOSPITAL_SHORT : 'รพ.เชียงกลาง';
+$curFull   = defined('HOSPITAL_FULL')  ? HOSPITAL_FULL  : 'โรงพยาบาลเชียงกลาง · จ.น่าน';
+
 $PAGE_TITLE = 'ตั้งค่าระบบ';
 $PAGE_KEY   = 'settings';
 $EXTRA_HEAD = <<<'CSS'
@@ -301,6 +324,53 @@ require_once __DIR__ . '/partials/header.php';
     <p style="margin:4px 0 0; font-size:.88rem; color:var(--muted)">
       ปรับแต่งธีม ขนาดตัวอักษร และการแสดงผลของระบบ
     </p>
+  </div>
+</div>
+
+<!-- ========== HOSPITAL NAME (server-saved) ========== -->
+<div class="settings-section">
+  <div class="settings-section-head">
+    <div class="settings-section-icon" style="background:linear-gradient(135deg,#10b981,#059669)">
+      <span class="msi">local_hospital</span>
+    </div>
+    <div>
+      <div class="settings-section-title">ชื่อโรงพยาบาล</div>
+      <div class="settings-section-desc">แสดงที่แถบ sidebar และหน้า login · บันทึกที่ server มีผลทุกเครื่อง</div>
+    </div>
+  </div>
+  <div class="settings-section-body">
+    <?php if ($savedFlag === 'ok'): ?>
+      <div class="alert alert-success d-flex align-items-center gap-2" style="border-radius:10px;font-size:.9rem">
+        <span class="msi">check_circle</span> บันทึกชื่อโรงพยาบาลแล้ว
+      </div>
+    <?php elseif ($savedFlag === 'err_write'): ?>
+      <div class="alert alert-danger" style="border-radius:10px;font-size:.9rem">บันทึกไม่สำเร็จ — ตรวจสิทธิ์โฟลเดอร์ secrets/</div>
+    <?php elseif ($savedFlag === 'err_empty'): ?>
+      <div class="alert alert-danger" style="border-radius:10px;font-size:.9rem">กรุณากรอกทั้งชื่อย่อและชื่อเต็ม</div>
+    <?php elseif ($savedFlag === 'err_token'): ?>
+      <div class="alert alert-danger" style="border-radius:10px;font-size:.9rem">Token ไม่ถูกต้อง — refresh หน้าแล้วลองใหม่</div>
+    <?php endif; ?>
+    <form method="post" class="row g-3" autocomplete="off">
+      <input type="hidden" name="action" value="save_hospital">
+      <input type="hidden" name="token" value="<?= htmlspecialchars(defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '') ?>">
+      <div class="col-md-5">
+        <label class="form-label fw-semibold" style="font-size:.85rem">
+          <span class="msi me-1" style="font-size:1rem">badge</span>ชื่อย่อ — แถบ sidebar / แท็บเบราว์เซอร์
+        </label>
+        <input type="text" name="hospital_short" class="form-control" required
+               value="<?= htmlspecialchars($curShort) ?>" placeholder="เช่น รพ.เชียงกลาง">
+      </div>
+      <div class="col-md-7">
+        <label class="form-label fw-semibold" style="font-size:.85rem">
+          <span class="msi me-1" style="font-size:1rem">local_hospital</span>ชื่อเต็ม + จังหวัด — หน้า login
+        </label>
+        <input type="text" name="hospital_full" class="form-control" required
+               value="<?= htmlspecialchars($curFull) ?>" placeholder="เช่น โรงพยาบาลเชียงกลาง · จ.น่าน">
+      </div>
+      <div class="col-12">
+        <button class="btn btn-success px-4"><span class="msi me-1">save</span>บันทึกชื่อโรงพยาบาล</button>
+      </div>
+    </form>
   </div>
 </div>
 
