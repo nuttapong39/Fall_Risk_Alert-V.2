@@ -28,5 +28,7 @@ Thumbs.db
 # --- Local artifacts (ไฟล์เฉพาะเครื่อง ไม่ขึ้น repo) ---
 # รูปทดสอบ Flex
 flex-test*.png
-# Task Scheduler export (มี path/ผู้ใช้เฉพาะเครื่อง)
+# Task Scheduler export ที่หลุดใน root (เฉพาะเครื่อง) — ยัง ignore
 *_Alert_Auto Sender.xml
+# ...ยกเว้นชุด import ใน task/ (แจกให้ รพ.อื่นติดตั้งด้วย install_tasks.bat)
+!task/*.xml
