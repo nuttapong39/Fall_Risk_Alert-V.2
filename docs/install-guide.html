@@ -1,0 +1,689 @@
+<meta charset="utf-8">
+<title>คู่มือติดตั้ง MedAlert</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#f6f8fb; --surface:#ffffff; --surface-2:#f1f5f9;
+  --ink:#0f172a; --ink-2:#334155; --muted:#64748b; --faint:#94a3b8;
+  --border:#e2e8f0; --border-2:#cbd5e1;
+  --blue:#1d4ed8; --blue-ink:#1e40af; --blue-soft:#eff6ff; --blue-line:#dbeafe;
+  --green:#059669; --green-soft:#ecfdf5; --green-line:#a7f3d0;
+  --amber:#d97706; --amber-soft:#fffbeb; --amber-line:#fde68a;
+  --red:#dc2626; --red-soft:#fef2f2; --red-line:#fecaca;
+  --term-bg:#0b1220; --term-ink:#cbd5e1; --term-dim:#64748b; --term-green:#4ade80; --term-blue:#60a5fa;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 20px rgba(15,23,42,.06);
+  --shadow-lg:0 8px 40px rgba(15,23,42,.10);
+  --radius:14px;
+}
+:root:not([data-theme="light"]) , :root[data-theme="dark"]{}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+    --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+    --border:#26344b; --border-2:#334155;
+    --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+    --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+    --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+    --term-bg:#060b16; --term-ink:#c7d2e0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+    --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+  --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+  --border:#26344b; --border-2:#334155;
+  --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+  --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+  --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+  --term-bg:#060b16; --term-ink:#c7d2e0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:78px}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Sarabun",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.72; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.k{font-family:"Kanit",system-ui,sans-serif}
+h2,h3{text-wrap:balance; line-height:1.28}
+code,kbd,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--blue); outline-offset:2px; border-radius:4px}
+
+/* ── Top bar / TOC ── */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.topbar-in{max-width:1080px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:14px}
+.brand{display:flex; align-items:center; gap:9px; font-family:"Kanit"; font-weight:700; font-size:.98rem; white-space:nowrap}
+.brand .dot{width:26px; height:26px; border-radius:8px; display:grid; place-items:center; color:#fff;
+  background:linear-gradient(135deg,#3b82f6,#1d4ed8 60%,#059669); font-size:.85rem}
+.toc{display:flex; gap:2px; overflow-x:auto; margin-left:auto; scrollbar-width:none}
+.toc::-webkit-scrollbar{display:none}
+.toc a{color:var(--muted); font-family:"Kanit"; font-weight:500; font-size:.82rem; padding:5px 10px; border-radius:8px; white-space:nowrap}
+.toc a:hover{color:var(--blue); background:var(--blue-soft); text-decoration:none}
+
+/* ── Layout ── */
+.wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+.prose{max-width:none}
+section{padding:46px 0; border-top:1px solid var(--border)}
+section:first-of-type{border-top:none}
+.lead{color:var(--muted); font-size:1.02rem}
+.measure{max-width:68ch}
+
+/* ── Hero ── */
+.hero{padding:52px 0 40px}
+.eyebrow{font-family:"Kanit"; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.72rem; color:var(--blue); display:flex; align-items:center; gap:8px}
+.eyebrow::before{content:""; width:22px; height:2px; background:var(--blue); border-radius:2px}
+.hero h1{font-size:clamp(1.9rem,4.4vw,3rem); font-weight:700; margin:.4em 0 .3em; letter-spacing:-.01em}
+.hero h1 em{font-style:normal; color:var(--blue)}
+.hero .sub{font-size:1.12rem; color:var(--ink-2); max-width:60ch; margin:0}
+.meta-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:22px}
+.chip{display:inline-flex; align-items:center; gap:7px; font-family:"Kanit"; font-weight:500; font-size:.82rem;
+  padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--ink-2)}
+.chip b{color:var(--ink); font-weight:600}
+.chip .sw{width:9px; height:9px; border-radius:50%}
+
+/* ── Headings ── */
+.h-num{display:inline-grid; place-items:center; width:2rem; height:2rem; border-radius:9px;
+  background:var(--blue); color:#fff; font-family:"Kanit"; font-weight:700; font-size:.95rem;
+  font-variant-numeric:tabular-nums; box-shadow:0 3px 10px color-mix(in srgb,var(--blue) 35%,transparent)}
+.sec-h{display:flex; align-items:center; gap:14px; margin:0 0 6px}
+.sec-h h2{font-size:1.55rem; font-weight:700; margin:0}
+.sec-sub{color:var(--muted); margin:2px 0 26px 3rem}
+@media (max-width:560px){.sec-sub{margin-left:0}}
+
+/* ── Cards / callouts ── */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow)}
+.grid{display:grid; gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+@media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+
+.note{display:grid; grid-template-columns:auto 1fr; gap:12px; padding:14px 16px; border-radius:12px;
+  border:1px solid var(--border); background:var(--surface-2); font-size:.94rem; margin:16px 0}
+.note .ic{width:24px; height:24px; border-radius:7px; display:grid; place-items:center; font-size:.8rem; color:#fff; margin-top:2px}
+.note.info{background:var(--blue-soft); border-color:var(--blue-line)} .note.info .ic{background:var(--blue)}
+.note.ok{background:var(--green-soft); border-color:var(--green-line)} .note.ok .ic{background:var(--green)}
+.note.warn{background:var(--amber-soft); border-color:var(--amber-line)} .note.warn .ic{background:var(--amber)}
+.note.crit{background:var(--red-soft); border-color:var(--red-line)} .note.crit .ic{background:var(--red)}
+.note b{font-family:"Kanit"; font-weight:600}
+
+ul.clean{margin:.4em 0; padding-left:1.25em}
+ul.clean li{margin:.32em 0}
+ul.clean li::marker{color:var(--blue)}
+.step-list{counter-reset:s; list-style:none; padding:0; margin:.4em 0}
+.step-list>li{counter-increment:s; position:relative; padding:2px 0 2px 2.3em; margin:.5em 0}
+.step-list>li::before{content:counter(s); position:absolute; left:0; top:1px; width:1.55em; height:1.55em;
+  border-radius:7px; background:var(--surface-2); border:1px solid var(--border); color:var(--blue);
+  font-family:"JetBrains Mono"; font-weight:700; font-size:.72rem; display:grid; place-items:center}
+
+/* ── Code / terminal ── */
+pre{margin:14px 0; padding:14px 16px; border-radius:12px; overflow-x:auto; font-size:.86rem; line-height:1.7;
+  background:var(--term-bg); color:var(--term-ink); border:1px solid var(--border)}
+pre .c{color:var(--term-dim)} pre .g{color:var(--term-green)} pre .b{color:var(--term-blue)}
+code.inl{background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.08em .42em; font-size:.86em; color:var(--blue-ink)}
+kbd{background:var(--surface); border:1px solid var(--border-2); border-bottom-width:2px; border-radius:6px; padding:.1em .5em; font-size:.82em; font-family:"JetBrains Mono"}
+
+/* ── Terminal window mock ── */
+.term{border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); margin:16px 0}
+.term-bar{background:var(--surface-2); padding:8px 13px; display:flex; align-items:center; gap:7px; border-bottom:1px solid var(--border)}
+.term-bar .b{width:11px; height:11px; border-radius:50%}
+.term-bar .t{margin-left:8px; font-family:"JetBrains Mono"; font-size:.76rem; color:var(--muted)}
+.term-body{background:var(--term-bg); color:var(--term-ink); padding:14px 16px; font-family:"JetBrains Mono"; font-size:.82rem; line-height:1.75; overflow-x:auto}
+.term-body .ok{color:var(--term-green)} .term-body .dim{color:var(--term-dim)} .term-body .hd{color:var(--term-blue)}
+
+/* ── UI mockups ── */
+.mock{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--surface); margin:16px 0}
+.mock-cap{font-family:"Kanit"; font-size:.78rem; color:var(--muted); margin:8px 2px 0; display:flex; align-items:center; gap:6px}
+.mock-cap::before{content:"◗"; color:var(--blue)}
+.browser-bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); border-bottom:1px solid var(--border)}
+.browser-bar .b{width:10px; height:10px; border-radius:50%}
+.url{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:4px 11px;
+  font-family:"JetBrains Mono"; font-size:.74rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mbody{padding:18px}
+
+.fld{margin-bottom:11px}
+.fld label{display:block; font-family:"Kanit"; font-weight:600; font-size:.78rem; color:var(--ink-2); margin-bottom:4px}
+.inp{border:1px solid var(--border-2); border-radius:8px; background:var(--surface-2); padding:8px 11px;
+  font-size:.82rem; color:var(--ink); font-family:"JetBrains Mono"}
+.inp.ph{color:var(--faint)}
+.row-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.mock-card{border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden}
+.mock-card-h{display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid var(--border);
+  font-family:"Kanit"; font-weight:600; font-size:.86rem}
+.mock-card-b{padding:13px}
+.mi{width:22px; height:22px; border-radius:6px; display:grid; place-items:center; color:#fff; font-size:.72rem; font-family:"Kanit"; font-weight:700}
+.btn{display:inline-flex; align-items:center; gap:7px; font-family:"Kanit"; font-weight:600; font-size:.82rem;
+  padding:8px 16px; border-radius:9px; border:none; color:#fff}
+.btn.blue{background:var(--blue)} .btn.green{background:var(--green)}
+.radio-row{display:flex; gap:8px; margin-bottom:11px}
+.radio-opt{flex:1; border:1px solid var(--border-2); border-radius:9px; padding:8px 10px; font-size:.78rem}
+.radio-opt.on{border-color:var(--blue); background:var(--blue-soft); color:var(--blue-ink)}
+.radio-opt .tt{font-family:"Kanit"; font-weight:600}
+.radio-opt .dd{font-size:.68rem; color:var(--muted)}
+
+/* toggle */
+.toggle{width:38px; height:22px; border-radius:999px; background:var(--green); position:relative; flex-shrink:0}
+.toggle::after{content:""; position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; background:#fff}
+
+/* ── Architecture flow ── */
+.flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin:8px 0}
+.node{flex:1; min-width:150px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; box-shadow:var(--shadow)}
+.node .ni{width:38px; height:38px; border-radius:10px; display:grid; place-items:center; margin:0 auto 8px; color:#fff; font-size:1rem}
+.node .nt{font-family:"Kanit"; font-weight:600; font-size:.9rem}
+.node .ns{font-size:.74rem; color:var(--muted); line-height:1.45}
+.arrow{display:grid; place-items:center; padding:0 4px; color:var(--faint); flex:0 0 auto}
+.arrow .lb{font-family:"Kanit"; font-size:.66rem; color:var(--muted); margin-top:2px}
+.arrow svg{width:26px; height:16px}
+@media (max-width:720px){
+  .flow{flex-direction:column}
+  .arrow{transform:rotate(90deg); padding:6px 0}
+  .arrow .lb{display:none}
+}
+
+/* ── Module chips ── */
+.mods{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+.mtag{display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:10px;
+  border:1px solid var(--border); background:var(--surface); font-family:"Kanit"; font-weight:500; font-size:.83rem}
+.mtag .md{width:9px; height:9px; border-radius:3px}
+
+/* ── Table ── */
+.tbl{width:100%; border-collapse:collapse; font-size:.9rem; margin:10px 0}
+.tbl th,.tbl td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+.tbl th{font-family:"Kanit"; font-weight:600; color:var(--muted); font-size:.8rem; background:var(--surface-2)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl code{font-size:.85em}
+.tbl-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; margin:14px 0}
+.tbl-wrap .tbl{margin:0}
+.tbl-wrap .tbl th:first-child,.tbl-wrap .tbl td:first-child{padding-left:16px}
+
+/* ── Folder tree ── */
+.tree{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px;
+  font-family:"JetBrains Mono"; font-size:.82rem; line-height:1.85; overflow-x:auto; box-shadow:var(--shadow)}
+.tree .d{color:var(--blue); font-weight:700}
+.tree .hl{color:var(--green); font-weight:700}
+.tree .cm{color:var(--muted)}
+
+/* ── Troubleshooting ── */
+.tsgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:760px){.tsgrid{grid-template-columns:1fr}}
+.ts{border:1px solid var(--border); border-left-width:4px; border-radius:12px; padding:14px 16px; background:var(--surface); box-shadow:var(--shadow)}
+.ts.r{border-left-color:var(--red)} .ts.a{border-left-color:var(--amber)} .ts.b{border-left-color:var(--blue)}
+.ts h4{margin:0 0 6px; font-size:.95rem; font-weight:600; display:flex; gap:8px; align-items:flex-start}
+.ts h4 .q{color:var(--red)} .ts.a h4 .q{color:var(--amber)} .ts.b h4 .q{color:var(--blue)}
+.ts p{margin:.3em 0; font-size:.9rem; color:var(--ink-2)}
+.ts .fix{color:var(--green); font-weight:700}
+
+/* ── Checklist ── */
+.check{list-style:none; padding:0; margin:8px 0; display:grid; gap:9px}
+.check li{display:flex; align-items:flex-start; gap:11px; padding:11px 14px; border:1px solid var(--border);
+  border-radius:11px; background:var(--surface); font-size:.94rem}
+.check .box{width:20px; height:20px; border-radius:6px; border:2px solid var(--border-2); flex-shrink:0; margin-top:2px}
+.check .n{font-family:"JetBrains Mono"; font-size:.72rem; color:var(--faint); margin-top:3px; min-width:1.4em}
+
+footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px solid var(--border)}
+.sec-anchor{scroll-margin-top:80px}
+
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+
+<!-- ══════════════ TOP BAR ══════════════ -->
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="brand"><span class="dot k">M</span>MedAlert · คู่มือติดตั้ง</span>
+    <nav class="toc">
+      <a href="#overview">ภาพรวม</a>
+      <a href="#s1">1 · XAMPP</a>
+      <a href="#s2">2 · วางไฟล์</a>
+      <a href="#s3">3 · ตั้งค่า DB</a>
+      <a href="#s4">4 · เข้าระบบ</a>
+      <a href="#s5">5 · ชื่อ รพ.</a>
+      <a href="#s6">6 · MOPH/LINE</a>
+      <a href="#s7">7 · ทดสอบ</a>
+      <a href="#s8">8 · Task</a>
+      <a href="#s9">9 · ปรับค่า</a>
+      <a href="#trouble">แก้ปัญหา</a>
+      <a href="#checklist">Checklist</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap prose">
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <header class="hero">
+    <div class="eyebrow">User Manual · สำหรับ IT โรงพยาบาล</div>
+    <h1>ติดตั้ง <em>MedAlert</em> ทีละขั้น</h1>
+    <p class="sub">ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยงเข้า LINE &amp; Telegram อัตโนมัติ — คู่มือนี้พา รพ.ที่นำระบบไปใช้ ติดตั้งครบทั้ง 10 โมดูลตั้งแต่ศูนย์ จบใน 9 ขั้นตอน</p>
+    <div class="meta-row">
+      <span class="chip"><span class="sw" style="background:var(--blue)"></span>XAMPP <b>8.2</b> / PHP <b>8.2</b></span>
+      <span class="chip"><span class="sw" style="background:var(--green)"></span><b>10</b> โมดูลแจ้งเตือน</span>
+      <span class="chip"><span class="sw" style="background:var(--amber)"></span>ติดตั้ง <b>~30 นาที</b></span>
+      <span class="chip"><span class="sw" style="background:var(--muted)"></span>Windows 10 / 11 / Server</span>
+    </div>
+  </header>
+
+  <!-- ══════════════ OVERVIEW ══════════════ -->
+  <section id="overview" class="sec-anchor">
+    <div class="sec-h"><h2>ระบบทำงานอย่างไร</h2></div>
+    <p class="sec-sub measure">MedAlert ดึงข้อมูลผู้ป่วยจาก HOSxP (อ่านอย่างเดียว) มาพักในฐานข้อมูลของตัวเอง แล้วยิงแจ้งเตือนผ่าน MOPH Alert API เข้ากลุ่ม LINE ของแต่ละงาน พร้อม mirror เข้า Telegram</p>
+
+    <div class="flow">
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🏥</div>
+        <div class="nt">HOSxP</div>
+        <div class="ns">ฐานข้อมูล รพ.<br>MySQL / PostgreSQL<br>(อ่านอย่างเดียว)</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg><span class="lb">อ่าน</span></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">⚙️</div>
+        <div class="nt">MedAlert_DB</div>
+        <div class="ns">คิว + worker<br>MySQL (ระบบเขียนเอง)<br>10 โมดูล</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg><span class="lb">POST</span></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#22d3ee,#0891b2)">📡</div>
+        <div class="nt">MOPH Alert</div>
+        <div class="ns">API กลาง สธ.<br>client-key /<br>secret-key</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg><span class="lb">แจ้งเตือน</span></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#22c55e,#059669)">💬</div>
+        <div class="nt">LINE + Telegram</div>
+        <div class="ns">กลุ่มเจ้าหน้าที่<br>แยกตามงาน</div>
+      </div>
+    </div>
+
+    <div class="note info" style="margin-top:22px">
+      <div class="ic k">i</div>
+      <div><b>สองฐานข้อมูล แยกกันชัดเจน</b> — <b>HOSxP</b> คือแหล่งข้อมูลผู้ป่วย (ระบบแตะแบบอ่านอย่างเดียว ปลอดภัยต่อ รพ.) ส่วน <b>MedAlert_DB</b> เป็นฐานข้อมูลของระบบเองสำหรับเก็บคิวและผู้ใช้ ทั้งสองตั้งค่าในหน้าเดียวตอนขั้นตอนที่ 3</div>
+    </div>
+
+    <h3 style="margin:26px 0 4px; font-size:1.05rem">10 โมดูลแจ้งเตือน</h3>
+    <div class="mods">
+      <span class="mtag"><span class="md" style="background:#059669"></span>พลัดตก / หกล้ม</span>
+      <span class="mtag"><span class="md" style="background:#0369a1"></span>กลุ่มเสี่ยงจิตเวช</span>
+      <span class="mtag"><span class="md" style="background:#7c3aed"></span>ยาอันตราย</span>
+      <span class="mtag"><span class="md" style="background:#d97706"></span>อุบัติเหตุ พ.ร.บ.</span>
+      <span class="mtag"><span class="md" style="background:#0891b2"></span>เภสัชกรรม / Lab</span>
+      <span class="mtag"><span class="md" style="background:#ea580c"></span>COVID-19</span>
+      <span class="mtag"><span class="md" style="background:#dc2626"></span>ไข้เลือดออก</span>
+      <span class="mtag"><span class="md" style="background:#0f766e"></span>เลปโตสไปโรซิส</span>
+      <span class="mtag"><span class="md" style="background:#854d0e"></span>สครับไทฟัส</span>
+      <span class="mtag"><span class="md" style="background:#be185d"></span>โรคติดต่อทางเพศ</span>
+    </div>
+
+    <h3 style="margin:30px 0 4px; font-size:1.05rem">ข้อกำหนดระบบ</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <tr><th style="width:32%">รายการ</th><th>ข้อกำหนด</th></tr>
+        <tr><td>ระบบปฏิบัติการ</td><td>Windows 10 / 11 หรือ Windows Server 2016+</td></tr>
+        <tr><td>XAMPP</td><td>เวอร์ชัน 8.2.x (PHP 8.2, Apache 2.4, MySQL/MariaDB)</td></tr>
+        <tr><td>เชื่อมต่อ HOSxP</td><td>เข้าถึงฐานข้อมูล HOSxP ได้ (MySQL V3/PCU หรือ PostgreSQL XE4)</td></tr>
+        <tr><td>อินเทอร์เน็ต</td><td>ออก HTTPS (443) ได้ เพื่อยิง MOPH Alert API</td></tr>
+        <tr><td>MOPH Alert</td><td>มี <code class="inl">client-key</code> / <code class="inl">secret-key</code> ผูกกับกลุ่ม LINE แล้ว</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 1 ══════════════ -->
+  <section id="s1" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">1</span><h2>ติดตั้ง XAMPP</h2></div>
+    <p class="sec-sub measure">ติดตั้งเว็บเซิร์ฟเวอร์ (Apache + PHP + MySQL) ในชุดเดียว</p>
+
+    <ol class="step-list measure">
+      <li>ดาวน์โหลด XAMPP 8.2.x จาก <a href="https://www.apachefriends.org" target="_blank" rel="noopener">apachefriends.org</a></li>
+      <li>ติดตั้งลงที่ <code class="inl">C:\xampp</code> (ใช้ตำแหน่งมาตรฐานนี้)</li>
+      <li>เปิด <b>XAMPP Control Panel</b> → กด <b>Start</b> ที่ <b>Apache</b> และ <b>MySQL</b></li>
+      <li>ทดสอบเปิด <code class="inl">http://localhost</code> → เห็นหน้า XAMPP = พร้อมใช้งาน</li>
+    </ol>
+
+    <h3 style="margin:24px 0 2px; font-size:1rem">เปิด PHP Extensions</h3>
+    <p class="measure" style="margin:.3em 0">แก้ไฟล์ <code class="inl">C:\xampp\php\php.ini</code> ให้บรรทัดเหล่านี้ <b>ไม่มี</b> เครื่องหมาย <code class="inl">;</code> นำหน้า แล้ว Restart Apache</p>
+    <pre><span class="c">; จำเป็นทุกการติดตั้ง</span>
+extension=<span class="g">curl</span>
+extension=<span class="g">pdo_mysql</span>
+extension=<span class="g">mbstring</span>
+<span class="c">; เพิ่มเฉพาะเมื่อ HOSxP เป็น PostgreSQL (XE4)</span>
+extension=<span class="b">pdo_pgsql</span>
+extension=<span class="b">pgsql</span></pre>
+    <div class="note warn"><div class="ic k">!</div><div>ปรับค่าประสิทธิภาพในไฟล์เดียวกันด้วย: <code class="inl">max_execution_time=300</code> และ <code class="inl">memory_limit=256M</code></div></div>
+  </section>
+
+  <!-- ══════════════ STEP 2 ══════════════ -->
+  <section id="s2" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">2</span><h2>วางไฟล์โปรเจกต์</h2></div>
+    <p class="sec-sub measure">คัดลอกไฟล์ระบบไปยัง <b>ตำแหน่งมาตรฐาน</b> — ตัวติดตั้ง Task และสคริปต์ worker อ้างอิงพาธนี้แบบตายตัว</p>
+
+    <pre><span class="c">:: วิธีที่ 1 — Git (แนะนำ)</span>
+cd C:\xampp\htdocs
+git clone https://github.com/nuttapong39/Fall_Risk_Alert-V.2.git <span class="g">Fall_Risk_Alert-main</span>
+
+<span class="c">:: วิธีที่ 2 — แตกไฟล์ ZIP ไปที่</span>
+<span class="g">C:\xampp\htdocs\Fall_Risk_Alert-main\</span></pre>
+
+    <div class="note crit"><div class="ic k">!</div><div><b>ต้องเป็นพาธนี้เป๊ะ:</b> <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code> — เพราะ <code class="inl">task\install_tasks.bat</code> และ <code class="inl">run_*.bat</code> ทุกตัวชี้พาธนี้ ถ้าวางที่อื่นต้องแก้ไฟล์เหล่านั้นเอง</div></div>
+
+    <p class="mock-cap">โครงสร้างไฟล์ที่ควรเห็นหลังวาง</p>
+    <div class="tree">
+<span class="d">Fall_Risk_Alert-main\</span>
+├─ config.php            <span class="cm"># ตัวโหลดค่ากลาง + ตรวจ first-run</span>
+├─ db_config_admin.php   <span class="cm"># หน้า Setup ฐานข้อมูล (ขั้นที่ 3)</span>
+├─ moph_keys_admin.php   <span class="cm"># ตั้งค่า MOPH keys + Telegram (ขั้นที่ 6)</span>
+├─ settings.php          <span class="cm"># ตั้งชื่อโรงพยาบาล (ขั้นที่ 5)</span>
+├─ dashboard.php         <span class="cm"># ศูนย์รวมสถิติทุกโมดูล</span>
+├─ run_fracture.bat ...  <span class="cm"># worker ราย 10 โมดูล</span>
+├─ <span class="hl">task\</span>                  <span class="cm"># ← ตัวติดตั้ง Scheduled Task (ขั้นที่ 8)</span>
+│   ├─ install_tasks.bat
+│   ├─ uninstall_tasks.bat
+│   └─ *.xml  (10 ไฟล์)
+├─ <span class="hl">secrets\</span>               <span class="cm"># ← ไฟล์ตั้งค่า (สร้างอัตโนมัติเมื่อบันทึก)</span>
+└─ logs\                 <span class="cm"># สร้างอัตโนมัติเมื่อรัน</span>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 3 ══════════════ -->
+  <section id="s3" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">3</span><h2>ตั้งค่าฐานข้อมูล (ตัวช่วยอัตโนมัติ)</h2></div>
+    <p class="sec-sub measure">เปิดเว็บครั้งแรก ระบบจะพาไปหน้า Setup เอง — กรอกข้อมูลเชื่อมต่อครั้งเดียว แล้วระบบ <b>สร้างฐานข้อมูล + ตารางทั้งหมด + บัญชีผู้ดูแลคนแรก</b> ให้อัตโนมัติ</p>
+
+    <div class="note ok"><div class="ic k">✓</div><div>เปิด <code class="inl">http://localhost/Fall_Risk_Alert-main/</code> — ถ้ายังไม่เคยตั้งค่า ระบบจะ <b>เด้งไปหน้า Setup</b> (<code class="inl">db_config_admin.php</code>) โดยอัตโนมัติ ไม่ต้อง import SQL หรือสร้าง user เองเลย</div></div>
+
+    <div class="mock">
+      <div class="browser-bar">
+        <span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span>
+        <span class="url">localhost/Fall_Risk_Alert-main/db_config_admin.php</span>
+      </div>
+      <div class="mbody">
+        <div style="font-family:Kanit; font-weight:700; font-size:1.05rem; margin-bottom:3px">ตั้งค่าเริ่มต้น MedAlert</div>
+        <div style="font-size:.82rem; color:var(--muted); margin-bottom:16px">กรอกการเชื่อมต่อ HOSxP และ MedAlert_DB แล้วกด “Setup MedAlert_DB”</div>
+        <div class="grid g2">
+          <!-- HOSxP card -->
+          <div class="mock-card">
+            <div class="mock-card-h"><span class="mi" style="background:var(--blue)">☁</span>HOSxP Source <span style="font-weight:400; color:var(--muted); font-size:.72rem">(อ่านข้อมูลผู้ป่วย)</span></div>
+            <div class="mock-card-b">
+              <div class="radio-row">
+                <div class="radio-opt on"><div class="tt">MySQL</div><div class="dd">HOSxP V3, PCU</div></div>
+                <div class="radio-opt"><div class="tt">PostgreSQL</div><div class="dd">HOSxP XE4</div></div>
+              </div>
+              <div class="row-2"><div class="fld"><label>Host / IP</label><div class="inp ph">192.168.1.115</div></div><div class="fld"><label>Port</label><div class="inp">3306</div></div></div>
+              <div class="fld"><label>Database</label><div class="inp ph">hosxp</div></div>
+              <div class="row-2"><div class="fld"><label>Username</label><div class="inp">sa</div></div><div class="fld"><label>Password</label><div class="inp">••••••</div></div></div>
+            </div>
+          </div>
+          <!-- MedAlert card -->
+          <div class="mock-card">
+            <div class="mock-card-h"><span class="mi" style="background:var(--green)">⚙</span>MedAlert_DB <span style="font-weight:400; color:var(--muted); font-size:.72rem">(ฐานข้อมูลระบบ)</span></div>
+            <div class="mock-card-b">
+              <div class="row-2"><div class="fld"><label>Host / IP</label><div class="inp">127.0.0.1</div></div><div class="fld"><label>Port</label><div class="inp">3306</div></div></div>
+              <div class="fld"><label>Database</label><div class="inp">MedAlert_DB</div></div>
+              <div class="row-2"><div class="fld"><label>Username</label><div class="inp">root</div></div><div class="fld"><label>Password</label><div class="inp ph">(ว่างได้)</div></div></div>
+              <div style="border-top:1px dashed var(--border); margin:10px 0 11px"></div>
+              <div class="row-2"><div class="fld"><label>Admin — Username</label><div class="inp">admin</div></div><div class="fld"><label>Admin — Password</label><div class="inp">••••••</div></div></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn blue" style="margin-top:15px">🔧 Setup MedAlert_DB</button>
+      </div>
+    </div>
+
+    <p style="margin:20px 0 6px; font-weight:600" class="k">เมื่อกดปุ่ม ระบบจะทำให้อัตโนมัติ:</p>
+    <div class="term">
+      <div class="term-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="t">ผลการ Setup</span></div>
+      <div class="term-body">
+<span class="ok">✓</span> CREATE DATABASE `MedAlert_DB`<br>
+<span class="ok">✓</span> deploy users.sql<br>
+<span class="ok">✓</span> deploy accident_queue.sql · covid_queue.sql · dengue_queue.sql<br>
+<span class="ok">✓</span> deploy drug_queue.sql · fracture_queue.sql · patient_queue.sql<br>
+<span class="ok">✓</span> deploy pharm_lab_queue.sql · sexual_alert_queue.sql<br>
+<span class="ok">✓</span> สร้างบัญชี admin 'admin'<br>
+<span class="ok">✓</span> บันทึก secrets/db_config.json<br>
+<span class="dim">— เสร็จสิ้น พร้อมเข้าสู่ระบบ —</span>
+      </div>
+    </div>
+    <div class="note info"><div class="ic k">i</div><div>ถ้าใช้โมดูล <b>เลปโต / สครับไทฟัส</b> ให้ import เพิ่มที่ phpMyAdmin: <code class="inl">lepto_queue.sql</code> และ <code class="inl">scrub_queue.sql</code> (ตัวช่วยลงให้ 9 ตารางหลักก่อน)</div></div>
+  </section>
+
+  <!-- ══════════════ STEP 4 ══════════════ -->
+  <section id="s4" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">4</span><h2>เข้าสู่ระบบครั้งแรก</h2></div>
+    <p class="sec-sub measure">ล็อกอินด้วยบัญชี admin ที่เพิ่งสร้างในขั้นตอนที่ 3</p>
+    <ol class="step-list measure">
+      <li>เปิด <code class="inl">http://localhost/Fall_Risk_Alert-main/login.php</code></li>
+      <li>กรอก Username / Password ของ admin ที่ตั้งไว้ในหน้า Setup</li>
+      <li>เข้าสู่หน้าหลัก — เมนูทั้งหมดอยู่แถบด้านซ้าย (sidebar)</li>
+    </ol>
+
+    <p class="mock-cap">แถบเมนูด้านซ้าย — ชื่อโรงพยาบาลจะอยู่ใต้ “Fall Risk Alert” (แก้ได้ในขั้นที่ 5)</p>
+    <div class="mock" style="max-width:280px">
+      <div class="mbody" style="padding:14px">
+        <div style="display:flex; align-items:center; gap:10px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#1d4ed8,#10b981); display:grid; place-items:center; color:#fff">❤</div>
+          <div><div style="font-family:Kanit; font-weight:700; font-size:.9rem">Fall Risk Alert</div><div style="font-size:.72rem; color:var(--blue); font-weight:600; background:var(--blue-soft); border-radius:5px; padding:1px 6px; display:inline-block; margin-top:2px">รพ.เชียงกลาง</div></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px; padding-top:11px; font-family:Kanit; font-size:.83rem">
+          <div style="padding:7px 9px; border-radius:7px; background:var(--blue-soft); color:var(--blue-ink); font-weight:600">🏠 หน้าหลัก</div>
+          <div style="padding:7px 9px; color:var(--ink-2)">📊 Dashboard</div>
+          <div style="padding:7px 9px; color:var(--ink-2)">🩺 กลุ่มเสี่ยงจิตเวช</div>
+          <div style="padding:7px 9px; color:var(--ink-2)">⚙️ ตั้งค่าระบบ</div>
+          <div style="padding:7px 9px; color:var(--ink-2)">🔑 MOPH ALERT KEY</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 5 ══════════════ -->
+  <section id="s5" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">5</span><h2>ตั้งชื่อโรงพยาบาล</h2></div>
+    <p class="sec-sub measure">ไปที่เมนู <b>ตั้งค่าระบบ</b> — ตั้งชื่อ รพ. ที่จะโชว์บน sidebar และหน้า login (บันทึกฝั่ง server มีผลทุกเครื่อง)</p>
+
+    <div class="mock">
+      <div class="browser-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="url">localhost/Fall_Risk_Alert-main/settings.php</span></div>
+      <div class="mbody">
+        <div class="mock-card">
+          <div class="mock-card-h"><span class="mi" style="background:linear-gradient(135deg,#10b981,#059669)">🏥</span>ชื่อโรงพยาบาล</div>
+          <div class="mock-card-b">
+            <div class="fld"><label>ชื่อย่อ — แถบ sidebar / แท็บเบราว์เซอร์</label><div class="inp" style="font-family:Sarabun">รพ.เชียงกลาง</div></div>
+            <div class="fld"><label>ชื่อเต็ม + จังหวัด — หน้า login</label><div class="inp" style="font-family:Sarabun">โรงพยาบาลเชียงกลาง · จ.น่าน</div></div>
+            <button class="btn green" style="margin-top:4px">💾 บันทึกชื่อโรงพยาบาล</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note info"><div class="ic k">i</div><div>หน้าเดียวกันนี้ยังปรับ <b>ธีมสี</b> และ <b>ขนาดตัวอักษร</b> ของระบบได้ด้วย</div></div>
+  </section>
+
+  <!-- ══════════════ STEP 6 ══════════════ -->
+  <section id="s6" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">6</span><h2>ตั้งค่า MOPH Keys &amp; Telegram</h2></div>
+    <p class="sec-sub measure">ไปที่เมนู <b>MOPH ALERT KEY</b> — กรอก client/secret key ของแต่ละโมดูล (โมดูลที่เว้นว่างจะใช้ key <b>default</b> แทน)</p>
+
+    <div class="mock">
+      <div class="browser-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="url">localhost/Fall_Risk_Alert-main/moph_keys_admin.php</span></div>
+      <div class="mbody">
+        <div class="grid g2">
+          <div class="mock-card">
+            <div class="mock-card-h"><span class="mi" style="background:linear-gradient(135deg,#64748b,#334155)">⚙</span>ค่าเริ่มต้น (Default)</div>
+            <div class="mock-card-b">
+              <div class="fld"><label>Client Key</label><div class="inp ph">MOPH_CLIENT_KEY</div></div>
+              <div class="fld" style="margin:0"><label>Secret Key</label><div class="inp">••••••••••••</div></div>
+            </div>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-h"><span class="mi" style="background:linear-gradient(135deg,#10b981,#059669)">🦴</span>พลัดตก / หกล้ม</div>
+            <div class="mock-card-b">
+              <div class="fld"><label>Client Key</label><div class="inp">4f2c…a91b</div></div>
+              <div class="fld" style="margin:0"><label>Secret Key</label><div class="inp">••••••••••••</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mock-card" style="margin-top:14px">
+          <div class="mock-card-h" style="justify-content:space-between">
+            <span style="display:flex; align-items:center; gap:8px"><span class="mi" style="background:linear-gradient(135deg,#22a7f0,#0088cc)">✈</span>Telegram แจ้งเตือน (mirror)</span>
+            <span style="display:flex; align-items:center; gap:7px; font-size:.76rem; color:var(--green); font-weight:600">เปิดใช้งาน <span class="toggle"></span></span>
+          </div>
+          <div class="mock-card-b">
+            <div class="row-2">
+              <div class="fld"><label>Bot Token (ใช้ร่วมทุก feature)</label><div class="inp">••••••••:AAH…</div></div>
+              <div class="fld"><label>Default Chat ID</label><div class="inp">-100xxxxxxxxx</div></div>
+            </div>
+            <button class="btn blue" style="background:#0088cc; margin-top:2px">✈ ทดสอบส่ง (Default)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:18px">
+      <div class="note warn" style="margin:0"><div class="ic k">!</div><div><b>bot_id ≠ chat_id</b> — Chat ID ต้องเป็นของ “กลุ่ม/ผู้ใช้” (กลุ่มขึ้นต้นด้วย <code class="inl">-100</code>) ไม่ใช่เลขหน้าเครื่องหมาย <code class="inl">:</code> ใน token</div></div>
+      <div class="note warn" style="margin:0"><div class="ic k">!</div><div>ปุ่ม “ทดสอบส่ง” <b>ไม่</b>เช็คสวิตช์เปิดใช้งาน — ต้อง <b>ติ๊กเปิดใช้งาน + บันทึก</b> ด้วย ไม่งั้นเคสจริงจะไม่ mirror เข้า Telegram</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 7 ══════════════ -->
+  <section id="s7" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">7</span><h2>ทดสอบส่งจริง</h2></div>
+    <p class="sec-sub measure">ยิงแจ้งเตือนทดสอบก่อนตั้งเวลาอัตโนมัติ เพื่อยืนยันว่าคีย์ + กลุ่มถูกต้อง</p>
+    <ol class="step-list measure">
+      <li>เปิดหน้าคิวของโมดูล เช่น <code class="inl">fracture_queue_ui.php</code></li>
+      <li>กด <b>Import HOSxP</b> เพื่อดึงข้อมูลผู้ป่วยเข้าคิว</li>
+      <li>ติ๊กเลือก 1 รายการ → กด <b>ส่งซ้ำทันที</b> (Send Now)</li>
+      <li>ตรวจกลุ่ม <b>LINE</b> และ <b>Telegram</b> ว่าได้รับข้อความ</li>
+      <li>เปิด <code class="inl">dashboard.php</code> ดูสถิติรวมทุกโมดูล</li>
+    </ol>
+
+    <div class="note crit"><div class="ic k">!</div><div><b>HTTP 200 ไม่ได้แปลว่าเข้า LINE เสมอ</b> — 200 คือ MOPH รับคำขอแล้ว แต่ให้ยืนยันด้วยตาว่าข้อความเด้งในกลุ่มจริง ถ้า 200 แต่ไม่เข้า ดูหัวข้อ <a href="#trouble">แก้ปัญหา</a></div></div>
+
+    <p class="mock-cap">Dashboard — ศูนย์รวมสถิติทุกโมดูล (ดูภาพรวมรายเดือน/ไตรมาส)</p>
+    <div class="mock">
+      <div class="mbody">
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px">
+          <div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px"><div style="font-size:.68rem; color:var(--muted)">เคสทั้งหมด</div><div style="font-family:Kanit; font-weight:700; font-size:1.3rem">128</div></div>
+          <div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px"><div style="font-size:.68rem; color:var(--muted)">ส่งสำเร็จ</div><div style="font-family:Kanit; font-weight:700; font-size:1.3rem; color:var(--green)">124</div></div>
+          <div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px"><div style="font-size:.68rem; color:var(--muted)">ค้างส่ง</div><div style="font-family:Kanit; font-weight:700; font-size:1.3rem; color:var(--amber)">3</div></div>
+          <div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px"><div style="font-size:.68rem; color:var(--muted)">ล้มเหลว</div><div style="font-family:Kanit; font-weight:700; font-size:1.3rem; color:var(--red)">1</div></div>
+        </div>
+        <svg viewBox="0 0 600 90" style="width:100%; height:64px; display:block" preserveAspectRatio="none">
+          <polyline points="0,70 80,55 160,60 240,38 320,44 400,25 480,30 560,15 600,20" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+          <polyline points="0,80 80,72 160,66 240,60 320,55 400,48 480,52 560,40 600,44" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+        </svg>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-top:12px">
+          <div style="display:flex; gap:9px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:9px"><span style="width:32px; height:32px; border-radius:9px; background:rgba(5,150,105,.12); display:grid; place-items:center; color:#059669">🦴</span><div><div style="font-family:Kanit; font-weight:600; font-size:.74rem">หกล้ม</div><div style="font-weight:700">36</div></div></div>
+          <div style="display:flex; gap:9px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:9px"><span style="width:32px; height:32px; border-radius:9px; background:rgba(5,150,105,.12); display:grid; place-items:center; color:#059669">💊</span><div><div style="font-family:Kanit; font-weight:600; font-size:.74rem">Lab</div><div style="font-weight:700">28</div></div></div>
+          <div style="display:flex; gap:9px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:9px"><span style="width:32px; height:32px; border-radius:9px; background:rgba(5,150,105,.12); display:grid; place-items:center; color:#059669">🚑</span><div><div style="font-family:Kanit; font-weight:600; font-size:.74rem">พ.ร.บ.</div><div style="font-weight:700">22</div></div></div>
+          <div style="display:flex; gap:9px; align-items:center; border:1px solid var(--border); border-radius:10px; padding:9px"><span style="width:32px; height:32px; border-radius:9px; background:rgba(5,150,105,.12); display:grid; place-items:center; color:#059669">🦟</span><div><div style="font-family:Kanit; font-weight:600; font-size:.74rem">เดงกี</div><div style="font-weight:700">9</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 8 ══════════════ -->
+  <section id="s8" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">8</span><h2>ตั้งเวลาอัตโนมัติ (Scheduled Tasks)</h2></div>
+    <p class="sec-sub measure">ให้ worker ทั้ง 10 โมดูลรันเองตามเวลา — ติดตั้งทีเดียวทั้งหมดด้วยสคริปต์เดียว</p>
+
+    <ol class="step-list measure">
+      <li>เข้าโฟลเดอร์ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main\task\</code></li>
+      <li>ดับเบิลคลิก <code class="inl">install_tasks.bat</code></li>
+      <li>กด <b>Yes</b> ที่หน้าต่าง UAC (ขอสิทธิ์ Administrator อัตโนมัติ)</li>
+      <li>รอจนขึ้น <b>“Done: 10 installed, 0 failed”</b></li>
+    </ol>
+
+    <div class="term">
+      <div class="term-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="t">install_tasks.bat</span></div>
+      <div class="term-body">
+<span class="hd">====== MedAlert - Installing all Scheduled Tasks ======</span><br>
+[.] Installing: Accident_Auto Sender      <span class="ok">&gt; OK</span><br>
+[.] Installing: Covide_Auto Sender        <span class="ok">&gt; OK</span><br>
+[.] Installing: Dengue_Auto Sender        <span class="ok">&gt; OK</span><br>
+[.] Installing: Drug_Sender               <span class="ok">&gt; OK</span><br>
+[.] Installing: Fall_Risk_Alert_Auto ...  <span class="ok">&gt; OK</span><br>
+<span class="dim">   … (Lepto, PharmLab, Patient, Scrub, Sexual) …</span><br>
+<span class="hd">====== Done: 10 installed, 0 failed ======</span>
+      </div>
+    </div>
+
+    <div class="note ok"><div class="ic k">✓</div><div>ทุก Task รันด้วยสิทธิ์ <b>SYSTEM</b> รอบละ 5 นาที — เปิดดู/ปรับเวลาได้ที่ <b>Task Scheduler</b> (<code class="inl">taskschd.msc</code>) · ถอนทั้งหมดด้วย <code class="inl">uninstall_tasks.bat</code></div></div>
+  </section>
+
+  <!-- ══════════════ STEP 9 ══════════════ -->
+  <section id="s9" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">9</span><h2>ปรับค่าเฉพาะโรงพยาบาล</h2></div>
+    <p class="sec-sub measure">รหัส Lab / รหัสยา ต่างกันในแต่ละ รพ. — แก้ให้ตรงกับ HOSxP ของท่าน (เฉพาะโมดูลที่ใช้)</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <tr><th>ค่า</th><th>ไฟล์</th><th>หมายเหตุ</th></tr>
+        <tr><td>รหัส Lab COVID-19</td><td><code>covid.php</code></td><td>แก้ <code class="inl">lab_items_code IN (...)</code> ให้ตรง HOSxP</td></tr>
+        <tr><td>รหัสยาอันตราย (icode)</td><td><code>run_drug.bat</code></td><td>ตั้ง <code class="inl">DEFAULT_ICODES=...</code> (คั่นหลายรหัสด้วย ,)</td></tr>
+        <tr><td>รหัส Lab Sexual Assault</td><td><code>flex_sexual.php</code></td><td><code class="inl">LAB_CODE_SEXUAL</code></td></tr>
+        <tr><td>รหัส Lab เลปโต / สครับ</td><td>worker ราย module</td><td>ตรวจรหัสตรวจให้ตรง รพ.</td></tr>
+      </table>
+    </div>
+    <div class="note info"><div class="ic k">i</div><div>หา lab_items_code ได้ที่ phpMyAdmin: <code class="inl">SELECT lab_items_code, lab_items_name FROM lab_items WHERE lab_items_name LIKE '%covid%'</code></div></div>
+  </section>
+
+  <!-- ══════════════ TROUBLESHOOTING ══════════════ -->
+  <section id="trouble" class="sec-anchor">
+    <div class="sec-h"><h2>แก้ปัญหาที่พบบ่อย</h2></div>
+    <p class="sec-sub measure">อาการที่เจอจริงระหว่างติดตั้ง พร้อมวิธีแก้</p>
+    <div class="tsgrid">
+      <div class="ts r"><h4><span class="q">✕</span> เข้าเว็บแล้วขึ้น “DB connect failed”</h4>
+        <p><span class="fix">แก้:</span> ตรวจ <code class="inl">secrets/db_config.json</code> ก้อน <code class="inl">medalert</code> — host/user/pass ถูกไหม, MySQL service Start อยู่ไหม (ทดสอบที่ phpMyAdmin)</p></div>
+
+      <div class="ts a"><h4><span class="q">▲</span> กด “ส่งซ้ำ” แล้วเคสค้าง Pending ตลอด</h4>
+        <p><span class="fix">แก้:</span> เช็คว่า <b>มี Scheduled Task ของโมดูลนั้นจริง</b>ไหม (<code class="inl">taskschd.msc</code>) — ปุ่ม Requeue แค่รีเซ็ตสถานะ ต้องมี Task รัน worker ถึงจะส่ง</p></div>
+
+      <div class="ts a"><h4><span class="q">▲</span> Telegram: ทดสอบขึ้น แต่เคสจริงไม่เข้า</h4>
+        <p><span class="fix">แก้:</span> ตั้งค่ายังไม่ <b>ติ๊กเปิดใช้งาน</b> — ปุ่มทดสอบไม่เช็คสวิตช์นี้ แต่การ mirror จริงเช็ค ต้องเปิด + บันทึก</p></div>
+
+      <div class="ts r"><h4><span class="q">✕</span> MOPH ตอบ 200 แต่ LINE ไม่เข้ากลุ่ม</h4>
+        <p><span class="fix">แก้:</span> key ผูกกับกลุ่มผิด / OA ยังไม่อยู่ในกลุ่ม · Flex มี <code class="inl">rgba()</code> (LINE รับเฉพาะ <code class="inl">#RRGGBB</code>) · key ว่าง = ยิงเข้ากลุ่ม default</p></div>
+
+      <div class="ts b"><h4><span class="q">◆</span> Task รันแล้ว log ไม่ขยับ / ว่าง</h4>
+        <p><span class="fix">แก้:</span> ตรวจ <b>Start in</b> ของ Task = <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code> และ php.ini เปิด <code class="inl">curl</code>/<code class="inl">pdo_mysql</code> แล้ว</p></div>
+
+      <div class="ts b"><h4><span class="q">◆</span> Import แล้วไม่พบผู้ป่วย</h4>
+        <p><span class="fix">แก้:</span> ตรวจ <code class="inl">lab_items_code</code> ให้ตรง HOSxP (ขั้นที่ 9) · ช่วงวันที่ default ย้อนหลัง 7 วัน · user MySQL มีสิทธิ์ SELECT ตาราง HOSxP</p></div>
+    </div>
+
+    <p class="k" style="margin-top:18px; font-weight:600">ดู log ทั้งหมดได้ที่ <code class="inl">logs\</code></p>
+    <pre>type C:\xampp\htdocs\Fall_Risk_Alert-main\logs\<span class="g">fracture_task_run.log</span>   <span class="c">:: การรัน Task</span>
+type C:\xampp\htdocs\Fall_Risk_Alert-main\logs\<span class="g">moph_alert_*.log</span>        <span class="c">:: การส่ง MOPH ราย module</span></pre>
+  </section>
+
+  <!-- ══════════════ CHECKLIST ══════════════ -->
+  <section id="checklist" class="sec-anchor">
+    <div class="sec-h"><h2>Checklist สรุป</h2></div>
+    <p class="sec-sub measure">ติ๊กให้ครบก่อนส่งมอบระบบให้หน่วยงาน</p>
+    <ol class="check">
+      <li><span class="n">01</span><span class="box"></span><span>ติดตั้ง XAMPP ที่ <code class="inl">C:\xampp</code> · Start Apache + MySQL · เปิด extension ใน php.ini</span></li>
+      <li><span class="n">02</span><span class="box"></span><span>วางไฟล์ที่ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code></span></li>
+      <li><span class="n">03</span><span class="box"></span><span>เปิดเว็บ → หน้า Setup → กรอก HOSxP + MedAlert_DB + admin → กด Setup (สร้าง DB/ตาราง/admin อัตโนมัติ)</span></li>
+      <li><span class="n">04</span><span class="box"></span><span>Login ด้วยบัญชี admin ที่สร้าง</span></li>
+      <li><span class="n">05</span><span class="box"></span><span>ตั้งชื่อโรงพยาบาลที่ ตั้งค่าระบบ</span></li>
+      <li><span class="n">06</span><span class="box"></span><span>กรอก MOPH client/secret key ทุกโมดูล + ตั้ง Telegram (เปิดใช้งาน)</span></li>
+      <li><span class="n">07</span><span class="box"></span><span>ทดสอบ Send Now → ยืนยันเข้ากลุ่ม LINE + Telegram จริง</span></li>
+      <li><span class="n">08</span><span class="box"></span><span>รัน <code class="inl">task\install_tasks.bat</code> → “10 installed, 0 failed”</span></li>
+      <li><span class="n">09</span><span class="box"></span><span>ปรับ lab_items_code / icode ยา ให้ตรง HOSxP</span></li>
+    </ol>
+  </section>
+
+  <footer>
+    <div class="k" style="font-weight:700; font-size:.98rem; color:var(--ink)">MedAlert — ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง</div>
+    <p style="margin:.4em 0 0">คู่มือติดตั้งสำหรับ IT โรงพยาบาล · ติดปัญหาให้ตรวจ <code class="inl">logs\</code> ก่อนเสมอ · ไฟล์นี้: <code class="inl">docs/install-guide.html</code></p>
+  </footer>
+</div>
