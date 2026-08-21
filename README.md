@@ -15,7 +15,7 @@
 ![Telegram](https://img.shields.io/badge/Telegram-mirror-26A5E4?logo=telegram&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-059669)
 
-**[📘 คู่มือติดตั้งฉบับภาพ (step-by-step)](docs/install-guide.html)** · [📄 INSTALL.md](INSTALL.md) · รพ.เชียงกลาง จ.น่าน
+**[📘 คู่มือติดตั้งฉบับภาพ — ดูออนไลน์](https://claude.ai/code/artifact/b23da322-07ee-4601-8094-419e48a65225)** · [📄 INSTALL.md](INSTALL.md) · รพ.เชียงกลาง จ.น่าน
 
 </div>
 
@@ -73,7 +73,7 @@ flowchart LR
 ## 🚀 Quick Start
 
 > [!TIP]
-> ขั้นตอนแบบละเอียด **พร้อมภาพประกอบ + mockup หน้าจอ** อยู่ที่ 👉 **[docs/install-guide.html](docs/install-guide.html)** (เปิดในเบราว์เซอร์)
+> ขั้นตอนแบบละเอียด **พร้อมภาพประกอบ + mockup หน้าจอ** อยู่ที่ 👉 **[คู่มือฉบับภาพ (ดูออนไลน์)](https://claude.ai/code/artifact/b23da322-07ee-4601-8094-419e48a65225)** หรือไฟล์ [`docs/install-guide.html`](docs/install-guide.html) ในโปรเจกต์
 
 ```mermaid
 flowchart TD
