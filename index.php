@@ -332,7 +332,7 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 
   <div class="col-12 col-sm-6 col-xl-4">
-    <a href="fracture_dashboard.php" class="shortcut-card"
+    <a href="dashboard.php" class="shortcut-card"
        data-label="dashboard สรุป กราฟ สถิติ">
       <div class="sc-icon">
         <span class="msi">show_chart</span>

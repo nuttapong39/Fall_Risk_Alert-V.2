@@ -4,7 +4,7 @@
  *
  * Variables:
  *   $PAGE_TITLE — page title (also shown in topbar breadcrumb)
- *   $PAGE_KEY   — active nav key: home, fracture_dash, patient, drug, sexual,
+ *   $PAGE_KEY   — active nav key: home, dashboard, patient, drug, sexual,
  *                  accident, fracture, covid, dengue, lepto, scrub, pharm,
  *                  db_config, moph_keys, settings
  *   $EXTRA_HEAD — extra HTML injected into <head>
@@ -592,7 +592,7 @@ a.nav-item.logout-item:hover .nav-ic {
       <span class="nav-ic"><span class="msi">home</span></span>
       <span>หน้าหลัก</span>
     </a>
-    <a href="fracture_dashboard.php" class="nav-item<?= ckh_active('fracture_dash', $PAGE_KEY) ?>">
+    <a href="dashboard.php" class="nav-item<?= ckh_active('dashboard', $PAGE_KEY) ?>">
       <span class="nav-ic"><span class="msi">show_chart</span></span>
       <span>Dashboard</span>
     </a>

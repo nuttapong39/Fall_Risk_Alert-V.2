@@ -136,7 +136,7 @@ require_once __DIR__ . '/partials/header.php';
     <a href="fracture_flex_preview.php" class="btn btn-outline-primary" target="_blank" rel="noopener">
       <span class="msi me-1">smartphone</span> ดูตัวอย่าง Flex
     </a>
-    <a href="fracture_dashboard.php" class="btn btn-outline-success">
+    <a href="dashboard.php?module=fracture" class="btn btn-outline-success">
       <span class="msi me-1">show_chart</span> Dashboard
     </a>
     <a href="fracture_report_daily.php" class="btn btn-outline-secondary">
