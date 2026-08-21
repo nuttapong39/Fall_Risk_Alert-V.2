@@ -353,12 +353,15 @@ footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px
     </ol>
 
     <h3 style="margin:24px 0 2px; font-size:1rem">เปิด PHP Extensions</h3>
-    <p class="measure" style="margin:.3em 0">แก้ไฟล์ <code class="inl">C:\xampp\php\php.ini</code> ให้บรรทัดเหล่านี้ <b>ไม่มี</b> เครื่องหมาย <code class="inl">;</code> นำหน้า แล้ว Restart Apache</p>
+
+    <div class="note ok"><div class="ic k">✓</div><div><b>วิธีง่าย (แนะนำ):</b> ดับเบิลคลิก <code class="inl">enable_php_extensions.bat</code> ในโฟลเดอร์โปรเจกต์ → กด Yes ที่ UAC → สคริปต์ <b>เปิด extension ที่จำเป็นให้ครบ + สำรอง php.ini + Restart Apache</b> ให้อัตโนมัติ ไม่ต้องแก้ไฟล์เอง</div></div>
+
+    <p class="measure" style="margin:.6em 0 .3em; color:var(--muted)"><b>หรือแก้เอง:</b> เปิด <code class="inl">C:\xampp\php\php.ini</code> ให้บรรทัดเหล่านี้ <b>ไม่มี</b> เครื่องหมาย <code class="inl">;</code> นำหน้า แล้ว Restart Apache</p>
     <pre><span class="c">; จำเป็นทุกการติดตั้ง</span>
 extension=<span class="g">curl</span>
 extension=<span class="g">pdo_mysql</span>
 extension=<span class="g">mbstring</span>
-<span class="c">; เพิ่มเฉพาะเมื่อ HOSxP เป็น PostgreSQL (XE4)</span>
+<span class="c">; สำหรับ HOSxP ที่เป็น PostgreSQL (XE4)</span>
 extension=<span class="b">pdo_pgsql</span>
 extension=<span class="b">pgsql</span></pre>
     <div class="note warn"><div class="ic k">!</div><div>ปรับค่าประสิทธิภาพในไฟล์เดียวกันด้วย: <code class="inl">max_execution_time=300</code> และ <code class="inl">memory_limit=256M</code></div></div>

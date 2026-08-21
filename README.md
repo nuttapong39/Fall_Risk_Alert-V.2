@@ -86,7 +86,8 @@ flowchart TD
 
 **สรุปเป็นข้อ:**
 
-1. **ติดตั้ง XAMPP 8.2** ที่ `C:\xampp` → Start Apache + MySQL → เปิด extension `curl` `pdo_mysql` `mbstring` (+ `pdo_pgsql` `pgsql` ถ้า HOSxP เป็น PostgreSQL) ใน `php.ini`
+1. **ติดตั้ง XAMPP 8.2** ที่ `C:\xampp` → Start Apache + MySQL → เปิด PHP extension ที่จำเป็น
+   > 💡 ดับเบิลคลิก **`enable_php_extensions.bat`** เพื่อเปิด extension (`curl` `pdo_mysql` `mbstring` `pdo_pgsql` `pgsql`) + สำรอง php.ini + restart Apache ให้อัตโนมัติ — ไม่ต้องแก้ php.ini เอง
 2. **วางไฟล์** ที่ `C:\xampp\htdocs\Fall_Risk_Alert-main` (พาธมาตรฐาน — สคริปต์ Task อ้างพาธนี้)
    ```bash
    cd C:\xampp\htdocs
