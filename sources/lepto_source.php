@@ -7,7 +7,16 @@
  */
 
 if (!function_exists('lepto_source_rows')) {
-  function lepto_source_rows(string $start, string $end, string $labCode = '290'): array {
+  function lepto_source_rows(string $start, string $end, ?string $labCode = null, ?array $pdxCodes = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    $mf = function_exists('module_filter') ? module_filter('lepto') : [];
+    if ($labCode  === null) $labCode  = $mf['lab_code']  ?? '290';
+    if ($pdxCodes === null) $pdxCodes = $mf['pdx_codes'] ?? ['A270','A278','A279','A418'];
+    $pdxCodes = function_exists('mf_codes')
+      ? mf_codes($pdxCodes)
+      : array_values(array_filter($pdxCodes, fn($x) => $x !== ''));
+    if (!$pdxCodes) return [];
+    $pdxPlace = implode(',', array_fill(0, count($pdxCodes), '?'));
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')
@@ -27,18 +36,23 @@ if (!function_exists('lepto_source_rows')) {
              INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
              WHERE  ov.vstdate       BETWEEN ? AND ?
                AND  l.lab_items_code = ?
-               AND  ov.pdx IN ('A270','A278','A279','A418')";
+               AND  ov.pdx IN ($pdxPlace)";
     $sql = ($driver === 'pgsql')
       ? "SELECT * FROM (SELECT DISTINCT ON (ov.vn) {$cols} {$from} ORDER BY ov.vn, ov.vstdate DESC) t ORDER BY vstdate DESC"
       : "SELECT {$cols} {$from} GROUP BY ov.vn ORDER BY ov.vstdate DESC";
     $st = $db->prepare($sql);
-    $st->execute([$start, $end, $labCode]);
+    $st->execute(array_merge([$start, $end, $labCode], $pdxCodes));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }
 
 if (!function_exists('lepto_source_by_vn')) {
-  function lepto_source_by_vn(string $vn, string $labCode = '290'): ?array {
+  function lepto_source_by_vn(string $vn, ?string $labCode = null): ?array {
+    if ($labCode === null) {
+      $labCode = function_exists('module_filter')
+        ? (module_filter('lepto')['lab_code'] ?? '290')
+        : '290';
+    }
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')

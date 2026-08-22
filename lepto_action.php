@@ -16,7 +16,6 @@ require_once __DIR__ . '/flex_disease.php';
 date_default_timezone_set('Asia/Bangkok');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-define('LEPTO_LAB_CODE', '290');
 define('LEPTO_TYPE',     'lepto');
 
 if (!defined('MOPH_API_URL'))   define('MOPH_API_URL',   'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
@@ -62,11 +61,11 @@ if ($action !== 'send' || $vn === '') {
 // ── Query HOSxP ───────────────────────────────────────────────────────────────
 try {
   require_once __DIR__ . '/sources/lepto_source.php';
-  $row = lepto_source_by_vn($vn, LEPTO_LAB_CODE);
+  $row = lepto_source_by_vn($vn);
 
   if (!$row) {
     echo json_encode(['ok'=>false,
-      'msg'=>"ไม่พบข้อมูล VN: {$vn} (lab_items_code=".LEPTO_LAB_CODE.")"]);
+      'msg'=>"ไม่พบข้อมูล VN: {$vn} (lab_items_code=".(module_filter('lepto')['lab_code'] ?? '290').")"]);
     exit;
   }
 
