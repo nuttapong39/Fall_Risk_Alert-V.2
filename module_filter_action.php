@@ -33,20 +33,7 @@ if (!is_array($stored)) $stored = [];
 if ($action === 'reset') {
   unset($stored[$mod]);                 // → module_filter() จะ fallback เป็น default
 } else {
-  $cfg = [];
-  foreach ($schema['fields'] as $f) {
-    $k = $f['key']; $raw = (string)($_POST['f_' . $k] ?? '');
-    switch ($f['type']) {
-      case 'codes':    $cfg[$k] = mf_codes(preg_split('/[\s,]+/', trim($raw)));      break;
-      case 'results':  $cfg[$k] = mf_texts(preg_split('/[\r\n,]+/', trim($raw)));    break; // ผลมีช่องว่างได้
-      case 'single':   $c = mf_codes([$raw]); $cfg[$k] = $c[0] ?? '';                break;
-      case 'int':      $cfg[$k] = max(0, (int)$raw);                                 break;
-      case 'patterns': $cfg[$k] = mf_text_to_patterns($raw);                         break;
-      case 'rules':    $cfg[$k] = mf_text_to_rules($raw);                            break;
-      default:         $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
-    }
-  }
-  $stored[$mod] = $cfg;
+  $stored[$mod] = module_filter_parse_post($mod, $_POST);
 }
 $stored['_meta'] = ['updated_at' => date('Y-m-d H:i:s')];
 

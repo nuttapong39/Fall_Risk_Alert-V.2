@@ -95,6 +95,12 @@ if (!function_exists('render_filter_modal')) {
                   <?php endif; ?>
                 </div>
               <?php endforeach; ?>
+              <div class="d-flex align-items-center gap-2 pt-2 border-top">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="mfPreview('<?= $e($mod) ?>', this)">
+                  <span class="msi me-1">search</span>ทดสอบ (นับผลย้อนหลัง 30 วัน)
+                </button>
+                <span id="filterPreviewResult_<?= $e($mod) ?>" class="small text-muted"></span>
+              </div>
             </div>
             <div class="modal-footer justify-content-between">
               <button type="submit" name="action" value="reset" class="btn btn-outline-danger btn-sm"
@@ -107,6 +113,27 @@ if (!function_exists('render_filter_modal')) {
             </div>
           </form>
         </div>
+        <script>
+        if (typeof mfPreview === 'undefined') {
+          function mfPreview(mod, btn) {
+            var form = btn.closest('form');
+            var out  = document.getElementById('filterPreviewResult_' + mod);
+            var fd   = new FormData(form);
+            fd.set('action', 'preview');
+            out.textContent = 'กำลังทดสอบ...';
+            btn.disabled = true;
+            fetch('module_filter_preview.php', { method: 'POST', body: fd })
+              .then(function (r) { return r.json(); })
+              .then(function (j) {
+                out.textContent = j.ok
+                  ? 'พบ ' + j.count + ' รายการ ใน ' + j.days + ' วันล่าสุด (ใช้ค่าที่กรอกไว้ ยังไม่บันทึก)'
+                  : 'ผิดพลาด: ' + (j.msg || 'ไม่ทราบสาเหตุ');
+              })
+              .catch(function () { out.textContent = 'เชื่อมต่อไม่สำเร็จ'; })
+              .finally(function () { btn.disabled = false; });
+          }
+        }
+        </script>
       </div>
     </div>
     <?php

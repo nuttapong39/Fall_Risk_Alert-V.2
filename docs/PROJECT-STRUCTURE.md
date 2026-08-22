@@ -70,13 +70,20 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - ไอคอน watermark: `assets/flex_icons/*.png`
 
 ### 5) แหล่งข้อมูล (Data sources) — `sources/`
-- `sources/<mod>_source.php` — query HOSxP (รองรับ MySQL/PostgreSQL)
+- `sources/<mod>_source.php` — query HOSxP (รองรับ MySQL/PostgreSQL); อ่านเงื่อนไข (lab code/pttype/icode/pdx) จาก `module_filter($mod)` เมื่อไม่ส่ง arg มาตรงๆ (default = ค่าเดิม)
+
+### 5b) เงื่อนไขดึงข้อมูลที่แก้ได้ (Editable source filters)
+- `module_filters_loader.php` — default (ฝังในตัว, = ค่าปัจจุบันของแต่ละ module) + `module_filter($mod)`/`module_filter_schema($mod)` + helper สร้าง SQL ปลอดภัย (`mf_codes`/`mf_in`/`mf_pdx_clause`/...)
+- `module_filter_action.php` — บันทึก/รีเซ็ตเงื่อนไข (POST จาก modal, CSRF + validate)
+- `module_filter_preview.php` — นับผลลัพธ์จากเงื่อนไขที่กำลังกรอก (ก่อนบันทึก, ย้อนหลัง 30 วัน, read-only)
+- `partials/filter_modal.php` — ปุ่ม "แก้ไขเงื่อนไขดึงข้อมูล" + modal (schema-driven) ที่ฝังในทุกหน้า `*_queue_ui.php`/`patient.php`/`sexual.php`/`Leptospira.php`/`scrubtyphus.php`/`drugitems01.php`
+- แก้ได้ผ่านหน้าเว็บ ไม่ต้องแตะโค้ด — มีผลทั้ง worker อัตโนมัติและปุ่ม Import (ใช้ store เดียวกัน)
 
 ### 6) Schema — root (`*.sql`)
 - `users.sql` + `<mod>_queue.sql` (10) — ตัวช่วย `db_config_admin.php` deploy ให้อัตโนมัติ
 
 ### 7) Config / secrets — `secrets/` (🔒 gitignore)
-- `db_config.json` · `moph_keys.json` · `site_config.json` · `flex_themes.json` (ตัวจริง — per-install)
+- `db_config.json` · `moph_keys.json` · `site_config.json` · `flex_themes.json` · `module_filters.json` (ตัวจริง — per-install)
 - `*.example.json` — template (อยู่ใน git)
 
 ### 8) Layout / assets

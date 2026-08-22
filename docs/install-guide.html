@@ -626,17 +626,10 @@ git clone https://github.com/nuttapong39/Fall_Risk_Alert-V.2.git <span class="g"
   <!-- ══════════════ STEP 9 ══════════════ -->
   <section id="s9" class="sec-anchor">
     <div class="sec-h"><span class="h-num">9</span><h2>ปรับค่าเฉพาะโรงพยาบาล</h2></div>
-    <p class="sec-sub measure">รหัส Lab / รหัสยา ต่างกันในแต่ละ รพ. — แก้ให้ตรงกับ HOSxP ของท่าน (เฉพาะโมดูลที่ใช้)</p>
-    <div class="tbl-wrap">
-      <table class="tbl">
-        <tr><th>ค่า</th><th>ไฟล์</th><th>หมายเหตุ</th></tr>
-        <tr><td>รหัส Lab COVID-19</td><td><code>covid.php</code></td><td>แก้ <code class="inl">lab_items_code IN (...)</code> ให้ตรง HOSxP</td></tr>
-        <tr><td>รหัสยาอันตราย (icode)</td><td><code>run_drug.bat</code></td><td>ตั้ง <code class="inl">DEFAULT_ICODES=...</code> (คั่นหลายรหัสด้วย ,)</td></tr>
-        <tr><td>รหัส Lab Sexual Assault</td><td><code>flex_sexual.php</code></td><td><code class="inl">LAB_CODE_SEXUAL</code></td></tr>
-        <tr><td>รหัส Lab เลปโต / สครับ</td><td>worker ราย module</td><td>ตรวจรหัสตรวจให้ตรง รพ.</td></tr>
-      </table>
-    </div>
-    <div class="note info"><div class="ic k">i</div><div>หา lab_items_code ได้ที่ phpMyAdmin: <code class="inl">SELECT lab_items_code, lab_items_name FROM lab_items WHERE lab_items_name LIKE '%covid%'</code></div></div>
+    <p class="sec-sub measure">รหัส Lab / รหัสยา / เกณฑ์ค่าวิกฤต ต่างกันในแต่ละ รพ. — <strong>แก้ผ่านหน้าเว็บได้เลย ไม่ต้องแก้โค้ด</strong></p>
+    <p class="measure">ทุกโมดูล (COVID-19, อุบัติเหตุ, ยาอันตราย, Sexual Assault, เลปโต, สครับ, ไข้เลือดออก, จิตเวช, หกล้ม, Lab วิกฤตห้องยา) มีปุ่ม <strong>"แก้ไขเงื่อนไขดึงข้อมูล"</strong> อยู่มุมขวาบนของหน้าคิว/หน้าโมดูลนั้น ๆ — กดแล้วแก้รหัส/เกณฑ์ในหน้าต่างที่เด้งขึ้นมาได้ทันที มีผลทั้งการส่งอัตโนมัติ (worker) และปุ่ม Sync/Import พร้อมกัน (ค่า default = ค่าที่ระบบตั้งไว้ตั้งแต่ต้น จนกว่าจะมีคนแก้)</p>
+    <p class="measure">ในหน้าต่างนั้นมีปุ่ม <strong>"ทดสอบ (นับผลย้อนหลัง 30 วัน)"</strong> ให้ลองนับผลก่อนกดบันทึกจริง เพื่อเช็คว่ารหัสที่กรอกดึงข้อมูลได้ตามคาด</p>
+    <div class="note info"><div class="ic k">i</div><div>หา lab_items_code ได้ที่ phpMyAdmin: <code class="inl">SELECT lab_items_code, lab_items_name FROM lab_items WHERE lab_items_name LIKE '%covid%'</code> แล้วนำรหัสที่ได้ไปกรอกในหน้าต่างแก้ไขเงื่อนไข</div></div>
   </section>
 
   <!-- ══════════════ TROUBLESHOOTING ══════════════ -->

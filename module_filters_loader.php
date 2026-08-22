@@ -116,7 +116,31 @@ if (!function_exists('module_filter_defaults')) {
   function module_filter_defaults(string $mod): array { return $GLOBALS['MODULE_FILTER_DEFAULTS'][$mod] ?? []; }
 }
 
-/* ── helpers สร้าง SQL อย่างปลอดภัย (ใช้ตอน refactor source ใน phase ถัดไป) ──── */
+/**
+ * แปลงค่าดิบจาก modal (f_<key> ใน $post) → cfg array ตาม schema (validate ทุกฟิลด์)
+ * ใช้ร่วมโดย module_filter_action.php (save) และ module_filter_preview.php (นับผลก่อนบันทึก)
+ */
+if (!function_exists('module_filter_parse_post')) {
+  function module_filter_parse_post(string $mod, array $post): array {
+    $schema = module_filter_schema($mod);
+    $cfg = [];
+    foreach ($schema['fields'] ?? [] as $f) {
+      $k = $f['key']; $raw = (string)($post['f_' . $k] ?? '');
+      switch ($f['type']) {
+        case 'codes':    $cfg[$k] = mf_codes(preg_split('/[\s,]+/', trim($raw)));      break;
+        case 'results':  $cfg[$k] = mf_texts(preg_split('/[\r\n,]+/', trim($raw)));    break;
+        case 'single':   $c = mf_codes([$raw]); $cfg[$k] = $c[0] ?? '';                break;
+        case 'int':      $cfg[$k] = max(0, (int)$raw);                                 break;
+        case 'patterns': $cfg[$k] = mf_text_to_patterns($raw);                         break;
+        case 'rules':    $cfg[$k] = mf_text_to_rules($raw);                            break;
+        default:         $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
+      }
+    }
+    return $cfg;
+  }
+}
+
+/* ── helpers สร้าง SQL อย่างปลอดภัย (ใช้โดย sources/*_source.php ทุก module) ──── */
 if (!function_exists('mf_codes')) {
   /** clean list ของรหัส: trim, เก็บเฉพาะ [A-Za-z0-9._-], ตัดว่าง, unique (กัน injection ชั้นสอง) */
   function mf_codes(array $arr): array {
