@@ -4,6 +4,7 @@
  *   แก้ต่อ module: title/subtitle/urgency/สี(gradient+accent)/มุม gradient/bg_icon_url
  *   แก้ global: footer + label ในการ์ด
  *   Live preview (สด) + validate hex (กัน rgba) + Save เขียน secrets/flex_themes.json
+ *   Layout: HR-CENTER 4.0 (partials/header.php) — sidebar + topbar
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
@@ -69,66 +70,81 @@ $g = $all['_global'];
 $L = $g['labels'];
 if (isset($_GET['saved'])) $msg = 'บันทึกแล้ว ✓ (มีผลกับ Flex ที่ยิงครั้งถัดไปทันที)';
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-?>
-<!doctype html><html lang="th"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flex Theme Editor</title>
-<style>
-  *{box-sizing:border-box} body{margin:0;font-family:"Segoe UI","Sarabun",system-ui,sans-serif;background:#F1F5F9;color:#0F172A}
-  .top{background:#0F172A;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .top h1{font-size:16px;margin:0;font-weight:700} .top .sp{flex:1}
-  .top select{padding:6px 10px;border-radius:8px;border:0;font-size:14px}
-  .wrap{display:flex;gap:22px;padding:22px;align-items:flex-start;flex-wrap:wrap}
-  .form{flex:1 1 420px;max-width:560px;background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .prev{flex:0 0 340px;position:sticky;top:22px}
-  fieldset{border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin:0 0 16px}
-  legend{font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;padding:0 6px}
-  label{display:block;font-size:12px;color:#475569;font-weight:600;margin:10px 0 4px}
-  input[type=text]{width:100%;padding:8px 10px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-  .colorfield{display:flex;align-items:center;gap:8px} input[type=color]{width:42px;height:34px;border:1px solid #CBD5E1;border-radius:8px;padding:2px;background:#fff}
-  .hex{font-family:monospace;font-size:12px;color:#64748B}
-  input[type=range]{width:100%}
-  .save{background:#2563EB;color:#fff;border:0;border-radius:10px;padding:11px 20px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
-  .banner{padding:10px 14px;border-radius:10px;margin:0 0 16px;font-size:14px}
-  .ok{background:#DCFCE7;color:#166534} .bad{background:#FEE2E2;color:#991B1B}
-  details{margin-top:4px} summary{cursor:pointer;font-size:13px;color:#2563EB;font-weight:600;margin-bottom:8px}
-  .hint{font-size:11px;color:#94A3B8;margin-top:3px}
-  /* preview card */
-  .card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:12px;font-size:13px}
-  .hd{border-radius:14px;padding:13px 15px;color:#fff;position:relative;overflow:hidden}
-  .hd h2{margin:0;font-size:16px;font-weight:800;position:relative} .hd .en{font-size:11px;opacity:.85;margin-top:2px;position:relative}
-  .bd{padding:12px 6px 2px} .lb{font-size:10px;font-weight:700;text-transform:uppercase;color:#94A3B8;margin:14px 0 5px}
-  .lb:first-child{margin-top:2px}
-  .hn{font-size:14px;font-weight:800} .nm{font-size:15px;font-weight:700} .mt{color:#64748B;font-size:12px;margin-top:2px}
-  .kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0} .kv .k{color:#64748B} .kv .v{font-weight:700;text-align:right}
-  .icd{display:flex;justify-content:space-between;align-items:center;margin:4px 0} .icd .l{font-weight:700} .icd .r{font-size:20px;font-weight:800}
-  .pill{display:inline-block;padding:2px 10px;border-radius:6px;color:#fff;font-weight:800;font-size:12px}
-  .ph{font-size:15px;font-weight:800;margin-top:6px}.ph .i{color:#94A3B8;font-weight:400}
-  .ft{border-top:1px solid #F1F5F9;margin-top:12px;padding-top:9px;color:#94A3B8;font-size:10px;display:flex;justify-content:space-between}
-</style></head><body>
 
+/* ── Layout ──────────────────────────────────────────────────────── */
+$PAGE_TITLE = 'ปรับแต่ง Flex Message';
+$PAGE_KEY   = 'flex_editor';
+$EXTRA_HEAD = <<<'HTML'
+<style>
+/* ทุกอย่าง scope ใต้ .fe เพื่อไม่ชนกับ HR-CENTER design system */
+.fe *{box-sizing:border-box}
+.fe-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fe-tools select{padding:7px 11px;border-radius:9px;border:1px solid var(--card-border);font-size:.88rem;
+  background:var(--card-bg);color:var(--text);font-family:inherit;cursor:pointer;max-width:260px}
+.fe .wrap{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.fe .form{flex:1 1 420px;max-width:560px;background:var(--card-bg);border:1px solid var(--card-border);
+  border-radius:14px;padding:20px;box-shadow:var(--card-shadow)}
+.fe .prev{flex:0 0 340px;position:sticky;top:84px}
+.fe fieldset{border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;margin:0 0 16px}
+.fe legend{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 6px}
+.fe label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:10px 0 4px}
+.fe input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--card-border);border-radius:8px;
+  font-size:14px;background:var(--input-bg);color:var(--text)}
+.fe .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fe .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.fe .colorfield{display:flex;align-items:center;gap:8px}
+.fe input[type=color]{width:42px;height:34px;border:1px solid var(--card-border);border-radius:8px;padding:2px;background:var(--card-bg)}
+.fe .hex{font-family:monospace;font-size:12px;color:var(--muted)}
+.fe input[type=range]{width:100%}
+.fe .save{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:11px 20px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
+.fe-tools .save{width:auto;padding:8px 16px;font-size:.9rem;border-radius:9px}
+.fe .banner{padding:10px 14px;border-radius:10px;margin:0 0 16px;font-size:14px}
+.fe .ok{background:#DCFCE7;color:#166534} .fe .bad{background:#FEE2E2;color:#991B1B}
+.fe details{margin-top:4px} .fe summary{cursor:pointer;font-size:13px;color:var(--blue);font-weight:600;margin-bottom:8px}
+.fe .hint{font-size:11px;color:var(--muted);margin-top:3px}
+/* ── preview card (LINE — คงโทนสว่างเสมอ) ── */
+.fe .fe-card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:12px;font-size:13px;color:#0F172A}
+.fe .hd{border-radius:14px;padding:13px 15px;color:#fff;position:relative;overflow:hidden}
+.fe .hd h2{margin:0;font-size:16px;font-weight:800;position:relative}
+.fe .hd .en{font-size:11px;opacity:.85;margin-top:2px;position:relative}
+.fe .bd{padding:12px 6px 2px}
+.fe .lb{font-size:10px;font-weight:700;text-transform:uppercase;color:#94A3B8;margin:14px 0 5px}
+.fe .lb:first-child{margin-top:2px}
+.fe .hn{font-size:14px;font-weight:800} .fe .nm{font-size:15px;font-weight:700} .fe .mt{color:#64748B;font-size:12px;margin-top:2px}
+.fe .kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0} .fe .kv .k{color:#64748B} .fe .kv .v{font-weight:700;text-align:right}
+.fe .icd{display:flex;justify-content:space-between;align-items:center;margin:4px 0} .fe .icd .l{font-weight:700} .fe .icd .r{font-size:20px;font-weight:800}
+.fe .pill{display:inline-block;padding:2px 10px;border-radius:6px;color:#fff;font-weight:800;font-size:12px}
+.fe .ph{font-size:15px;font-weight:800;margin-top:6px}.fe .ph .i{color:#94A3B8;font-weight:400}
+.fe .ft{border-top:1px solid #F1F5F9;margin-top:12px;padding-top:9px;color:#94A3B8;font-size:10px;display:flex;justify-content:space-between}
+</style>
+HTML;
+
+require_once __DIR__ . '/partials/header.php';
+?>
+
+<div class="fe">
 <form method="post" id="f">
 <input type="hidden" name="action" value="save">
 <input type="hidden" name="module" value="<?=$e($cur)?>">
 
-<div class="top">
-  <a href="index.php" style="color:#cbd5e1;text-decoration:none;font-size:14px">← กลับ</a>
-  <h1>🎨 Flex Theme Editor</h1>
-  <label style="color:#cbd5e1;margin:0;font-weight:600">Module:</label>
-  <select onchange="location.href='flex_editor.php?m='+this.value">
-    <?php foreach ($MODS as $mm): ?>
-      <option value="<?=$e($mm)?>" <?=$mm===$cur?'selected':''?>><?=$e($all[$mm]['title'] ?? $mm)?> (<?=$e($mm)?>)</option>
-    <?php endforeach; ?>
-  </select>
-  <span class="sp"></span>
-  <button class="save" type="submit" style="width:auto">💾 บันทึก</button>
+<div class="page-header">
+  <h1><span class="msi me-2" style="color:var(--blue)">palette</span>ปรับแต่ง Flex Message</h1>
+  <div class="fe-tools">
+    <label style="margin:0;color:var(--muted)">Module:</label>
+    <select onchange="location.href='flex_editor.php?m='+this.value">
+      <?php foreach ($MODS as $mm): ?>
+        <option value="<?=$e($mm)?>" <?=$mm===$cur?'selected':''?>><?=$e($all[$mm]['title'] ?? $mm)?> (<?=$e($mm)?>)</option>
+      <?php endforeach; ?>
+    </select>
+    <button class="save" type="submit"><span class="msi me-1">save</span>บันทึก</button>
+  </div>
 </div>
+
+<?php if ($msg): ?><div class="banner ok"><?=$e($msg)?></div><?php endif; ?>
+<?php if ($err): ?><div class="banner bad"><?=$e($err)?></div><?php endif; ?>
 
 <div class="wrap">
   <div class="form">
-    <?php if ($msg): ?><div class="banner ok"><?=$e($msg)?></div><?php endif; ?>
-    <?php if ($err): ?><div class="banner bad"><?=$e($err)?></div><?php endif; ?>
 
     <fieldset><legend>หัวการ์ด — <?=$e($cur)?></legend>
       <label>ชื่อ (title)</label><input type="text" name="title" id="i_title" value="<?=$e($t['title'])?>">
@@ -167,11 +183,11 @@ $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
       </fieldset>
     </details>
 
-    <button class="save" type="submit">💾 บันทึก theme</button>
+    <button class="save" type="submit"><span class="msi me-1">save</span>บันทึก theme</button>
   </div>
 
   <div class="prev">
-    <div class="card">
+    <div class="fe-card">
       <div class="hd" id="p_hd">
         <h2 id="p_title"><?=$e($t['title'])?></h2>
         <div class="en" id="p_sub"></div>
@@ -194,6 +210,7 @@ $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   </div>
 </div>
 </form>
+</div>
 
 <script>
 (function(){
@@ -214,4 +231,5 @@ $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
   upd();
 })();
 </script>
-</body></html>
+
+<?php require_once __DIR__ . '/partials/footer.php'; ?>
