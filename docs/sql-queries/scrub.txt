@@ -1,0 +1,26 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: สครับไทฟัส (lab 291)
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'scrub'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT * FROM (SELECT DISTINCT ON (ov.vn) ov.vn, ov.hn,
+             CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+             EXTRACT(YEAR FROM age(ov.vstdate, pt.birthday)) AS age,
+             CASE WHEN pt.sex='1' THEN 'ชาย' WHEN pt.sex='2' THEN 'หญิง' ELSE '' END AS sex,
+             ov.cid, pt.informaddr AS address, pt.hometel, ov.vstdate,
+             d.name AS doctor, i.name AS disease, ov.pdx AS icd10, l.lab_order_result AS result FROM   vn_stat ov
+             LEFT  JOIN patient pt ON pt.hn  = ov.hn
+             LEFT  JOIN icd101  i  ON i.code = ov.pdx
+             LEFT  JOIN doctor  d  ON d.code = ov.dx_doctor
+             INNER JOIN lab_head  h ON h.vn               = ov.vn
+             INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
+             WHERE  ov.vstdate       BETWEEN '2026-08-01' AND '2026-08-31'
+               AND  l.lab_items_code = '291'
+               AND  l.lab_order_result = 'Positive'
+               AND  ov.pdx = 'A753' ORDER BY ov.vn, ov.vstdate DESC) t ORDER BY vstdate DESC

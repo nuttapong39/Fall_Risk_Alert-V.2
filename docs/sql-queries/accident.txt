@@ -1,0 +1,25 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: อุบัติเหตุ พ.ร.บ. (pttype 33/35/36/39, ผู้ป่วยใน)
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'accident'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT
+              ipt.an,
+              pt.hn,
+              CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+              ipt.regdate,
+              ipt.regtime,
+              ipt.pttype,
+              ptt.name AS pttname
+            FROM ipt
+              LEFT JOIN patient pt  ON pt.hn      = ipt.hn
+              LEFT JOIN pttype  ptt ON ptt.pttype = ipt.pttype
+            WHERE ipt.regdate BETWEEN '2026-08-01' AND '2026-08-31'
+              AND ipt.pttype IN ('33','35','36','39')
+            ORDER BY ipt.regdate DESC, ipt.regtime DESC, ipt.an DESC

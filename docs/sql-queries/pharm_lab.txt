@@ -1,0 +1,37 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: Lab วิกฤต ห้องยา
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'pharm_lab'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT
+              h.lab_order_number,
+              h.hn,
+              CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+              EXTRACT(YEAR FROM age(h.order_date, pt.birthday)) AS age,
+              h.report_date AS lab_date,
+              h.report_time AS lab_time,
+              d.name        AS doctor,
+              l.lab_items_code,
+              l.lab_order_result AS result,
+              'OPD' AS patient_type
+            FROM   lab_head  h
+            INNER JOIN lab_order l   ON l.lab_order_number = h.lab_order_number
+            LEFT  JOIN vn_stat  vs   ON vs.vn              = h.vn
+            LEFT  JOIN patient  pt   ON pt.hn              = h.hn
+            LEFT  JOIN doctor   d    ON d.code             = vs.dx_doctor
+            WHERE  h.order_date BETWEEN '2026-08-01' AND '2026-08-31'
+            AND    l.lab_order_result IS NOT NULL
+            AND    l.lab_order_result <> ''
+            AND    (
+          (l.lab_items_code = '539'  AND COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+('':\.[0-9]+)'''),'')::numeric, 0) >= 5)
+          OR (l.lab_items_code = '2368' AND (l.lab_order_result !~ '^[0-9]' OR COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+('':\.[0-9]+)'''),'')::numeric, 0) > 150))
+          OR (l.lab_items_code IN ('697','2388') AND (l.lab_order_result !~ '^[0-9]' OR COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+('':\.[0-9]+)'''),'')::numeric, 0) > 1.2))
+          OR (l.lab_items_code = '2370' AND (l.lab_order_result !~ '^[0-9]' OR COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+('':\.[0-9]+)'''),'')::numeric, 0) > 20))
+        )
+            ORDER  BY h.order_date DESC

@@ -1,0 +1,35 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: COVID-19 (lab 3066/3082/3084/3088)
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'covid'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT * FROM (SELECT DISTINCT ON (h.lab_order_number) 
+               h.lab_order_number,
+               pt.hn,
+               CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+               EXTRACT(YEAR FROM age(pt.birthday))      AS age,
+               pt.cid,
+               pt.informaddr,
+               pt.hometel,
+               ov.vstdate::date     AS vstdate,
+               d.name          AS doctor,
+               ov.pdx,
+               l.lab_order_result,
+               h.report_date
+             FROM   lab_order  l
+             INNER JOIN lab_head h  ON h.lab_order_number = l.lab_order_number
+             LEFT  JOIN vn_stat  ov ON ov.vn  = h.vn
+             LEFT  JOIN doctor   d  ON d.code  = ov.dx_doctor
+             INNER JOIN patient  pt ON pt.hn   = ov.hn
+             WHERE  ov.vstdate::date BETWEEN '2026-08-01' AND '2026-08-31'
+             AND    l.lab_items_code IN ('3066','3082','3084','3088')
+             AND    l.lab_order_result = 'Positive'
+             
+             
+             ORDER BY h.lab_order_number, h.report_date DESC) t ORDER BY report_date DESC

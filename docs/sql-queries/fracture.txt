@@ -1,0 +1,42 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: พลัดตก/หกล้ม (อายุ ≥ 60)
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'fracture'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT
+              vs.vn                                        AS visit_vn,
+              vs.hn,
+              CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+              pt.cid,
+              pt.hometel,
+              EXTRACT(YEAR FROM age(vs.vstdate, pt.birthday))                                   AS age,
+              CASE WHEN pt.sex='1' THEN 'ชาย'
+                   WHEN pt.sex='2' THEN 'หญิง' ELSE '' END AS sex,
+              pt.informaddr                                AS address,
+              vs.pdx                                       AS pdx_code,
+              i.name                                       AS pdx_name,
+              vs.vstdate,
+              COALESCE(h.name,'')                          AS mainstation
+            FROM   vn_stat vs
+            LEFT JOIN patient  pt   ON pt.hn      = vs.hn
+            LEFT JOIN icd101   i    ON i.code     = vs.pdx
+            LEFT JOIN ovst     ovst ON ovst.vn    = vs.vn
+            LEFT JOIN hospcode h    ON h.hospcode = ovst.hospsub
+            WHERE  vs.vstdate BETWEEN '2026-08-01' AND '2026-08-31'
+            AND    EXTRACT(YEAR FROM age(vs.vstdate, pt.birthday)) >= '60'
+            AND    (
+              (UPPER(vs.pdx) BETWEEN 'W00' AND 'W19')
+              OR UPPER(vs.pdx) LIKE 'S720%' OR UPPER(vs.pdx) LIKE 'S721%'
+              OR UPPER(vs.pdx) LIKE 'S722%' OR UPPER(vs.pdx) LIKE 'S525%'
+              OR UPPER(vs.pdx) LIKE 'S526%' OR UPPER(vs.pdx) LIKE 'S422%'
+              OR UPPER(vs.pdx) LIKE 'S220%' OR UPPER(vs.pdx) LIKE 'S221%'
+              OR UPPER(vs.pdx) LIKE 'S320%' OR UPPER(vs.pdx) LIKE 'S327%'
+            )
+            AND    vs.hn IS NOT NULL AND vs.hn <> ''
+            ORDER  BY vs.vstdate DESC

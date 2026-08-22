@@ -1,0 +1,33 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: จิตเวช/ทำร้ายตนเอง
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'patient'
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN '2026-08-01' AND '2026-08-31'  (ตอนนี้ = เดือนปัจจุบัน)
+--   • รหัส lab/pttype/icode  ← แก้ให้ตรงรหัสใน HOSxP ของ รพ. ท่าน
+-- (query นี้ดึงจากตัวจริงของระบบอัตโนมัติ — ตรงกับที่ worker ใช้)
+-- ============================================================
+
+SELECT
+              ov.vn AS visit_vn,
+              pt.hn,
+              CONCAT(COALESCE(pt.pname,''), COALESCE(pt.fname,''), ' ', COALESCE(pt.lname,'')) AS fullname,
+              pt.cid,
+              pt.hometel,
+              ov.age_y AS age,
+              se.name  AS sex,
+              pt.informaddr AS address,
+              ov.pdx   AS pdx_code,
+              ic.name  AS pdx_name,
+              ov.vstdate,
+              COALESCE(h.name, '') AS mainstation
+            FROM vn_stat ov
+            LEFT JOIN patient  pt ON pt.hn      = ov.hn
+            LEFT JOIN sex      se ON pt.sex     = se.code
+            LEFT JOIN icd101   ic ON ov.pdx     = ic.code
+            LEFT JOIN ovst   ovst ON ovst.vn    = ov.vn
+            LEFT JOIN hospcode h  ON h.hospcode = ovst.hospsub
+            WHERE ov.vstdate BETWEEN '2026-08-01' AND '2026-08-31'
+              AND (UPPER(ov.pdx) = 'T71' OR UPPER(ov.pdx) LIKE 'X60%' OR UPPER(ov.pdx) LIKE 'X61%' OR UPPER(ov.pdx) LIKE 'X62%' OR UPPER(ov.pdx) LIKE 'X63%' OR UPPER(ov.pdx) LIKE 'X64%' OR UPPER(ov.pdx) LIKE 'X65%' OR UPPER(ov.pdx) LIKE 'X66%' OR UPPER(ov.pdx) LIKE 'X67%' OR UPPER(ov.pdx) LIKE 'X68%' OR UPPER(ov.pdx) LIKE 'X69%' OR UPPER(ov.pdx) LIKE 'X70%' OR UPPER(ov.pdx) LIKE 'X84%' OR UPPER(ov.dx0) = 'T71' OR UPPER(ov.dx0) LIKE 'X60%' OR UPPER(ov.dx0) LIKE 'X61%' OR UPPER(ov.dx0) LIKE 'X62%' OR UPPER(ov.dx0) LIKE 'X63%' OR UPPER(ov.dx0) LIKE 'X64%' OR UPPER(ov.dx0) LIKE 'X65%' OR UPPER(ov.dx0) LIKE 'X66%' OR UPPER(ov.dx0) LIKE 'X67%' OR UPPER(ov.dx0) LIKE 'X68%' OR UPPER(ov.dx0) LIKE 'X69%' OR UPPER(ov.dx0) LIKE 'X70%' OR UPPER(ov.dx0) LIKE 'X84%' OR UPPER(ov.dx1) = 'T71' OR UPPER(ov.dx1) LIKE 'X60%' OR UPPER(ov.dx1) LIKE 'X61%' OR UPPER(ov.dx1) LIKE 'X62%' OR UPPER(ov.dx1) LIKE 'X63%' OR UPPER(ov.dx1) LIKE 'X64%' OR UPPER(ov.dx1) LIKE 'X65%' OR UPPER(ov.dx1) LIKE 'X66%' OR UPPER(ov.dx1) LIKE 'X67%' OR UPPER(ov.dx1) LIKE 'X68%' OR UPPER(ov.dx1) LIKE 'X69%' OR UPPER(ov.dx1) LIKE 'X70%' OR UPPER(ov.dx1) LIKE 'X84%' OR UPPER(ov.dx2) = 'T71' OR UPPER(ov.dx2) LIKE 'X60%' OR UPPER(ov.dx2) LIKE 'X61%' OR UPPER(ov.dx2) LIKE 'X62%' OR UPPER(ov.dx2) LIKE 'X63%' OR UPPER(ov.dx2) LIKE 'X64%' OR UPPER(ov.dx2) LIKE 'X65%' OR UPPER(ov.dx2) LIKE 'X66%' OR UPPER(ov.dx2) LIKE 'X67%' OR UPPER(ov.dx2) LIKE 'X68%' OR UPPER(ov.dx2) LIKE 'X69%' OR UPPER(ov.dx2) LIKE 'X70%' OR UPPER(ov.dx2) LIKE 'X84%' OR UPPER(ov.dx3) = 'T71' OR UPPER(ov.dx3) LIKE 'X60%' OR UPPER(ov.dx3) LIKE 'X61%' OR UPPER(ov.dx3) LIKE 'X62%' OR UPPER(ov.dx3) LIKE 'X63%' OR UPPER(ov.dx3) LIKE 'X64%' OR UPPER(ov.dx3) LIKE 'X65%' OR UPPER(ov.dx3) LIKE 'X66%' OR UPPER(ov.dx3) LIKE 'X67%' OR UPPER(ov.dx3) LIKE 'X68%' OR UPPER(ov.dx3) LIKE 'X69%' OR UPPER(ov.dx3) LIKE 'X70%' OR UPPER(ov.dx3) LIKE 'X84%')
+            ORDER BY ov.vstdate DESC, ov.vn DESC
