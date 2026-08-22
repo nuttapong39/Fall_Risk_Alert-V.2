@@ -14,7 +14,6 @@ require_once __DIR__ . '/flex_disease.php';
 date_default_timezone_set('Asia/Bangkok');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-define('SCRUB_LAB_CODE',    '291');
 define('SCRUB_Q_UI_TOKEN',  hash('sha256', __DIR__ . '/scrubtyphus.php' . php_uname() . date('Y-m-d')));
 
 if (!defined('MOPH_API_URL'))         define('MOPH_API_URL',         'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
@@ -114,7 +113,7 @@ if ($action === 'import_hosxp') {
 
   try {
     require_once __DIR__ . '/sources/scrub_source.php';
-    $hosxpRows = scrub_source_rows($start, $end, SCRUB_LAB_CODE);
+    $hosxpRows = scrub_source_rows($start, $end);
   } catch (Throwable $e) {
     echo json_encode(['ok' => false, 'msg' => 'HOSxP query error: ' . $e->getMessage()]);
     exit;

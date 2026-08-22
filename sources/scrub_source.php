@@ -7,7 +7,17 @@
  */
 
 if (!function_exists('scrub_source_rows')) {
-  function scrub_source_rows(string $start, string $end, string $labCode = '291'): array {
+  function scrub_source_rows(string $start, string $end, ?string $labCode = null, ?array $results = null, ?array $pdxCodes = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    $mf = function_exists('module_filter') ? module_filter('scrub') : [];
+    if ($labCode  === null) $labCode  = $mf['lab_code']  ?? '291';
+    if ($results  === null) $results  = $mf['results']   ?? ['Positive'];
+    if ($pdxCodes === null) $pdxCodes = $mf['pdx_codes'] ?? ['A753'];
+    $results  = function_exists('mf_texts') ? mf_texts($results) : array_values(array_filter($results,  fn($x) => $x !== ''));
+    $pdxCodes = function_exists('mf_codes') ? mf_codes($pdxCodes) : array_values(array_filter($pdxCodes, fn($x) => $x !== ''));
+    if (!$results || !$pdxCodes) return [];
+    $resPlace = implode(',', array_fill(0, count($results), '?'));
+    $pdxPlace = implode(',', array_fill(0, count($pdxCodes), '?'));
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')
@@ -27,19 +37,24 @@ if (!function_exists('scrub_source_rows')) {
              INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
              WHERE  ov.vstdate       BETWEEN ? AND ?
                AND  l.lab_items_code = ?
-               AND  l.lab_order_result = 'Positive'
-               AND  ov.pdx = 'A753'";
+               AND  l.lab_order_result IN ($resPlace)
+               AND  ov.pdx IN ($pdxPlace)";
     $sql = ($driver === 'pgsql')
       ? "SELECT * FROM (SELECT DISTINCT ON (ov.vn) {$cols} {$from} ORDER BY ov.vn, ov.vstdate DESC) t ORDER BY vstdate DESC"
       : "SELECT {$cols} {$from} GROUP BY ov.vn ORDER BY ov.vstdate DESC";
     $st = $db->prepare($sql);
-    $st->execute([$start, $end, $labCode]);
+    $st->execute(array_merge([$start, $end, $labCode], $results, $pdxCodes));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }
 
 if (!function_exists('scrub_source_by_vn')) {
-  function scrub_source_by_vn(string $vn, string $labCode = '291'): ?array {
+  function scrub_source_by_vn(string $vn, ?string $labCode = null): ?array {
+    if ($labCode === null) {
+      $labCode = function_exists('module_filter')
+        ? (module_filter('scrub')['lab_code'] ?? '291')
+        : '291';
+    }
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')

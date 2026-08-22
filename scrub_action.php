@@ -16,7 +16,6 @@ require_once __DIR__ . '/flex_disease.php';
 date_default_timezone_set('Asia/Bangkok');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-define('SCRUB_LAB_CODE', '291');
 define('SCRUB_TYPE',     'scrub');
 
 if (!defined('MOPH_API_URL'))   define('MOPH_API_URL',   'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
@@ -62,11 +61,11 @@ if ($action !== 'send' || $vn === '') {
 // ── Query HOSxP ───────────────────────────────────────────────────────────────
 try {
   require_once __DIR__ . '/sources/scrub_source.php';
-  $row = scrub_source_by_vn($vn, SCRUB_LAB_CODE);
+  $row = scrub_source_by_vn($vn);
 
   if (!$row) {
     echo json_encode(['ok'=>false,
-      'msg'=>"ไม่พบข้อมูล VN: {$vn} (lab_items_code=".SCRUB_LAB_CODE.")"]);
+      'msg'=>"ไม่พบข้อมูล VN: {$vn} (lab_items_code=".(module_filter('scrub')['lab_code'] ?? '291').")"]);
     exit;
   }
 

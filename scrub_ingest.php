@@ -21,8 +21,6 @@ define('APP_DIR', __DIR__);
 date_default_timezone_set('Asia/Bangkok');
 set_time_limit(300);
 
-/* ── Constants ─────────────────────────────────────────────────── */
-define('SCRUB_LAB_CODE', '291');
 
 if (!defined('MOPH_API_URL'))       define('MOPH_API_URL',       'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))       define('MOPH_TIMEOUT',       30);
@@ -72,12 +70,12 @@ function dng_moph_log(array $row, int $code, ?string $resp, ?string $err = null)
 
 /* ═══ START ══════════════════════════════════════════════════════ */
 dng_log('=== scrub_ingest START' . ($isDry ? ' [DRYRUN]' : '') . ' ===');
-dng_log("ช่วง: {$start} ถึง {$end}  lab_items_code=" . SCRUB_LAB_CODE);
+dng_log("ช่วง: {$start} ถึง {$end}  lab_items_code=" . (module_filter('scrub')['lab_code'] ?? '291'));
 
 /* ═══ STEP 1: Query HOSxP ════════════════════════════════════════ */
 try {
   require_once __DIR__ . '/sources/scrub_source.php';
-  $hosxpRows = scrub_source_rows($start, $end, SCRUB_LAB_CODE);
+  $hosxpRows = scrub_source_rows($start, $end);
   dng_log('HOSxP: พบ ' . count($hosxpRows) . ' รายการ');
 } catch (Throwable $e) {
   dng_log('ERROR HOSxP query: ' . $e->getMessage());
