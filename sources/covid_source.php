@@ -15,9 +15,15 @@
 
 if (!function_exists('covid_source_rows')) {
   function covid_source_rows(string $start, string $end,
-                             array $labCodes = ['3066','3082','3084','3088'],
+                             ?array $labCodes = null,
                              bool $broadResult = false,
                              string $doctorName = ''): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    if ($labCodes === null) {
+      $labCodes = function_exists('module_filter')
+        ? (module_filter('covid')['lab_codes'] ?? [])
+        : ['3066','3082','3084','3088'];
+    }
     $labCodes = array_values(array_filter($labCodes, fn($x) => $x !== ''));
     if (!$labCodes) return [];
     $db     = hosxp_db();

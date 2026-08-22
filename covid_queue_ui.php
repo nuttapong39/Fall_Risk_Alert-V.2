@@ -7,6 +7,7 @@
  *  - DataTables + SweetAlert2 + Bulk action bar
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
@@ -133,11 +134,13 @@ require_once __DIR__ . '/partials/header.php';
 <div class="page-header">
   <h1><span class="msi text-primary me-2">coronavirus</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <?= filter_edit_button('covid') ?>
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#covSyncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <?php if (!empty($queryError)): ?>
   <div class="alert alert-danger">
@@ -321,7 +324,7 @@ require_once __DIR__ . '/partials/header.php';
             <span class="msi me-1" style="font-size:1rem">science</span>รหัส Lab (lab_items_code)
           </label>
           <input type="text" id="covSyncLabCodes" class="form-control font-monospace"
-                 value="3066,3082,3084,3088"
+                 value="<?= htmlspecialchars(implode(',', module_filter('covid')['lab_codes'])) ?>"
                  placeholder="คั่นด้วย , เช่น 3066,3082,3084,3088">
           <div class="form-text">
             COVID RT-PCR = <code>3066, 3082, 3084, 3088</code>
@@ -360,6 +363,8 @@ require_once __DIR__ . '/partials/header.php';
     </button>
   </div>
 </form>
+
+<?php render_filter_modal('covid'); ?>
 
 <?php
 $EXTRA_FOOTER = '

@@ -25,16 +25,14 @@ if ($action === 'import_hosxp') {
 
   $impStart    = trim($_POST['start']     ?? date('Y-m-d', strtotime('-7 days')));
   $impEnd      = trim($_POST['end']       ?? date('Y-m-d'));
-  $labCodesRaw = trim($_POST['lab_codes'] ?? '3066,3082,3084,3088');
+  // default = เงื่อนไขจาก store (แก้ผ่าน modal ในหน้า queue_ui) — ส่ง lab_codes มา override ต่อครั้งได้
+  $labCodesRaw = trim($_POST['lab_codes'] ?? implode(',', module_filter('covid')['lab_codes']));
 
-  // Validate — digits only (guard against SQL injection via IN clause)
-  $labCodes = array_values(array_filter(
-    array_map('trim', explode(',', $labCodesRaw)),
-    fn($c) => ctype_digit($c) && $c !== ''
-  ));
+  // Validate — เก็บเฉพาะ alphanumeric (กัน SQL injection ใน IN clause)
+  $labCodes = mf_codes(preg_split('/[\s,]+/', $labCodesRaw));
 
   if (empty($labCodes)) {
-    echo json_encode(['ok'=>false, 'msg'=>'รหัส lab_items_code ไม่ถูกต้อง — ต้องเป็นตัวเลขคั่นด้วย ,']);
+    echo json_encode(['ok'=>false, 'msg'=>'รหัส lab_items_code ไม่ถูกต้อง']);
     exit;
   }
 
