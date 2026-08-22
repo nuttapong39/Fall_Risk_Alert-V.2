@@ -3,6 +3,7 @@ secrets/db_config.json
 secrets/moph_keys.json
 secrets/site_config.json
 secrets/flex_themes.json
+secrets/module_filters.json
 secrets/*.bak
 *.env
 .env
@@ -12,6 +13,7 @@ secrets/*.bak
 !secrets/moph_keys.example.json
 !secrets/site_config.example.json
 !secrets/flex_themes.example.json
+!secrets/module_filters.example.json
 
 # --- Logs ---
 logs/

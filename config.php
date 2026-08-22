@@ -17,6 +17,9 @@ require_once __DIR__ . '/moph_keys_loader.php';
 // โหลดชื่อโรงพยาบาลจาก secrets/site_config.json → HOSPITAL_SHORT / HOSPITAL_FULL
 require_once __DIR__ . '/site_config_loader.php';
 
+// โหลดเงื่อนไขดึงข้อมูลราย module จาก secrets/module_filters.json (default=ค่าปัจจุบัน)
+require_once __DIR__ . '/module_filters_loader.php';
+
 // สำหรับปุ่มใน UI (เปลี่ยนเป็นค่าเฉพาะของคุณ)
 if (!defined('UI_ACTION_TOKEN')) {
   define('UI_ACTION_TOKEN', 'change-me-very-secret');
