@@ -7,6 +7,7 @@
  *  - ใช้ DataTables + SweetAlert + Bulk action bar
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
@@ -107,6 +108,7 @@ require_once __DIR__ . '/partials/header.php';
 <div class="page-header">
   <h1><span class="msi text-danger me-2">psychology</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <?= filter_edit_button('patient') ?>
     <a href="patient_flex_preview.php" class="btn btn-outline-primary" target="_blank" rel="noopener">
       <span class="msi me-1">smartphone</span> ดูตัวอย่าง Flex
     </a>
@@ -121,6 +123,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <?php if (!empty($queryError)): ?>
   <div class="alert alert-danger">
@@ -288,6 +291,8 @@ require_once __DIR__ . '/partials/header.php';
     </button>
   </div>
 </form>
+
+<?php render_filter_modal('patient'); ?>
 
 <?php
 $EXTRA_FOOTER = '

@@ -10,18 +10,22 @@
  */
 
 if (!function_exists('patient_source_rows')) {
-  function patient_source_rows(string $start, string $end): array {
+  function patient_source_rows(string $start, string $end, ?array $icdPatterns = null): array {
     $db = hosxp_db();
 
-    // ICD-10: T71, X60–X69, X70, X84 — ตรวจทั้ง pdx และ dx0..dx3
-    $codeConds = [];
-    foreach (['ov.pdx','ov.dx0','ov.dx1','ov.dx2','ov.dx3'] as $col) {
-      $codeConds[] = "UPPER($col) = 'T71'";
-      foreach (['X60','X61','X62','X63','X64','X65','X66','X67','X68','X69','X70','X84'] as $pfx) {
-        $codeConds[] = "UPPER($col) LIKE '{$pfx}%'";
-      }
+    // ICD-10 (default T71, X60–X69, X70, X84) จาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    // ตรวจทั้ง pdx และ dx0..dx3 · exact/prefix แบบ portable (UPPER + LIKE) ไม่พึ่ง SIMILAR TO
+    if ($icdPatterns === null) {
+      $icdPatterns = function_exists('module_filter')
+        ? (module_filter('patient')['icd'] ?? [])
+        : array_merge(
+            [['t'=>'exact','v'=>'T71']],
+            array_map(fn($p) => ['t'=>'prefix','v'=>$p],
+                      ['X60','X61','X62','X63','X64','X65','X66','X67','X68','X69','X70','X84'])
+          );
     }
-    $codeWhere = '(' . implode(' OR ', $codeConds) . ')';
+    $codeParams = [];
+    $codeWhere  = mf_pdx_clause($codeParams, ['ov.pdx','ov.dx0','ov.dx1','ov.dx2','ov.dx3'], $icdPatterns, true);
 
     $sql = "SELECT
               ov.vn AS visit_vn,
@@ -46,7 +50,7 @@ if (!function_exists('patient_source_rows')) {
               AND {$codeWhere}
             ORDER BY ov.vstdate DESC, ov.vn DESC";
     $st = $db->prepare($sql);
-    $st->execute([$start, $end]);
+    $st->execute(array_merge([$start, $end], $codeParams));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }

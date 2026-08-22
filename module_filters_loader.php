@@ -161,28 +161,31 @@ if (!function_exists('mf_pdx_clause')) {
    *   range  {from,to} → (col >= ? AND col <= ?)
    * คืน "(term OR term ...)" (เติม $params) หรือ '1=0' ถ้าว่าง — ปลอดภัยจาก injection (bind หมด)
    * วน column นอก pattern ใน → คงลำดับเดิม (pdx ก่อน แล้ว dx0..dx3)
+   * $upper=true → เทียบแบบ UPPER(col) และ uppercase ค่า (patient เดิมใช้ UPPER)
    */
-  function mf_pdx_clause(array &$params, array $cols, array $patterns): string {
+  function mf_pdx_clause(array &$params, array $cols, array $patterns, bool $upper = false): string {
     $san = fn($s) => preg_replace('/[^A-Za-z0-9]/', '', (string)$s);
+    $val = fn($s) => $upper ? strtoupper($s) : $s;
     $terms = [];
     foreach ($cols as $col) {
+      $lhs = $upper ? "UPPER($col)" : $col;
       foreach ($patterns as $p) {
         $t = $p['t'] ?? 'exact';
         if ($t === 'range') {
           $from = $san($p['from'] ?? ''); $to = $san($p['to'] ?? '');
           if ($from === '' || $to === '') continue;
-          $terms[] = "($col >= ? AND $col <= ?)";
-          $params[] = $from; $params[] = $to;
+          $terms[] = "($lhs >= ? AND $lhs <= ?)";
+          $params[] = $val($from); $params[] = $val($to);
         } elseif ($t === 'prefix') {
           $v = $san($p['v'] ?? '');
           if ($v === '') continue;
-          $terms[] = "$col LIKE ?";
-          $params[] = $v . '%';
+          $terms[] = "$lhs LIKE ?";
+          $params[] = $val($v) . '%';
         } else {
           $v = $san($p['v'] ?? '');
           if ($v === '') continue;
-          $terms[] = "$col = ?";
-          $params[] = $v;
+          $terms[] = "$lhs = ?";
+          $params[] = $val($v);
         }
       }
     }
