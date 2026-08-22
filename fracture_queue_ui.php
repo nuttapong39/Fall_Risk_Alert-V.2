@@ -1,5 +1,6 @@
 ﻿<?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
@@ -13,18 +14,9 @@ $p = [':s'=>$start.' 00:00:00', ':e'=>$end.' 23:59:59'];
 if ($status==='0') { $w[] = "status=0"; }
 if ($status==='1') { $w[] = "status=1"; }
 
-/* ---- เกณฑ์เดียวกับ fracture.php (เวอร์ชันล่าสุด) ---- */
-$w[] = "age >= 60"; // อายุ ≥ 60
-
-// กรองรหัสโรค: W00–W19 และ S-codes ตามที่กำหนด  (ใช้ prepared parameters)
-$dxParts = ["(UPPER(pdx_code) BETWEEN 'W00' AND 'W19')"];
-$prefixes = ['S720','S721','S722','S525','S526','S422','S220','S221','S320','S327'];
-foreach ($prefixes as $i => $prefix) {
-    $key = ":px{$i}";
-    $dxParts[] = "UPPER(pdx_code) LIKE {$key}";
-    $p[$key] = $prefix . '%';
-}
-$w[] = '(' . implode(' OR ', $dxParts) . ')';
+/* ไม่กรอง age/pdx_code ซ้ำที่หน้านี้ — fracture_queue ถูกคัดกรองโดย fracture_source_rows() แล้ว
+   ตามเงื่อนไขจาก store (แก้ผ่านปุ่ม "แก้ไขเงื่อนไขดึงข้อมูล") การกรองซ้ำด้วยค่าคงที่เดิม
+   จะทำให้เคสที่ ingest ด้วยเกณฑ์ใหม่ (หลังแก้ modal) ไม่ขึ้นหน้าคิว */
 
 // ---------------- Query ----------------
 $sql = "SELECT id, visit_vn, hn, fullname, cid, hometel, age, sex, address,
@@ -130,6 +122,7 @@ require_once __DIR__ . '/partials/header.php';
 <div class="page-header">
   <h1><span class="msi text-success me-2">falling</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <?= filter_edit_button('fracture') ?>
     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#frcSyncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
@@ -144,6 +137,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <!-- KPI Summary -->
 <div class="row g-3 mb-3">
@@ -320,7 +314,8 @@ require_once __DIR__ . '/partials/header.php';
           <label class="form-label fw-semibold">
             <span class="msi me-1" style="font-size:1rem">elderly</span>อายุขั้นต่ำ (ปี)
           </label>
-          <input type="number" id="frcSyncMinAge" class="form-control" min="0" max="120" value="60">
+          <input type="number" id="frcSyncMinAge" class="form-control" min="0" max="120"
+                 value="<?= (int)(module_filter('fracture')['min_age'] ?? 60) ?>">
           <div class="form-text">ค่าเริ่มต้น 60 ปี — กรอง ICD W00–W19 และ S-codes กระดูกหัก</div>
         </div>
         <div class="p-2 rounded" style="background:#d1fae5; border:1px solid #6ee7b7; font-size:.8rem; color:#065f46">
@@ -355,6 +350,8 @@ require_once __DIR__ . '/partials/header.php';
     </button>
   </div>
 </form>
+
+<?php render_filter_modal('fracture'); ?>
 
 <?php
 $EXTRA_FOOTER = '

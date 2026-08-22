@@ -157,7 +157,7 @@ logln("Effective range: $start -> $end");
  *    กันซ้ำที่ฝั่งเขียน MedAlert_DB ด้วย ON DUPLICATE KEY ด้านล่าง
  * ============================== */
 require_once __DIR__ . '/sources/fracture_source.php';
-$newRows = fracture_source_rows($start, $end, 60);
+$newRows = fracture_source_rows($start, $end);
 logln("Ingest: found ".count($newRows)." rows from HOSxP.");
 
 if (!$dryRun && $newRows){

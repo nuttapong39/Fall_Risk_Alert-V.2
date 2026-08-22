@@ -14,7 +14,26 @@
  */
 
 if (!function_exists('fracture_source_rows')) {
-  function fracture_source_rows(string $start, string $end, int $minAge = 60): array {
+  function fracture_source_rows(string $start, string $end, ?int $minAge = null, ?array $icdPatterns = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    $mf = function_exists('module_filter') ? module_filter('fracture') : [];
+    if ($minAge      === null) $minAge      = $mf['min_age'] ?? 60;
+    if ($icdPatterns === null) $icdPatterns = $mf['icd']      ?? [
+      ['t'=>'range','from'=>'W00','to'=>'W19'],
+      ['t'=>'prefix','v'=>'S720'],['t'=>'prefix','v'=>'S721'],['t'=>'prefix','v'=>'S722'],
+      ['t'=>'prefix','v'=>'S525'],['t'=>'prefix','v'=>'S526'],['t'=>'prefix','v'=>'S422'],
+      ['t'=>'prefix','v'=>'S220'],['t'=>'prefix','v'=>'S221'],['t'=>'prefix','v'=>'S320'],
+      ['t'=>'prefix','v'=>'S327'],
+    ];
+    $icdParams = [];
+    $icdWhere  = function_exists('mf_pdx_clause')
+      ? mf_pdx_clause($icdParams, ['vs.pdx'], $icdPatterns, true)
+      : "((UPPER(vs.pdx) BETWEEN 'W00' AND 'W19')
+              OR UPPER(vs.pdx) LIKE 'S720%' OR UPPER(vs.pdx) LIKE 'S721%'
+              OR UPPER(vs.pdx) LIKE 'S722%' OR UPPER(vs.pdx) LIKE 'S525%'
+              OR UPPER(vs.pdx) LIKE 'S526%' OR UPPER(vs.pdx) LIKE 'S422%'
+              OR UPPER(vs.pdx) LIKE 'S220%' OR UPPER(vs.pdx) LIKE 'S221%'
+              OR UPPER(vs.pdx) LIKE 'S320%' OR UPPER(vs.pdx) LIKE 'S327%')";
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
 
@@ -44,19 +63,12 @@ if (!function_exists('fracture_source_rows')) {
             LEFT JOIN hospcode h    ON h.hospcode = ovst.hospsub
             WHERE  vs.vstdate BETWEEN ? AND ?
             AND    {$ageExpr} >= ?
-            AND    (
-              (UPPER(vs.pdx) BETWEEN 'W00' AND 'W19')
-              OR UPPER(vs.pdx) LIKE 'S720%' OR UPPER(vs.pdx) LIKE 'S721%'
-              OR UPPER(vs.pdx) LIKE 'S722%' OR UPPER(vs.pdx) LIKE 'S525%'
-              OR UPPER(vs.pdx) LIKE 'S526%' OR UPPER(vs.pdx) LIKE 'S422%'
-              OR UPPER(vs.pdx) LIKE 'S220%' OR UPPER(vs.pdx) LIKE 'S221%'
-              OR UPPER(vs.pdx) LIKE 'S320%' OR UPPER(vs.pdx) LIKE 'S327%'
-            )
+            AND    {$icdWhere}
             AND    vs.hn IS NOT NULL AND vs.hn <> ''
             ORDER  BY vs.vstdate DESC";
 
     $st = $db->prepare($sql);
-    $st->execute([$start, $end, $minAge]);
+    $st->execute(array_merge([$start, $end, $minAge], $icdParams));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }

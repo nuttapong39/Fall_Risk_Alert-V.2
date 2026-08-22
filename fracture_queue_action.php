@@ -20,7 +20,8 @@ if ($action === 'import_hosxp') {
   header('Content-Type: application/json; charset=utf-8');
   $impStart = trim($_POST['start']   ?? date('Y-m-d', strtotime('-7 days')));
   $impEnd   = trim($_POST['end']     ?? date('Y-m-d'));
-  $minAge   = max(0, (int)($_POST['min_age'] ?? 60));
+  // default = เงื่อนไขจาก store (แก้ผ่าน modal ในหน้า queue_ui) — ส่ง min_age มา override ต่อครั้งได้
+  $minAge   = max(0, (int)($_POST['min_age'] ?? module_filter('fracture')['min_age']));
 
   try {
     require_once __DIR__ . '/sources/fracture_source.php';
