@@ -179,23 +179,8 @@ if (!defined('PHARM_LIB_ONLY')) {
       }
     }
 
-    /* helper: ใช้ผลแถวเดียวผ่าน rules เพื่อตัดสิน lab_name + ตรวจค่าเกินเกณฑ์
-       เกณฑ์เดียวกับ sources/pharm_lab_source.php + ปุ่ม Sync (queue_action/queue_ui):
-         - ดึงเลขนำหน้าออกจากผลที่มี flag เช่น "9.26 R" / "10.10  R" / "9.77*" → 9.26/10.10/9.77
-         - ผล text ล้วน (เช่น "รายงานผลตามไฟล์รูปภาพ") ของ 2368/697/2388/2370 = แจ้งเสมอ
-       เดิมใช้ is_numeric() ทำให้ผลที่มี flag ถูกทิ้งเงียบ (cron รายวันเก็บ INR วิกฤตไม่ครบ) */
-    if (!function_exists('pharm_classify_row')) {
-      function pharm_classify_row(string $lab_items_code, ?string $result_text): ?string {
-        if (($result_text ?? '') === '') return null;
-        preg_match('/^\d+(?:\.\d+)?/', trim((string)$result_text), $m);
-        $v = isset($m[0]) ? (float)$m[0] : null;
-        if ($lab_items_code === '539')                       return ($v !== null && $v >= 5)  ? 'INR'             : null;
-        if ($lab_items_code === '2368')                      return ($v === null || $v > 150) ? 'Depakin level'   : null;
-        if (in_array($lab_items_code, ['697','2388'], true)) return ($v === null || $v > 1.2) ? 'Lithium level'   : null;
-        if ($lab_items_code === '2370')                      return ($v === null || $v > 20)  ? 'Phenytoin level' : null;
-        return null;
-      }
-    }
+    /* pharm_classify_row() — canonical เพียงจุดเดียว อยู่ใน sources/pharm_lab_source.php
+       (require ด้านล่างก่อนใช้งานจริงที่บรรทัด ~ pharm_lab_worker_sqls) */
 
     /* prepared statement เดียวสำหรับ insert (UNIQUE KEY จะกันซ้ำให้เอง) */
     $ins = $dbcon->prepare("
@@ -212,11 +197,15 @@ if (!defined('PHARM_LIB_ONLY')) {
 
     /* SQL ต้นแบบ — ใช้ ? placeholder + IN-list ของ lab_items_code (sargable + ใช้ index ได้)
        แยก OPD (ผ่าน ov.vn) และ IPD (ผ่าน s.an) เพื่อหลีกเลี่ยง JOIN ซ้อน
+       รายการรหัส Lab มาจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
     */
-    $codes = ['539','2368','697','2388','2370'];
+    require_once __DIR__ . '/sources/pharm_lab_source.php';
+    $rules = function_exists('module_filter') ? (module_filter('pharm_lab')['rules'] ?? []) : pharm_lab_default_rules();
+    $codes = [];
+    foreach ($rules as $r) { foreach (($r['codes'] ?? []) as $c) { if (!in_array($c, $codes, true)) $codes[] = $c; } }
+    if (!$codes) $codes = ['539','2368','697','2388','2370'];
     $placeholders = implode(',', array_fill(0, count($codes), '?'));
 
-    require_once __DIR__ . '/sources/pharm_lab_source.php';
     $sqls  = pharm_lab_worker_sqls($placeholders);   // dialect-aware OPD/IPD (อ่านจาก HOSxP)
     $hx    = hosxp_db();
     $stOPD = $hx->prepare($sqls['opd']);

@@ -83,8 +83,12 @@ if (!function_exists('render_filter_modal')) {
                     <input type="text" name="f_<?= $e($k) ?>" class="form-control"
                            value="<?= $e(mf_patterns_to_text(is_array($v) ? $v : [])) ?>"
                            placeholder="เช่น T71, X60*, A90-A99">
-                  <?php else: /* rules (pharm_lab) — phase ถัดไป */ ?>
-                    <div class="text-muted" style="font-size:.83rem">แก้เกณฑ์ pharm_lab จะเปิดใน phase ถัดไป (ตอนนี้ใช้ค่าเริ่มต้น)</div>
+                  <?php elseif ($f['type'] === 'rules'): ?>
+                    <textarea name="f_<?= $e($k) ?>" class="form-control font-monospace" rows="5"
+                              placeholder="ชื่อ | รหัส Lab | >= หรือ > | ค่า | yes/no"
+                              ><?= $e(mf_rules_to_text(is_array($v) ? $v : [])) ?></textarea>
+                  <?php else: ?>
+                    <div class="text-muted" style="font-size:.83rem">ฟิลด์ประเภทนี้ยังไม่รองรับการแก้ไข</div>
                   <?php endif; ?>
                   <?php if (!empty($f['hint'])): ?>
                     <div class="form-text" style="font-size:.75rem"><?= $e($f['hint']) ?></div>

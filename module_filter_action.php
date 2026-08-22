@@ -42,8 +42,8 @@ if ($action === 'reset') {
       case 'single':   $c = mf_codes([$raw]); $cfg[$k] = $c[0] ?? '';                break;
       case 'int':      $cfg[$k] = max(0, (int)$raw);                                 break;
       case 'patterns': $cfg[$k] = mf_text_to_patterns($raw);                         break;
-      default:         // 'rules' (pharm_lab) — จัดการใน phase ถัดไป; คงค่าที่ใช้อยู่
-                       $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
+      case 'rules':    $cfg[$k] = mf_text_to_rules($raw);                            break;
+      default:         $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
     }
   }
   $stored[$mod] = $cfg;

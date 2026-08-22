@@ -38,25 +38,8 @@ if ($action === 'import_hosxp') {
     exit;
   }
 
-  // จัดประเภท lab_items_code → lab_name
-  // $v === null หมายความว่า lab_order_result เป็น text (เช่น "รายงานผลตามไฟล์รูปภาพ")
-  // → แจ้งเตือนเสมอเพราะมีผลอยู่แล้ว (เก็บเป็นรูปภาพ)
-  // $v เป็นตัวเลข → เช็ค threshold ตามปกติ
-  $classifyPharm = function(string $code, ?string $result): ?string {
-    if (($result ?? '') === '') return null;
-    // ดึงตัวเลขออกจาก string เช่น "9.26 R" → 9.26, "5.04" → 5.04, "รายงาน..." → null
-    preg_match('/^\d+(?:\.\d+)?/', trim((string)$result), $_m);
-    $v = isset($_m[0]) ? (float)$_m[0] : null;
-
-    if ($code === '539')                         return ($v !== null && $v >= 5)   ? 'INR'            : null;
-    if ($code === '2368')                        return ($v === null || $v >  150) ? 'Depakin level'  : null;
-    if (in_array($code, ['697','2388'], true))   return ($v === null || $v >  1.2) ? 'Lithium level'  : null;
-    if ($code === '2370')                        return ($v === null || $v >  20)  ? 'Phenytoin level': null;
-    return null;
-  };
-
   try {
-    require_once __DIR__ . '/sources/pharm_lab_source.php';
+    require_once __DIR__ . '/sources/pharm_lab_source.php';   // pharm_classify_row() — canonical เพียงจุดเดียว
     $hosxpRows = pharm_lab_source_rows($impStart, $impEnd);
 
     // status=1 ทันที — Sync นี้เป็น recheck เท่านั้น ไม่ให้ Worker ส่ง LINE
@@ -79,7 +62,7 @@ if ($action === 'import_hosxp') {
       $lon     = trim((string)($hr['lab_order_number'] ?? ''));
       $code    = (string)($hr['lab_items_code'] ?? '');
       $result  = (string)($hr['result']         ?? '');
-      $labName = $classifyPharm($code, $result);
+      $labName = pharm_classify_row($code, $result);
 
       if ($hn === '' || $lon === '' || $labName === null) { $skipped++; continue; }
 

@@ -39,10 +39,10 @@ $GLOBALS['MODULE_FILTER_DEFAULTS'] = [
                    ['t'=>'prefix','v'=>'S327'],
                  ]],
   'pharm_lab'=> ['rules' => [
-                   ['codes'=>['539'],       'op'=>'>=','value'=>5,   'also_text'=>false],
-                   ['codes'=>['2368'],      'op'=>'>', 'value'=>150, 'also_text'=>true],
-                   ['codes'=>['697','2388'],'op'=>'>', 'value'=>1.2, 'also_text'=>true],
-                   ['codes'=>['2370'],      'op'=>'>', 'value'=>20,  'also_text'=>true],
+                   ['name'=>'INR',             'codes'=>['539'],       'op'=>'>=','value'=>5,   'also_text'=>false],
+                   ['name'=>'Depakin level',   'codes'=>['2368'],      'op'=>'>', 'value'=>150, 'also_text'=>true],
+                   ['name'=>'Lithium level',   'codes'=>['697','2388'],'op'=>'>', 'value'=>1.2, 'also_text'=>true],
+                   ['name'=>'Phenytoin level', 'codes'=>['2370'],      'op'=>'>', 'value'=>20,  'also_text'=>true],
                  ]],
 ];
 
@@ -73,7 +73,10 @@ $GLOBALS['MODULE_FILTER_SCHEMA'] = [
                    ['key'=>'min_age','type'=>'int','label'=>'อายุขั้นต่ำ (ปี)'],
                    ['key'=>'icd','type'=>'patterns','label'=>'ICD (pdx)','hint'=>'ช่วง W00-W19 · prefix เช่น S720*'],
                  ]],
-  'pharm_lab'=> ['label'=>'Lab วิกฤต ห้องยา',      'fields'=>[['key'=>'rules','type'=>'rules','label'=>'เกณฑ์ค่าวิกฤตต่อรหัส Lab']]],
+  'pharm_lab'=> ['label'=>'Lab วิกฤต ห้องยา',      'fields'=>[
+                   ['key'=>'rules','type'=>'rules','label'=>'เกณฑ์ค่าวิกฤตต่อรหัส Lab',
+                    'hint'=>'บรรทัดละ 1 เกณฑ์: ชื่อ | รหัส Lab (คั่นด้วย ,) | เงื่อนไข (>= หรือ >) | ค่า | แจ้งเมื่อผลเป็นข้อความ (yes/no)'],
+                 ]],
 ];
 
 /* ── โหลด store (รอบเดียว) ─────────────────────────────────────────────────── */
@@ -226,6 +229,42 @@ if (!function_exists('mf_text_to_patterns')) {
         $v = $clean($tok);
         if ($v !== '') $out[] = ['t'=>'exact','v'=>$v];
       }
+    }
+    return $out;
+  }
+}
+if (!function_exists('mf_rules_to_text')) {
+  /** [{name,codes,op,value,also_text}] → "ชื่อ | 539 | >= | 5 | no" (บรรทัดละ 1 เกณฑ์) — สำหรับ pharm_lab */
+  function mf_rules_to_text(array $rules): string {
+    $lines = [];
+    foreach ($rules as $r) {
+      $name  = (string)($r['name'] ?? '');
+      $codes = implode(',', (array)($r['codes'] ?? []));
+      $op    = ($r['op'] ?? '>') === '>=' ? '>=' : '>';
+      $value = (string)($r['value'] ?? 0);
+      $also  = !empty($r['also_text']) ? 'yes' : 'no';
+      $lines[] = "{$name} | {$codes} | {$op} | {$value} | {$also}";
+    }
+    return implode("\n", $lines);
+  }
+}
+if (!function_exists('mf_text_to_rules')) {
+  /** "ชื่อ | 539 | >= | 5 | no" (บรรทัดละ 1 เกณฑ์) → [{name,codes,op,value,also_text}] (validate) */
+  function mf_text_to_rules(string $text): array {
+    $sanName = fn($s) => trim(preg_replace('/[^\p{L}\p{N} .+_\-]/u', '', (string)$s));
+    $out = [];
+    foreach (preg_split('/\r?\n/', trim($text)) as $line) {
+      $line = trim($line);
+      if ($line === '') continue;
+      $parts = array_map('trim', explode('|', $line));
+      [$name, $codesRaw, $op, $value, $also] = array_pad($parts, 5, '');
+      $name  = $sanName($name);
+      $codes = mf_codes(preg_split('/[\s,]+/', $codesRaw));
+      $op    = trim($op) === '>=' ? '>=' : '>';
+      $value = is_numeric(trim($value)) ? (float)trim($value) : null;
+      $also  = in_array(strtolower(trim($also)), ['yes','1','true'], true);
+      if ($name === '' || !$codes || $value === null) continue;
+      $out[] = ['name'=>$name, 'codes'=>$codes, 'op'=>$op, 'value'=>$value, 'also_text'=>$also];
     }
     return $out;
   }

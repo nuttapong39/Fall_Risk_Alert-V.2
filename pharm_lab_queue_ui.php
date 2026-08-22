@@ -7,6 +7,7 @@
  *  - ใช้ DataTables + SweetAlert + Bulk action bar
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
@@ -36,20 +37,8 @@ $lab    = isset($_GET['lab'])    ? trim($_GET['lab'])   : 'all'; // all | INR | 
 
 /* ---- Auto-sync จาก HOSxP เฉพาะเมื่อกดปุ่ม ค้นหา (มี GET start/end) ---- */
 if (!empty($_GET['start']) && !empty($_GET['end'])):
-$_syncCodes = ['539','2368','697','2388','2370'];
-$_classifySync = function(string $code, ?string $result): ?string {
-  if (($result ?? '') === '') return null;
-  // ดึงตัวเลขออกจาก string เช่น "9.26 R" → 9.26, "5.04" → 5.04, "รายงาน..." → null
-  preg_match('/^\d+(?:\.\d+)?/', trim((string)$result), $_m);
-  $v = isset($_m[0]) ? (float)$_m[0] : null;
-  if ($code === '539')                       return ($v !== null && $v >= 5)   ? 'INR'            : null;
-  if ($code === '2368')                      return ($v === null || $v > 150)  ? 'Depakin level'  : null;
-  if (in_array($code, ['697','2388'], true)) return ($v === null || $v > 1.2)  ? 'Lithium level'  : null;
-  if ($code === '2370')                      return ($v === null || $v > 20)   ? 'Phenytoin level': null;
-  return null;
-};
 try {
-  require_once __DIR__ . '/sources/pharm_lab_source.php';
+  require_once __DIR__ . '/sources/pharm_lab_source.php';   // pharm_classify_row() — canonical เพียงจุดเดียว
   $_syncRows = pharm_lab_source_rows($start, $end);
 
   $_ins = $dbcon->prepare(
@@ -63,7 +52,7 @@ try {
   foreach ($_syncRows as $_hr) {
     $_hn  = trim((string)($_hr['hn'] ?? ''));
     $_lon = trim((string)($_hr['lab_order_number'] ?? ''));
-    $_lab = $_classifySync((string)($_hr['lab_items_code'] ?? ''), (string)($_hr['result'] ?? ''));
+    $_lab = pharm_classify_row((string)($_hr['lab_items_code'] ?? ''), (string)($_hr['result'] ?? ''));
     if ($_hn === '' || $_lon === '' || $_lab === null) continue;
     $_ins->execute([
       ':hn'  => $_hn,
@@ -214,6 +203,7 @@ require_once __DIR__ . '/partials/header.php';
 <div class="page-header">
   <h1><span class="msi text-primary me-2">prescriptions</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <?= filter_edit_button('pharm_lab') ?>
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#plSyncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
@@ -231,6 +221,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <?php if (!empty($queryError)): ?>
   <div class="alert alert-danger">
@@ -481,6 +472,8 @@ require_once __DIR__ . '/partials/header.php';
     </button>
   </div>
 </form>
+
+<?php render_filter_modal('pharm_lab'); ?>
 
 <?php
 $EXTRA_FOOTER = '

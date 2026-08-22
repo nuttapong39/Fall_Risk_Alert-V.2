@@ -15,33 +15,91 @@
  * (การ map lab_items_code → lab_name ทำใน PHP ฝั่ง consumer; กันซ้ำที่ฝั่งเขียน MedAlert_DB)
  */
 
+if (!function_exists('pharm_lab_default_rules')) {
+  /** เกณฑ์ default (ใช้เมื่อ module_filters_loader.php ไม่ถูก require) — ต้องตรงกับ module_filters_loader.php */
+  function pharm_lab_default_rules(): array {
+    return [
+      ['name'=>'INR',             'codes'=>['539'],       'op'=>'>=','value'=>5,   'also_text'=>false],
+      ['name'=>'Depakin level',   'codes'=>['2368'],      'op'=>'>', 'value'=>150, 'also_text'=>true],
+      ['name'=>'Lithium level',   'codes'=>['697','2388'],'op'=>'>', 'value'=>1.2, 'also_text'=>true],
+      ['name'=>'Phenytoin level', 'codes'=>['2370'],      'op'=>'>', 'value'=>20,  'also_text'=>true],
+    ];
+  }
+}
+
+if (!function_exists('pharm_classify_row')) {
+  /**
+   * จัดประเภทแถวผล Lab เดียว → ชื่อ (เช่น 'INR') หรือ null ถ้าไม่ถึงเกณฑ์วิกฤต
+   * Canonical เพียงจุดเดียว — ใช้ร่วมโดย pharm_lab.php (worker), pharm_lab_queue_action.php,
+   * pharm_lab_queue_ui.php (auto-sync) แทนสำเนาเดิม 3 ชุด
+   *   - ดึงเลขนำหน้าออกจากผลที่มี flag เช่น "9.26 R" / "10.10  R" / "9.77*" → 9.26/10.10/9.77
+   *   - ผล text ล้วน (เช่น "รายงานผลตามไฟล์รูปภาพ") ของ rule ที่ also_text=true = แจ้งเสมอ
+   * $rules = null → อ่านจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+   */
+  function pharm_classify_row(string $lab_items_code, ?string $result_text, ?array $rules = null): ?string {
+    if (($result_text ?? '') === '') return null;
+    if ($rules === null) {
+      $rules = function_exists('module_filter')
+        ? (module_filter('pharm_lab')['rules'] ?? [])
+        : pharm_lab_default_rules();
+    }
+    preg_match('/^\d+(?:\.\d+)?/', trim((string)$result_text), $m);
+    $v = isset($m[0]) ? (float)$m[0] : null;
+    foreach ($rules as $r) {
+      if (!in_array($lab_items_code, $r['codes'] ?? [], true)) continue;
+      $op    = ($r['op'] ?? '>') === '>=' ? '>=' : '>';
+      $val   = (float)($r['value'] ?? 0);
+      $also  = !empty($r['also_text']);
+      if ($v === null) return $also ? (string)($r['name'] ?? '') : null;
+      $hit = $op === '>=' ? ($v >= $val) : ($v > $val);
+      return $hit ? (string)($r['name'] ?? '') : null;
+    }
+    return null;
+  }
+}
+
 if (!function_exists('pharm_lab_source_rows')) {
-  function pharm_lab_source_rows(string $start, string $end): array {
+  function pharm_lab_source_rows(string $start, string $end, ?array $rules = null): array {
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
+
+    if ($rules === null) {
+      $rules = function_exists('module_filter')
+        ? (module_filter('pharm_lab')['rules'] ?? [])
+        : pharm_lab_default_rules();
+    }
 
     if ($driver === 'pgsql') {
       $ageExpr = "EXTRACT(YEAR FROM age(h.order_date, pt.birthday))";
       // เลขนำหน้าของผล เช่น '9.26 R' → 9.26 ; ผล text → NULL
       // PostgreSQL: substring(... from pattern) คืนเฉพาะ "กลุ่มแรก" ถ้ามีวงเล็บจับกลุ่ม
       // จึงต้องใช้ non-capturing group (?:...) เพื่อให้คืนเลขเต็มตัว (เช่น '6.54 R' → '6.54' ไม่ใช่ '.54')
-      $num     = "COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+(?:\\.[0-9]+)?'),'')::numeric, 0)";
-      $isText  = "l.lab_order_result !~ '^[0-9]'";
-      $threshold = "(
-          (l.lab_items_code = '539'  AND {$num} >= 5)
-          OR (l.lab_items_code = '2368' AND ({$isText} OR {$num} > 150))
-          OR (l.lab_items_code IN ('697','2388') AND ({$isText} OR {$num} > 1.2))
-          OR (l.lab_items_code = '2370' AND ({$isText} OR {$num} > 20))
-        )";
+      $num    = "COALESCE(NULLIF(substring(l.lab_order_result from '^[0-9]+(?:\\.[0-9]+)?'),'')::numeric, 0)";
+      $isText = "l.lab_order_result !~ '^[0-9]'";
     } else {
       $ageExpr = "TIMESTAMPDIFF(YEAR, pt.birthday, h.order_date)";
-      $threshold = "(
-          (l.lab_items_code = '539'  AND l.lab_order_result + 0 >= 5)
-          OR (l.lab_items_code = '2368' AND (l.lab_order_result NOT REGEXP '^[0-9]' OR l.lab_order_result + 0 > 150))
-          OR (l.lab_items_code IN ('697','2388') AND (l.lab_order_result NOT REGEXP '^[0-9]' OR l.lab_order_result + 0 > 1.2))
-          OR (l.lab_items_code = '2370' AND (l.lab_order_result NOT REGEXP '^[0-9]' OR l.lab_order_result + 0 > 20))
-        )";
+      $num     = "l.lab_order_result + 0";
+      $isText  = "l.lab_order_result NOT REGEXP '^[0-9]'";
     }
+
+    // สร้างเงื่อนไข threshold จาก rules (bind หมด — ปลอดภัยจาก injection)
+    $thParams = [];
+    $thParts  = [];
+    foreach ($rules as $r) {
+      $codes = function_exists('mf_codes')
+        ? mf_codes($r['codes'] ?? [])
+        : array_values(array_filter((array)($r['codes'] ?? []), fn($x) => $x !== ''));
+      if (!$codes) continue;
+      $op    = ($r['op'] ?? '>') === '>=' ? '>=' : '>';
+      $val   = (float)($r['value'] ?? 0);
+      $also  = !empty($r['also_text']);
+      $place = implode(',', array_fill(0, count($codes), '?'));
+      $cond  = $also ? "({$isText} OR {$num} {$op} ?)" : "({$num} {$op} ?)";
+      $thParts[] = "(l.lab_items_code IN ($place) AND {$cond})";
+      foreach ($codes as $c) $thParams[] = $c;
+      $thParams[] = $val;
+    }
+    $threshold = $thParts ? '(' . implode(' OR ', $thParts) . ')' : '1=0';
 
     $sql = "SELECT
               h.lab_order_number,
@@ -65,7 +123,7 @@ if (!function_exists('pharm_lab_source_rows')) {
             AND    {$threshold}
             ORDER  BY h.order_date DESC";
     $st = $db->prepare($sql);
-    $st->execute([$start, $end]);
+    $st->execute(array_merge([$start, $end], $thParams));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }
