@@ -11,7 +11,13 @@
  */
 
 if (!function_exists('drug_source_rows')) {
-  function drug_source_rows(string $start, string $end, array $icodes): array {
+  function drug_source_rows(string $start, string $end, ?array $icodes = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    if ($icodes === null) {
+      $icodes = function_exists('module_filter')
+        ? (module_filter('drug')['icodes'] ?? [])
+        : ['1483860'];
+    }
     $icodes = array_values(array_filter($icodes, fn($x) => $x !== ''));
     if (!$icodes) return [];
     $db     = hosxp_db();

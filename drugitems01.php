@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 date_default_timezone_set('Asia/Bangkok');
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
@@ -152,11 +153,13 @@ require_once __DIR__ . '/partials/header.php';
     <?= htmlspecialchars($PAGE_TITLE) ?>
   </h1>
   <div class="d-flex gap-2 flex-wrap">
+    <?= filter_edit_button('drug') ?>
     <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#syncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <!-- Flash messages -->
 <?php if ($flash):
@@ -394,7 +397,7 @@ require_once __DIR__ . '/partials/header.php';
             <span class="msi me-1" style="font-size:1rem">medication</span>รหัสยา (icode)
           </label>
           <input type="text" id="syncIcodes" class="form-control font-monospace"
-                 value="1483860"
+                 value="<?= htmlspecialchars(implode(',', module_filter('drug')['icodes'])) ?>"
                  placeholder="ระบุ icode คั่นด้วย , เช่น 1483860,2234567">
           <div class="form-text">
             คั่นหลาย icode ด้วยเครื่องหมาย <code>,</code> หรือช่องว่าง
@@ -417,6 +420,8 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 </div>
+
+<?php render_filter_modal('drug'); ?>
 
 <?php
 // ─── Extra JS ──────────────────────────────────────────────────────────────

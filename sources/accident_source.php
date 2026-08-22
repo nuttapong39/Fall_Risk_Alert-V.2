@@ -13,7 +13,13 @@
 
 if (!function_exists('accident_source_ipt_rows')) {
   /** Worker: ผู้ป่วยในอุบัติเหตุ (default pttype 33/35/36/39) — query portable ทั้งสอง dialect */
-  function accident_source_ipt_rows(string $start, string $end, array $pttypes = ['33','35','36','39']): array {
+  function accident_source_ipt_rows(string $start, string $end, ?array $pttypes = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    if ($pttypes === null) {
+      $pttypes = function_exists('module_filter')
+        ? (module_filter('accident')['pttypes'] ?? [])
+        : ['33','35','36','39'];
+    }
     $pttypes = array_values(array_filter($pttypes, fn($x) => $x !== ''));
     if (!$pttypes) return [];
     $db    = hosxp_db();

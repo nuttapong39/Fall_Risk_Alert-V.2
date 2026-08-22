@@ -56,12 +56,13 @@ $action = $_POST['action'] ?? '';
 if ($action === 'import_hosxp') {
   header('Content-Type: application/json; charset=utf-8');
 
-  $icodesRaw = trim($_POST['icodes'] ?? '1483860');
+  // default = เงื่อนไขจาก store (แก้ผ่าน modal ในหน้า queue_ui) — ส่ง icodes มา override ต่อครั้งได้
+  $icodesRaw = trim($_POST['icodes'] ?? implode(',', module_filter('drug')['icodes']));
   $impStart  = $_POST['start']  ?? date('Y-m-d', strtotime('-30 days'));
   $impEnd    = $_POST['end']    ?? date('Y-m-d');
 
-  // แยก icode ด้วย , หรือ เว้นวรรค
-  $icodeArr = array_values(array_filter(array_map('trim', preg_split('/[\s,]+/', $icodesRaw))));
+  // แยก icode + validate (เก็บเฉพาะ alphanumeric กัน SQL injection ใน IN clause)
+  $icodeArr = mf_codes(preg_split('/[\s,]+/', $icodesRaw));
   if (!$icodeArr) {
     echo json_encode(['ok'=>false,'msg'=>'ไม่ได้ระบุรหัสยา (icode)']);
     exit;

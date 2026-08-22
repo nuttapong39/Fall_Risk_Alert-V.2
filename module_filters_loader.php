@@ -19,7 +19,7 @@ $GLOBALS['MODULE_FILTER_DEFAULTS'] = [
   'covid'    => ['lab_codes' => ['3066','3082','3084','3088']],
   'accident' => ['pttypes'   => ['33','35','36','39']],
   'drug'     => ['icodes'    => ['1483860']],
-  'sexual'   => ['lab_codes' => ['2811']],
+  'sexual'   => ['lab_code'  => '2811'],
   'lepto'    => ['lab_code'  => '290',  'pdx_codes' => ['A270','A278','A279','A418']],
   'scrub'    => ['lab_code'  => '291',  'results' => ['Positive'], 'pdx_codes' => ['A753']],
   'dengue'   => ['lab_code'  => '2891', 'results' => ['Positive','Weakly Positive'],
@@ -51,7 +51,7 @@ $GLOBALS['MODULE_FILTER_SCHEMA'] = [
   'covid'    => ['label'=>'COVID-19',              'fields'=>[['key'=>'lab_codes','type'=>'codes','label'=>'รหัส Lab (lab_items_code)','hint'=>'ผลตรวจ Positive']]],
   'accident' => ['label'=>'อุบัติเหตุ พ.ร.บ.',     'fields'=>[['key'=>'pttypes','type'=>'codes','label'=>'รหัสสิทธิ (pttype)','hint'=>'ผู้ป่วยใน ipt']]],
   'drug'     => ['label'=>'ยาอันตราย',             'fields'=>[['key'=>'icodes','type'=>'codes','label'=>'รหัสยา (icode)']]],
-  'sexual'   => ['label'=>'โรคติดต่อทางเพศ',        'fields'=>[['key'=>'lab_codes','type'=>'codes','label'=>'รหัส Lab (lab_items_code)']]],
+  'sexual'   => ['label'=>'โรคติดต่อทางเพศ',        'fields'=>[['key'=>'lab_code','type'=>'single','label'=>'รหัส Lab (lab_items_code)']]],
   'lepto'    => ['label'=>'เลปโตสไปโรซิส',          'fields'=>[
                    ['key'=>'lab_code','type'=>'single','label'=>'รหัส Lab (lab_items_code)'],
                    ['key'=>'pdx_codes','type'=>'codes','label'=>'รหัส ICD (pdx)'],

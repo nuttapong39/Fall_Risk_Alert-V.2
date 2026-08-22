@@ -7,6 +7,7 @@
  * — DataTable พร้อม Export Excel + Print
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 // require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 mb_internal_encoding('UTF-8');
@@ -168,6 +169,7 @@ require_once __DIR__ . '/partials/header.php';
 <div class="page-header">
   <h1><span class="msi text-warning me-2">car_crash</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2">
+    <?= filter_edit_button('accident') ?>
     <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#accSyncModal">
       <span class="msi me-1">sync</span> Sync จาก HOSxP
     </button>
@@ -176,6 +178,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <!-- KPI -->
 <div class="row g-3 mb-3">
@@ -340,7 +343,7 @@ require_once __DIR__ . '/partials/header.php';
             <span class="msi me-1" style="font-size:1rem">badge</span>รหัสสิทธิ (pttype)
           </label>
           <input type="text" id="accSyncPttypes" class="form-control font-monospace"
-                 value="33,35,36,39"
+                 value="<?= htmlspecialchars(implode(',', module_filter('accident')['pttypes'])) ?>"
                  placeholder="เช่น 33,35,36,39">
           <div class="form-text">คั่นด้วย <code>,</code> — ดูรหัสสิทธิ พ.ร.บ./ประกันสังคมจากระบบ HOSxP</div>
         </div>
@@ -384,6 +387,8 @@ require_once __DIR__ . '/partials/header.php';
     <span class="msi">close</span> ยกเลิก
   </button>
 </div>
+
+<?php render_filter_modal('accident'); ?>
 
 <?php
 $EXTRA_FOOTER = '

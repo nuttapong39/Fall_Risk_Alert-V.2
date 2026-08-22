@@ -28,8 +28,9 @@ if (!defined('ACCIDENT_RESEND_COOLDOWN_MIN')) define('ACCIDENT_RESEND_COOLDOWN_M
 if (!defined('ACCIDENT_MAX_ATTEMPTS'))        define('ACCIDENT_MAX_ATTEMPTS', 8);
 if (!defined('ACCIDENT_BATCH_LIMIT'))         define('ACCIDENT_BATCH_LIMIT', 50);
 
-// สิทธิ พ.ร.บ./ประกันสังคม ต่างจังหวัด
-if (!defined('ACCIDENT_PTTYPES')) define('ACCIDENT_PTTYPES', '33,35,36,39');
+// สิทธิ พ.ร.บ./ประกันสังคม ต่างจังหวัด — default จาก store (แก้ผ่าน modal ในหน้า queue_ui)
+if (!defined('ACCIDENT_PTTYPES')) define('ACCIDENT_PTTYPES',
+  function_exists('module_filter') ? implode(',', module_filter('accident')['pttypes']) : '33,35,36,39');
 
 // LOG
 $LOG_DIR = __DIR__ . '/logs';

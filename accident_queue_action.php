@@ -13,14 +13,11 @@ if ($action === 'import_hosxp') {
   header('Content-Type: application/json; charset=utf-8');
   $impStart   = trim($_POST['start']   ?? date('Y-m-d', strtotime('-7 days')));
   $impEnd     = trim($_POST['end']     ?? date('Y-m-d'));
-  $pttypesRaw = trim($_POST['pttypes'] ?? '33,35,36,39');
+  // default = เงื่อนไขจาก store (แก้ผ่าน modal ในหน้า queue_ui) — ส่ง pttypes มา override ต่อครั้งได้
+  $pttypesRaw = trim($_POST['pttypes'] ?? implode(',', module_filter('accident')['pttypes']));
 
-  $ptArr = array_values(array_filter(
-    array_map(
-      fn($x) => preg_replace('/[^A-Z0-9]/i', '', trim($x)),
-      preg_split('/[\s,]+/', $pttypesRaw)
-    )
-  ));
+  // Validate — เก็บเฉพาะ alphanumeric (กัน SQL injection ใน IN clause)
+  $ptArr = mf_codes(preg_split('/[\s,]+/', $pttypesRaw));
   if (!$ptArr) {
     echo json_encode(['ok'=>false, 'msg'=>'ไม่ได้ระบุรหัสสิทธิ (pttype)']);
     exit;

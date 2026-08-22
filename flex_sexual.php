@@ -7,7 +7,9 @@
  */
 
 /* -------------------- Constants -------------------- */
-if (!defined('LAB_CODE_SEXUAL'))    define('LAB_CODE_SEXUAL',    '2811');
+// default จาก store (แก้ผ่าน modal ในหน้า sexual.php) — worker/import/แสดงผล ใช้ค่าเดียวกัน
+if (!defined('LAB_CODE_SEXUAL')) define('LAB_CODE_SEXUAL',
+  function_exists('module_filter') ? (module_filter('sexual')['lab_code'] ?? '2811') : '2811');
 
 if (!defined('SEXUAL_TITLE'))       define('SEXUAL_TITLE',       'แจ้งเตือนผู้ถูกกระทำความรุนแรง');
 if (!defined('SEXUAL_SUBTITLE'))    define('SEXUAL_SUBTITLE',    'Sexual Assault Alert · รพ.เชียงกลาง');

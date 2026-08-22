@@ -10,6 +10,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
 require_once __DIR__ . '/flex_sexual.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 date_default_timezone_set('Asia/Bangkok');
 
 /* ── UI Action Token ─────────────────────────────────────────── */
@@ -174,6 +175,7 @@ require_once __DIR__ . '/partials/header.php';
     <?= htmlspecialchars($PAGE_TITLE) ?>
   </h1>
   <div class="d-flex gap-2 flex-wrap">
+    <?= filter_edit_button('sexual') ?>
     <button type="button" class="btn btn-sm"
             style="background:linear-gradient(135deg,#db2777,#9d174d);color:#fff;border:none;border-radius:8px"
             data-bs-toggle="modal" data-bs-target="#sxSyncModal">
@@ -189,6 +191,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <?php if ($queryError): ?>
 <!-- ── ตาราง sexual_alert_queue ยังไม่ถูกสร้าง ── -->
@@ -462,6 +465,8 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 </div>
+
+<?php render_filter_modal('sexual'); ?>
 
 <?php
 $EXTRA_FOOTER = '

@@ -42,7 +42,8 @@ if (!defined('DRUG_RESEND_COOLDOWN_MIN'))  define('DRUG_RESEND_COOLDOWN_MIN',  1
 if (!defined('DRUG_MAX_ATTEMPTS'))         define('DRUG_MAX_ATTEMPTS',         8);   // ครั้ง
 if (!defined('DRUG_BATCH_LIMIT'))          define('DRUG_BATCH_LIMIT',         50);   // รายการ/รอบ
 if (!defined('DEFAULT_DRUG_LOOKBACK_DAYS'))define('DEFAULT_DRUG_LOOKBACK_DAYS',30);  // วัน
-if (!defined('DEFAULT_DRUG_ICODES'))       define('DEFAULT_DRUG_ICODES',  '1483860');
+if (!defined('DEFAULT_DRUG_ICODES'))       define('DEFAULT_DRUG_ICODES',
+  function_exists('module_filter') ? implode(',', module_filter('drug')['icodes']) : '1483860');
 
 /* ============================================================
  *  Logging
