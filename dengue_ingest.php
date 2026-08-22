@@ -21,8 +21,6 @@ define('APP_DIR', __DIR__);
 date_default_timezone_set('Asia/Bangkok');
 set_time_limit(300);
 
-/* ── Constants ─────────────────────────────────────────────────── */
-define('DENGUE_LAB_CODE', '2891');
 
 if (!defined('MOPH_API_URL'))       define('MOPH_API_URL',       'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))       define('MOPH_TIMEOUT',       30);
@@ -72,12 +70,12 @@ function dng_moph_log(array $row, int $code, ?string $resp, ?string $err = null)
 
 /* ═══ START ══════════════════════════════════════════════════════ */
 dng_log('=== dengue_ingest START' . ($isDry ? ' [DRYRUN]' : '') . ' ===');
-dng_log("ช่วง: {$start} ถึง {$end}  lab_items_code=" . DENGUE_LAB_CODE);
+dng_log("ช่วง: {$start} ถึง {$end}  lab_items_code=" . (module_filter('dengue')['lab_code'] ?? '2891'));
 
 /* ═══ STEP 1: Query HOSxP ════════════════════════════════════════ */
 try {
   require_once __DIR__ . '/sources/dengue_source.php';
-  $hosxpRows = dengue_source_rows($start, $end, DENGUE_LAB_CODE);
+  $hosxpRows = dengue_source_rows($start, $end);
   dng_log('HOSxP: พบ ' . count($hosxpRows) . ' รายการ');
 } catch (Throwable $e) {
   dng_log('ERROR HOSxP query: ' . $e->getMessage());

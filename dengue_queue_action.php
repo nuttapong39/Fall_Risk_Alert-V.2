@@ -14,7 +14,6 @@ require_once __DIR__ . '/flex_disease.php';
 date_default_timezone_set('Asia/Bangkok');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-define('DENGUE_LAB_CODE',    '2891');
 define('DENGUE_Q_UI_TOKEN',  hash('sha256', __DIR__ . '/dengue_queue_ui.php' . php_uname() . date('Y-m-d')));
 
 if (!defined('MOPH_API_URL'))         define('MOPH_API_URL',         'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
@@ -114,7 +113,7 @@ if ($action === 'import_hosxp') {
 
   try {
     require_once __DIR__ . '/sources/dengue_source.php';
-    $hosxpRows = dengue_source_rows($start, $end, DENGUE_LAB_CODE);
+    $hosxpRows = dengue_source_rows($start, $end);
   } catch (Throwable $e) {
     echo json_encode(['ok' => false, 'msg' => 'HOSxP query error: ' . $e->getMessage()]);
     exit;

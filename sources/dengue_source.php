@@ -11,7 +11,15 @@
  */
 
 if (!function_exists('dengue_source_rows')) {
-  function dengue_source_rows(string $start, string $end, string $labCode = '2891'): array {
+  function dengue_source_rows(string $start, string $end, ?string $labCode = null, ?array $results = null, ?array $pdxPatterns = null): array {
+    // null = ใช้เงื่อนไขจาก store (module_filter) — แก้ผ่าน modal ในหน้า queue_ui
+    $mf = function_exists('module_filter') ? module_filter('dengue') : [];
+    if ($labCode     === null) $labCode     = $mf['lab_code'] ?? '2891';
+    if ($results     === null) $results     = $mf['results']  ?? ['Positive','Weakly Positive'];
+    if ($pdxPatterns === null) $pdxPatterns = $mf['pdx']      ?? [['t'=>'range','from'=>'A90','to'=>'A99']];
+    $results = function_exists('mf_texts') ? mf_texts($results) : array_values(array_filter($results, fn($x) => $x !== ''));
+    if (!$results) return [];
+    $resPlace = implode(',', array_fill(0, count($results), '?'));
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')
@@ -36,6 +44,10 @@ if (!function_exists('dengue_source_rows')) {
              l.lab_order_result AS result,
              l.lab_order_number";
 
+    // ICD range/prefix/exact ครอบ pdx+dx0-3 (bound params) — สร้างก่อนประกอบ WHERE
+    $pdxParams = [];
+    $pdxClause = mf_pdx_clause($pdxParams, ['ov.pdx','ov.dx0','ov.dx1','ov.dx2','ov.dx3'], $pdxPatterns);
+
     $from = "FROM   vn_stat ov
              LEFT  JOIN patient pt ON pt.hn  = ov.hn
              LEFT  JOIN icd101  i  ON i.code = ov.pdx
@@ -44,12 +56,8 @@ if (!function_exists('dengue_source_rows')) {
              INNER JOIN lab_order l ON l.lab_order_number = h.lab_order_number
              WHERE  ov.vstdate       BETWEEN ? AND ?
                AND  l.lab_items_code = ?
-               AND  l.lab_order_result IN ('Positive','Weakly Positive')
-               AND  (   ov.pdx >= 'A90' AND ov.pdx <= 'A99'
-                     OR ov.dx0 >= 'A90' AND ov.dx0 <= 'A99'
-                     OR ov.dx1 >= 'A90' AND ov.dx1 <= 'A99'
-                     OR ov.dx2 >= 'A90' AND ov.dx2 <= 'A99'
-                     OR ov.dx3 >= 'A90' AND ov.dx3 <= 'A99')";
+               AND  l.lab_order_result IN ($resPlace)
+               AND  {$pdxClause}";
 
     if ($driver === 'pgsql') {
       $sql = "SELECT * FROM (SELECT DISTINCT ON (ov.vn) {$cols} {$from}
@@ -58,14 +66,19 @@ if (!function_exists('dengue_source_rows')) {
       $sql = "SELECT {$cols} {$from} GROUP BY ov.vn ORDER BY ov.vstdate DESC";
     }
     $st = $db->prepare($sql);
-    $st->execute([$start, $end, $labCode]);
+    $st->execute(array_merge([$start, $end, $labCode], $results, $pdxParams));
     return $st->fetchAll(PDO::FETCH_ASSOC);
   }
 }
 
 if (!function_exists('dengue_source_by_vn')) {
   /** lookup รายเดียวตาม VN (ใช้โดย dengue_action.php) — คืน row เดียวหรือ null */
-  function dengue_source_by_vn(string $vn, string $labCode = '2891'): ?array {
+  function dengue_source_by_vn(string $vn, ?string $labCode = null): ?array {
+    if ($labCode === null) {
+      $labCode = function_exists('module_filter')
+        ? (module_filter('dengue')['lab_code'] ?? '2891')
+        : '2891';
+    }
     $db     = hosxp_db();
     $driver = $GLOBALS['DB_HOSXP']['driver'] ?? 'mysql';
     $ageExpr = ($driver === 'pgsql')

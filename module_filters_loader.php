@@ -153,6 +153,42 @@ if (!function_exists('mf_in')) {
     return "$col IN ($ph)";
   }
 }
+if (!function_exists('mf_pdx_clause')) {
+  /**
+   * สร้างเงื่อนไข ICD จาก pattern list × หลายคอลัมน์ (pdx/dx0-3) แบบ OR + bind params
+   *   exact  {v}       → col = ?
+   *   prefix {v}       → col LIKE ?      (v + '%')
+   *   range  {from,to} → (col >= ? AND col <= ?)
+   * คืน "(term OR term ...)" (เติม $params) หรือ '1=0' ถ้าว่าง — ปลอดภัยจาก injection (bind หมด)
+   * วน column นอก pattern ใน → คงลำดับเดิม (pdx ก่อน แล้ว dx0..dx3)
+   */
+  function mf_pdx_clause(array &$params, array $cols, array $patterns): string {
+    $san = fn($s) => preg_replace('/[^A-Za-z0-9]/', '', (string)$s);
+    $terms = [];
+    foreach ($cols as $col) {
+      foreach ($patterns as $p) {
+        $t = $p['t'] ?? 'exact';
+        if ($t === 'range') {
+          $from = $san($p['from'] ?? ''); $to = $san($p['to'] ?? '');
+          if ($from === '' || $to === '') continue;
+          $terms[] = "($col >= ? AND $col <= ?)";
+          $params[] = $from; $params[] = $to;
+        } elseif ($t === 'prefix') {
+          $v = $san($p['v'] ?? '');
+          if ($v === '') continue;
+          $terms[] = "$col LIKE ?";
+          $params[] = $v . '%';
+        } else {
+          $v = $san($p['v'] ?? '');
+          if ($v === '') continue;
+          $terms[] = "$col = ?";
+          $params[] = $v;
+        }
+      }
+    }
+    return $terms ? '(' . implode(' OR ', $terms) . ')' : '1=0';
+  }
+}
 
 /* ── แปลง pattern list <-> text (mini-syntax) สำหรับ modal/action ──────────── */
 if (!function_exists('mf_patterns_to_text')) {

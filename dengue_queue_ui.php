@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
 date_default_timezone_set('Asia/Bangkok');
 
 /* ── UI Action Token ─────────────────────────────────────────── */
@@ -177,6 +178,7 @@ require_once __DIR__ . '/partials/header.php';
     <?= htmlspecialchars($PAGE_TITLE) ?>
   </h1>
   <div class="d-flex gap-2 flex-wrap">
+    <?= filter_edit_button('dengue') ?>
     <button type="button" class="btn btn-sm"
             style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px"
             data-bs-toggle="modal" data-bs-target="#dqSyncModal">
@@ -185,7 +187,7 @@ require_once __DIR__ . '/partials/header.php';
     <span class="badge rounded-pill align-self-center"
           style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
       <span class="msi me-1" style="font-size:.9em">science</span>
-      Lab code: 2891
+      Lab code: <?= htmlspecialchars(module_filter('dengue')['lab_code'] ?? '2891') ?>
     </span>
     <span class="badge rounded-pill align-self-center"
           style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-size:.78rem;padding:.35rem .75rem">
@@ -196,6 +198,7 @@ require_once __DIR__ . '/partials/header.php';
     </a>
   </div>
 </div>
+<?= filter_flash_html() ?>
 
 <?php if ($queryError): ?>
 <div class="setup-alert mb-4">
@@ -459,7 +462,7 @@ require_once __DIR__ . '/partials/header.php';
              style="background:#fffbeb; border:1px solid #fde68a; font-size:.82rem; color:#92400e">
           <span class="msi me-1">info</span>
           Query จาก <strong>vn_stat + lab_head + lab_order</strong> ใน HOSxP
-          เฉพาะ <code>lab_items_code = 2891</code> และผล <strong>Positive / Weakly Positive IgM</strong>
+          เฉพาะ <code>lab_items_code = <?= htmlspecialchars(module_filter('dengue')['lab_code'] ?? '2891') ?></code> และผล <strong>Positive / Weakly Positive IgM</strong>
           แล้ว Upsert เข้า <code>dengue_queue</code>
           — ไม่ส่ง LINE ทันที ต้องกด "ส่งแจ้งเตือน" หลัง Sync เสร็จ
         </div>
@@ -477,6 +480,8 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 </div>
+
+<?php render_filter_modal('dengue'); ?>
 
 <?php
 $EXTRA_FOOTER = '
