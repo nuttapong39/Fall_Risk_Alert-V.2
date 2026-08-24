@@ -640,6 +640,19 @@ git clone https://github.com/nuttapong39/Fall_Risk_Alert-V.2.git <span class="g"
     <div class="note crit"><div class="ic k">!</div><div><b>ห้ามปิดเครื่อง server ระหว่างอัปเดต</b> และหากเคยแก้โค้ด PHP/SQL ตรงๆ (นอกเหนือจากการตั้งค่าผ่านหน้าเว็บ) การอัปเดตจะเขียนทับสิ่งนั้นทิ้ง — การปรับแต่งทุกอย่างของ MedAlert ควรทำผ่านหน้าเว็บ (ตั้งค่า/เงื่อนไขดึงข้อมูล/ธีม) เท่านั้น ไม่ควรแก้โค้ดตรงๆ</div></div>
     <p class="measure">ถ้าปุ่มกดไม่ทำงาน (เช่น server ปิดฟังก์ชันรันโปรแกรมภายนอกไว้) ให้ไปที่โฟลเดอร์ติดตั้งแล้วดับเบิลคลิก <code class="inl">task\update.bat</code> เอง — เป็นสคริปต์ตัวเดียวกับที่ปุ่มในเว็บสั่งรัน</p>
     <div class="note info"><div class="ic k">i</div><div>อัปเดตพังกลางทาง? ไฟล์สำรองอยู่ที่ <code class="inl">C:\xampp\htdocs\_backup\Fall_Risk_Alert-main_&lt;วันที่เวลา&gt;\</code> — copy ทับกลับไปที่ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code> ได้เลย</div></div>
+
+    <h3 style="margin:24px 0 4px; font-size:1rem">เวอร์ชันเก่ามาก (ยังไม่มีปุ่ม/การ์ด "เวอร์ชันระบบ")</h3>
+    <p class="measure">ถ้าติดตั้งไว้ตั้งแต่ก่อนมีระบบอัปเดตนี้ หน้า <b>ตั้งค่าระบบ</b> จะยังไม่มีการ์ดให้กด — ต้อง "จุดชนวน" ครั้งแรกด้วยมือก่อน 1 ครั้งเท่านั้น หลังจากนั้นใช้ปุ่มในเว็บได้ตามปกติตลอดไป:</p>
+    <ol class="measure" style="padding-left:20px">
+      <li>เปิดโฟลเดอร์ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main\task\</code> บนเครื่อง server</li>
+      <li>ดาวน์โหลด 2 ไฟล์นี้มาวางในโฟลเดอร์ <code class="inl">task\</code> (เขียนทับได้ถ้ามีของเก่า):
+        <br><code class="inl">https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.bat</code>
+        <br><code class="inl">https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.ps1</code>
+      </li>
+      <li>ดับเบิลคลิก <code class="inl">update.bat</code> (กด Yes ตอนขอสิทธิ์ Administrator)</li>
+      <li>รอจนจบ — สคริปต์จะสำรองไฟล์ก่อน แล้วดึงโค้ดทั้งชุดปัจจุบันมาแทนที่ให้เอง (เช็คเองว่าเครื่องนั้นติดตั้งด้วย git หรือ ZIP)</li>
+    </ol>
+    <div class="note info"><div class="ic k">i</div><div>รอบนี้จะเป็นการกระโดดข้ามหลายรีลีสพร้อมกัน (ไม่ใช่ทีละเวอร์ชัน) — ปลอดภัยเพราะยังคง secrets/logs และ backup เหมือนการอัปเดตปกติทุกประการ ดูสรุปการเปลี่ยนแปลงได้ที่ <code class="inl">CHANGELOG.md</code> หลังอัปเดตเสร็จ</div></div>
   </section>
 
   <!-- ══════════════ TROUBLESHOOTING ══════════════ -->
