@@ -674,6 +674,9 @@ a.nav-item.logout-item:hover .nav-ic {
         <a href="flex_editor.php" class="nav-item<?= ckh_active('flex_editor', $PAGE_KEY) ?>">
           <span class="nav-ic"><span class="msi">palette</span></span><span>ปรับแต่ง Flex Message</span>
         </a>
+        <a href="about.php" class="nav-item<?= ckh_active('about', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">info</span></span><span>เกี่ยวกับระบบ</span>
+        </a>
       </div>
     </div>
 
