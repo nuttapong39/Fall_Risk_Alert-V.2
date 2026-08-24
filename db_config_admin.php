@@ -115,21 +115,10 @@ if (($_POST['action'] ?? '') === 'setup_medalert') {
     $pdo = new PDO($dsn, $medalert['user'], $medalert['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-    // 3) deploy schema 9 ไฟล์ (idempotent)
-    $schemaFiles = ['users.sql','accident_queue.sql','covid_queue.sql','dengue_queue.sql',
-                    'drug_queue.sql','fracture_queue.sql','patient_queue.sql',
-                    'pharm_lab_queue.sql','sexual_alert_queue.sql'];
-    foreach ($schemaFiles as $sf) {
-      $path = __DIR__ . '/' . $sf;
-      if (!is_readable($path)) { $steps[] = "✗ ไม่พบไฟล์ {$sf}"; continue; }
-      $sqlText = file_get_contents($path);
-      // ปุ่ม Setup กดซ้ำได้ปลอดภัย + เริ่มสะอาด: ตัด DROP TABLE และ sample INSERT, เติม IF NOT EXISTS
-      $sqlText = preg_replace('/DROP\s+TABLE\s+IF\s+EXISTS[^;]*;/i', '', $sqlText);
-      $sqlText = preg_replace('/INSERT\s+INTO[\s\S]*?;/i', '', $sqlText);
-      $sqlText = preg_replace('/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/i', 'CREATE TABLE IF NOT EXISTS ', $sqlText);
-      try { $pdo->exec($sqlText); $steps[] = "✓ deploy {$sf}"; }
-      catch (Throwable $e) { $steps[] = "✗ {$sf}: ".$e->getMessage(); }
-    }
+    // 3) deploy schema ทุกไฟล์ที่เจอ (idempotent) — logic กลางอยู่ที่ db_migrate.php
+    //    (ใช้ glob *_queue.sql แทน list ตายตัว → ตารางใหม่ในอนาคตถูก deploy อัตโนมัติ)
+    require_once __DIR__ . '/db_migrate.php';
+    foreach (deploy_missing_schema($pdo, __DIR__) as $line) { $steps[] = $line; }
 
     // 4) seed admin (เฉพาะ first-run และถ้ายังไม่มี user ชื่อนี้)
     if ($isFirstRun && $adminUser !== '') {
