@@ -62,32 +62,31 @@ if ($action === 'run') {
   }
 
   $batPath = __DIR__ . '\\task\\update.bat';
-  if (!is_file($batPath)) {
-    echo json_encode(['ok'=>false,'msg'=>'ไม่พบ task\\update.bat']); exit;
+  $vbsPath = __DIR__ . '\\task\\launch_detached.vbs';
+  if (!is_file($batPath) || !is_file($vbsPath)) {
+    echo json_encode(['ok'=>false,'msg'=>'ไม่พบ task\\update.bat หรือ task\\launch_detached.vbs']); exit;
   }
 
   $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-  $canExec  = function_exists('proc_open') && !in_array('proc_open', $disabled, true);
+  $canExec  = function_exists('exec') && !in_array('exec', $disabled, true);
 
   if (!$canExec) {
     echo json_encode([
       'ok'     => false,
       'manual' => true,
-      'msg'    => 'เซิร์ฟเวอร์นี้ปิดฟังก์ชันรันโปรแกรมภายนอกไว้ (proc_open ถูกปิด) — กรุณาไปที่เครื่อง server แล้วดับเบิลคลิก task\\update.bat เอง',
+      'msg'    => 'เซิร์ฟเวอร์นี้ปิดฟังก์ชันรันโปรแกรมภายนอกไว้ (exec ถูกปิด) — กรุณาไปที่เครื่อง server แล้วดับเบิลคลิก task\\update.bat เอง',
     ]);
     exit;
   }
 
   try {
-    // เปิดแบบ detached (ไม่รอให้จบ) — response ต้องคืนทันที ไม่ block ยาวจนเว็บ timeout
-    $cmd  = 'start "" /B "' . $batPath . '"';
-    $desc = [0 => ['pipe','r'], 1 => ['pipe','w'], 2 => ['pipe','w']];
-    // "start" เป็นคำสั่งภายใน cmd.exe เท่านั้น (ไม่ใช่ .exe) — ต้องปล่อยให้ proc_open ผ่าน shell
-    // ตามปกติ (bypass_shell=false ค่า default) ไม่งั้น CreateProcess จะหา "start" ไม่เจอ
-    $proc = @proc_open($cmd, $desc, $pipes, __DIR__);
-    if (is_resource($proc)) {
-      foreach ($pipes as $p) { if (is_resource($p)) fclose($p); }
-      proc_close($proc);
+    // เปิดแบบ detached จริง (ไม่รอให้จบ) ผ่าน wscript.exe + WScript.Shell.Run —
+    // proc_open()+proc_close() บน Windows ผูก child process กับ Job Object ที่ถูกฆ่า
+    // ทันทีที่ request จบ (แม้จะสั่ง "start /B" ก็ตาม) ทำให้ update.bat ไม่เคยรันจริง
+    // ทดสอบแล้วว่า WScript.Shell.Run(cmd, 0, False) รอดจาก lifecycle ของ PHP request
+    $cmd = 'wscript.exe //B ' . escapeshellarg($vbsPath) . ' ' . escapeshellarg($batPath);
+    exec($cmd, $out, $rc);
+    if ($rc === 0) {
       echo json_encode(['ok'=>true,'msg'=>'เริ่มอัปเดตแล้ว — ระบบกำลังทำงานอยู่เบื้องหลัง']);
     } else {
       echo json_encode(['ok'=>false,'manual'=>true,'msg'=>'สั่งรันสคริปต์ไม่สำเร็จ — กรุณาดับเบิลคลิก task\\update.bat เอง']);
