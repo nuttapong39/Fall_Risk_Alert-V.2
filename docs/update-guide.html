@@ -289,6 +289,15 @@ https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/up
 https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.ps1
           </div>
         </div>
+        <p style="margin:12px 0 4px; font-size:.86rem; color:var(--muted)">หรือถ้าถนัดใช้คำสั่งมากกว่าเปิดเบราว์เซอร์ — เปิด <b>PowerShell</b> แล้ววางคำสั่งนี้ (ดึงตรงเข้าโฟลเดอร์ให้เลย ไม่ต้องดาวน์โหลดเอง):</p>
+        <div class="term">
+          <div class="term-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="t">PowerShell</span></div>
+          <div class="term-body" style="line-height:1.7">
+<span class="hd">cd</span> C:\xampp\htdocs\Fall_Risk_Alert-main\task<br>
+<span class="hd">Invoke-WebRequest</span> -Uri "https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.bat" -OutFile "update.bat"<br>
+<span class="hd">Invoke-WebRequest</span> -Uri "https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.ps1" -OutFile "update.ps1"
+          </div>
+        </div>
       </li>
       <li>ดับเบิลคลิก <code class="inl">update.bat</code> แล้วกด <b>Yes</b> ตอนขอสิทธิ์ Administrator</li>
       <li>รอจนจบหน้าต่างขึ้น <code class="inl">Done.</code> — สคริปต์สำรองไฟล์แล้วดึงโค้ดทั้งชุดปัจจุบันมาแทนที่ให้เอง</li>
