@@ -45,6 +45,8 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - `site_config_loader.php` — โหลดชื่อ รพ. → `HOSPITAL_SHORT`/`HOSPITAL_FULL`
 - `covid_lib.php` — utility (row_to_utf8, extract_moph_message_id ฯลฯ)
 - `telegram_lib.php` — ส่ง Telegram mirror
+- `version_loader.php` — โหลด `VERSION` (root) → `APP_VERSION`
+- `db_migrate.php` — `deploy_missing_schema()` (glob `*_queue.sql` + `users.sql`, idempotent) ใช้โดยปุ่ม "Setup MedAlert_DB" และตอนอัปเดตเวอร์ชัน
 
 ### 2) หน้าเว็บ (Entry points — เปิดด้วย URL, **ต้องอยู่ root**)
 - ระบบ: `login.php` `logout.php` `index.php` `dashboard.php`
@@ -59,6 +61,11 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - `cron_covid_queue.php` — cron เสริม covid
 - `task/` — **ตัวติดตั้ง Scheduled Task**: `install_tasks.bat`, `uninstall_tasks.bat`, `*.xml` (10), `README.txt`
 - `enable_php_extensions.bat` — เปิด PHP extension อัตโนมัติ (ตอนติดตั้ง)
+
+### 3b) ระบบอัปเดตเวอร์ชัน (Version update)
+- `VERSION` (root, `YYYY.MM.DD`) + `CHANGELOG.md` — เวอร์ชันปัจจุบัน + ประวัติรีลีส
+- `task/update.bat` + `task/update.ps1` — สคริปต์อัปเดตจริง (สำรองก่อนเสมอ → git pull หรือดาวน์โหลด ZIP ถ้าไม่มี `.git` → รัน `db_migrate.php`) ไม่แตะ `secrets/`/`logs/`
+- `system_update_action.php` (check/run) + `system_update_status.php` (poll) — endpoint ที่ปุ่ม "เวอร์ชันระบบ" ใน `settings.php` เรียกใช้ (ปุ่มสั่งรัน `task/update.bat` แบบ detached ไม่ overwrite โค้ดเองผ่าน HTTP request โดยตรง)
 
 ### 4) Flex Message system (config-driven)
 - `flex_theme.php` — โหลดธีมจาก `secrets/flex_themes.json` (มี default ฝังในตัว)

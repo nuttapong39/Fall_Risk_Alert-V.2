@@ -256,6 +256,7 @@ footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px
       <a href="#s7">7 · ทดสอบ</a>
       <a href="#s8">8 · Task</a>
       <a href="#s9">9 · ปรับค่า</a>
+      <a href="#s10">10 · อัปเดตเวอร์ชัน</a>
       <a href="#trouble">แก้ปัญหา</a>
       <a href="#checklist">Checklist</a>
     </nav>
@@ -630,6 +631,15 @@ git clone https://github.com/nuttapong39/Fall_Risk_Alert-V.2.git <span class="g"
     <p class="measure">ทุกโมดูล (COVID-19, อุบัติเหตุ, ยาอันตราย, Sexual Assault, เลปโต, สครับ, ไข้เลือดออก, จิตเวช, หกล้ม, Lab วิกฤตห้องยา) มีปุ่ม <strong>"แก้ไขเงื่อนไขดึงข้อมูล"</strong> อยู่มุมขวาบนของหน้าคิว/หน้าโมดูลนั้น ๆ — กดแล้วแก้รหัส/เกณฑ์ในหน้าต่างที่เด้งขึ้นมาได้ทันที มีผลทั้งการส่งอัตโนมัติ (worker) และปุ่ม Sync/Import พร้อมกัน (ค่า default = ค่าที่ระบบตั้งไว้ตั้งแต่ต้น จนกว่าจะมีคนแก้)</p>
     <p class="measure">ในหน้าต่างนั้นมีปุ่ม <strong>"ทดสอบ (นับผลย้อนหลัง 30 วัน)"</strong> ให้ลองนับผลก่อนกดบันทึกจริง เพื่อเช็คว่ารหัสที่กรอกดึงข้อมูลได้ตามคาด</p>
     <div class="note info"><div class="ic k">i</div><div>หา lab_items_code ได้ที่ phpMyAdmin: <code class="inl">SELECT lab_items_code, lab_items_name FROM lab_items WHERE lab_items_name LIKE '%covid%'</code> แล้วนำรหัสที่ได้ไปกรอกในหน้าต่างแก้ไขเงื่อนไข</div></div>
+  </section>
+
+  <section id="s10" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">10</span><h2>อัปเดตเวอร์ชัน</h2></div>
+    <p class="sec-sub measure">เมื่อระบบมีการแก้ไข/เพิ่มฟีเจอร์ใหม่บน GitHub — อัปเดตได้จากหน้าเว็บโดยตรง ไม่ต้องแก้ไฟล์เอง</p>
+    <p class="measure">ไปที่ <b>ตั้งค่าระบบ</b> (settings.php) → การ์ด <b>"เวอร์ชันระบบ"</b> → กด <b>"ตรวจสอบอัปเดต"</b> ถ้ามีเวอร์ชันใหม่กว่า จะมีช่องให้พิมพ์ <code class="inl">UPDATE</code> เพื่อยืนยัน แล้วกด <b>"อัปเดตตอนนี้"</b> ระบบจะสำรองไฟล์ทั้งหมดก่อนเสมอ แล้วดึงโค้ดใหม่มาทับ (ไม่แตะไฟล์ตั้งค่า <code class="inl">secrets/</code> หรือ <code class="inl">logs/</code> ของ รพ. เลย) เสร็จแล้วจะขึ้นสถานะในหน้าเดียวกัน</p>
+    <div class="note crit"><div class="ic k">!</div><div><b>ห้ามปิดเครื่อง server ระหว่างอัปเดต</b> และหากเคยแก้โค้ด PHP/SQL ตรงๆ (นอกเหนือจากการตั้งค่าผ่านหน้าเว็บ) การอัปเดตจะเขียนทับสิ่งนั้นทิ้ง — การปรับแต่งทุกอย่างของ MedAlert ควรทำผ่านหน้าเว็บ (ตั้งค่า/เงื่อนไขดึงข้อมูล/ธีม) เท่านั้น ไม่ควรแก้โค้ดตรงๆ</div></div>
+    <p class="measure">ถ้าปุ่มกดไม่ทำงาน (เช่น server ปิดฟังก์ชันรันโปรแกรมภายนอกไว้) ให้ไปที่โฟลเดอร์ติดตั้งแล้วดับเบิลคลิก <code class="inl">task\update.bat</code> เอง — เป็นสคริปต์ตัวเดียวกับที่ปุ่มในเว็บสั่งรัน</p>
+    <div class="note info"><div class="ic k">i</div><div>อัปเดตพังกลางทาง? ไฟล์สำรองอยู่ที่ <code class="inl">C:\xampp\htdocs\_backup\Fall_Risk_Alert-main_&lt;วันที่เวลา&gt;\</code> — copy ทับกลับไปที่ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code> ได้เลย</div></div>
   </section>
 
   <!-- ══════════════ TROUBLESHOOTING ══════════════ -->
