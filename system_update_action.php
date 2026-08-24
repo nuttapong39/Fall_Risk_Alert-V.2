@@ -43,7 +43,10 @@ if ($action === 'check') {
     'ok'              => $latest !== null,
     'current'         => $current,
     'latest'          => $latest,
-    'updateAvailable' => $latest !== null && $latest !== $current,
+    // เทียบแบบ string (lexicographic) พอ เพราะ VERSION เป็น YYYY.MM.DD.HHMM ที่ zero-pad สม่ำเสมอ
+    // เทียบ "ใหม่กว่า" จริง ไม่ใช่แค่ "ต่างกัน" — กัน false positive ตอน local ล้ำหน้า remote ชั่วคราว
+    // (เช่น CDN ของ raw.githubusercontent.com cache ค่าเก่าค้างไว้สักพักหลัง push)
+    'updateAvailable' => $latest !== null && $latest > $current,
     'msg'             => $err,
   ]);
   exit;
