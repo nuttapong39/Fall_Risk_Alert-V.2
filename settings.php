@@ -609,6 +609,143 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
+<!-- ========== VERSION / UPDATE ========== -->
+<div class="settings-section">
+  <div class="settings-section-head">
+    <div class="settings-section-icon" style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+      <span class="msi">cloud_sync</span>
+    </div>
+    <div>
+      <div class="settings-section-title">เวอร์ชันระบบ</div>
+      <div class="settings-section-desc">ตรวจสอบและอัปเดตเวอร์ชันจาก GitHub — สำรองไฟล์ทั้งหมดอัตโนมัติก่อนอัปเดตทุกครั้ง</div>
+    </div>
+  </div>
+  <div class="settings-section-body">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div>
+        <div style="font-size:.78rem; color:var(--muted)">เวอร์ชันปัจจุบัน</div>
+        <div style="font-size:1.15rem; font-weight:700"><?= htmlspecialchars(defined('APP_VERSION') ? APP_VERSION : '0.0.0') ?></div>
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm" id="verCheckBtn" onclick="verCheck()">
+        <span class="msi me-1">refresh</span>ตรวจสอบอัปเดต
+      </button>
+      <span id="verCheckResult" class="small text-muted"></span>
+    </div>
+
+    <div id="verUpdateBox" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
+      <div class="alert alert-info py-2 d-flex align-items-start gap-2" style="border-radius:10px; font-size:.85rem">
+        <span class="msi" style="font-size:1rem">info</span>
+        <span>ระบบจะสำรองไฟล์ทั้งหมดไว้ก่อนเสมอ และ<b>ไม่แตะไฟล์ตั้งค่า/ข้อมูลของ รพ.</b> (secrets/, logs/) — ระหว่างอัปเดตห้ามปิดเครื่อง server</span>
+      </div>
+      <label class="form-label fw-semibold" style="font-size:.85rem">พิมพ์ <code>UPDATE</code> เพื่อยืนยัน</label>
+      <div class="d-flex gap-2 flex-wrap">
+        <input type="text" id="verConfirmText" class="form-control" style="max-width:200px" placeholder="UPDATE" autocomplete="off">
+        <button type="button" class="btn btn-danger" id="verRunBtn" onclick="verRun()">
+          <span class="msi me-1">system_update_alt</span>อัปเดตตอนนี้
+        </button>
+      </div>
+      <div id="verRunResult" class="small mt-2"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const VER_TOKEN = <?= json_encode(defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '') ?>;
+  let verPollTimer = null;
+
+  window.verCheck = function () {
+    const btn = document.getElementById('verCheckBtn');
+    const out = document.getElementById('verCheckResult');
+    const box = document.getElementById('verUpdateBox');
+    btn.disabled = true;
+    out.textContent = 'กำลังตรวจสอบ...';
+    box.style.display = 'none';
+    fetch('system_update_action.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'action=check',
+    })
+      .then(r => r.json())
+      .then(j => {
+        if (!j.ok) { out.textContent = 'ผิดพลาด: ' + (j.msg || 'ไม่ทราบสาเหตุ'); return; }
+        if (j.updateAvailable) {
+          out.innerHTML = 'มีเวอร์ชันใหม่: <b>' + j.latest + '</b> (ปัจจุบัน ' + j.current + ')';
+          box.style.display = 'block';
+        } else {
+          out.textContent = 'ใช้เวอร์ชันล่าสุดแล้ว (' + j.current + ')';
+        }
+      })
+      .catch(() => { out.textContent = 'เชื่อมต่อไม่สำเร็จ'; })
+      .finally(() => { btn.disabled = false; });
+  };
+
+  window.verRun = function () {
+    const confirmText = document.getElementById('verConfirmText').value.trim();
+    const out = document.getElementById('verRunResult');
+    if (confirmText !== 'UPDATE') {
+      out.innerHTML = '<span class="text-danger">กรุณาพิมพ์ UPDATE ให้ตรงเพื่อยืนยัน</span>';
+      return;
+    }
+    Swal.fire({
+      icon: 'warning',
+      title: 'ยืนยันอัปเดตระบบ?',
+      html: 'ระบบจะสำรองไฟล์ทั้งหมดก่อน แล้วดึงโค้ดเวอร์ชันใหม่มาทับ<br>ห้ามปิดเครื่อง server ระหว่างนี้',
+      showCancelButton: true,
+      confirmButtonText: 'อัปเดตเลย',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#dc3545',
+    }).then(res => {
+      if (!res.isConfirmed) return;
+      const btn = document.getElementById('verRunBtn');
+      btn.disabled = true;
+      out.textContent = 'กำลังสั่งอัปเดต...';
+      fetch('system_update_action.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=run&token=' + encodeURIComponent(VER_TOKEN) + '&confirm=' + encodeURIComponent(confirmText),
+      })
+        .then(r => r.json())
+        .then(j => {
+          if (!j.ok) {
+            out.innerHTML = '<span class="text-danger">' + (j.msg || 'ผิดพลาด') + '</span>';
+            btn.disabled = false;
+            return;
+          }
+          out.textContent = j.msg || 'เริ่มอัปเดตแล้ว...';
+          verPollStatus();
+        })
+        .catch(() => {
+          out.innerHTML = '<span class="text-danger">เชื่อมต่อไม่สำเร็จ</span>';
+          btn.disabled = false;
+        });
+    });
+  };
+
+  function verPollStatus() {
+    if (verPollTimer) clearInterval(verPollTimer);
+    const out = document.getElementById('verRunResult');
+    verPollTimer = setInterval(() => {
+      fetch('system_update_status.php')
+        .then(r => r.json())
+        .then(j => {
+          if (!j.ok) return;
+          if (j.status === 'running') {
+            out.textContent = j.message || 'กำลังอัปเดต...';
+          } else if (j.status === 'done') {
+            out.innerHTML = '<span class="text-success">' + j.message + '</span>';
+            clearInterval(verPollTimer);
+            document.getElementById('verRunBtn').disabled = false;
+          } else if (j.status === 'error') {
+            out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
+            clearInterval(verPollTimer);
+            document.getElementById('verRunBtn').disabled = false;
+          }
+        });
+    }, 3000);
+  }
+})();
+</script>
+
 <script>
 /* ================================================================
    Settings — Theme & Font Size
