@@ -452,14 +452,15 @@ git clone https://github.com/nuttapong39/Fall_Risk_Alert-V.2.git <span class="g"
 <span class="ok">✓</span> CREATE DATABASE `MedAlert_DB`<br>
 <span class="ok">✓</span> deploy users.sql<br>
 <span class="ok">✓</span> deploy accident_queue.sql · covid_queue.sql · dengue_queue.sql<br>
-<span class="ok">✓</span> deploy drug_queue.sql · fracture_queue.sql · patient_queue.sql<br>
-<span class="ok">✓</span> deploy pharm_lab_queue.sql · sexual_alert_queue.sql<br>
+<span class="ok">✓</span> deploy drug_queue.sql · fracture_queue.sql · lepto_queue.sql<br>
+<span class="ok">✓</span> deploy patient_queue.sql · pharm_lab_queue.sql<br>
+<span class="ok">✓</span> deploy scrub_queue.sql · sexual_alert_queue.sql<br>
 <span class="ok">✓</span> สร้างบัญชี admin 'admin'<br>
 <span class="ok">✓</span> บันทึก secrets/db_config.json<br>
 <span class="dim">— เสร็จสิ้น พร้อมเข้าสู่ระบบ —</span>
       </div>
     </div>
-    <div class="note info"><div class="ic k">i</div><div>ถ้าใช้โมดูล <b>เลปโต / สครับไทฟัส</b> ให้ import เพิ่มที่ phpMyAdmin: <code class="inl">lepto_queue.sql</code> และ <code class="inl">scrub_queue.sql</code> (ตัวช่วยลงให้ 9 ตารางหลักก่อน)</div></div>
+    <div class="note info"><div class="ic k">i</div><div>ปุ่มนี้สแกนหาไฟล์ <code class="inl">*_queue.sql</code> ทุกไฟล์ในโฟลเดอร์ให้เองอัตโนมัติ (ไม่ใช่ list ตายตัว) — โมดูลใหม่ในอนาคตจะถูก deploy ให้ครบโดยไม่ต้องทำอะไรเพิ่ม</div></div>
   </section>
 
   <!-- ══════════════ STEP 4 ══════════════ -->

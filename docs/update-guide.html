@@ -1,0 +1,341 @@
+<meta charset="utf-8">
+<title>คู่มืออัปเดต MedAlert</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#f6f8fb; --surface:#ffffff; --surface-2:#f1f5f9;
+  --ink:#0f172a; --ink-2:#334155; --muted:#64748b; --faint:#94a3b8;
+  --border:#e2e8f0; --border-2:#cbd5e1;
+  --blue:#1d4ed8; --blue-ink:#1e40af; --blue-soft:#eff6ff; --blue-line:#dbeafe;
+  --green:#059669; --green-soft:#ecfdf5; --green-line:#a7f3d0;
+  --amber:#d97706; --amber-soft:#fffbeb; --amber-line:#fde68a;
+  --red:#dc2626; --red-soft:#fef2f2; --red-line:#fecaca;
+  --term-bg:#0b1220; --term-ink:#cbd5e1; --term-dim:#64748b; --term-green:#4ade80; --term-blue:#60a5fa;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 20px rgba(15,23,42,.06);
+  --shadow-lg:0 8px 40px rgba(15,23,42,.10);
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+    --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+    --border:#26344b; --border-2:#334155;
+    --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+    --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+    --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+    --term-bg:#060b16; --term-ink:#c7d2e0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+    --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+  --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+  --border:#26344b; --border-2:#334155;
+  --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+  --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+  --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+  --term-bg:#060b16; --term-ink:#c7d2e0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:78px}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Sarabun",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.72; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.k{font-family:"Kanit",system-ui,sans-serif}
+h2,h3{text-wrap:balance; line-height:1.28}
+code,kbd,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--blue); outline-offset:2px; border-radius:4px}
+
+.topbar{position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--border)}
+.topbar-in{max-width:1080px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:14px}
+.brand{display:flex; align-items:center; gap:9px; font-family:"Kanit"; font-weight:700; font-size:.98rem; white-space:nowrap}
+.brand .dot{width:26px; height:26px; border-radius:8px; display:grid; place-items:center; color:#fff;
+  background:linear-gradient(135deg,#22d3ee,#0891b2 60%,#1d4ed8); font-size:.85rem}
+.toc{display:flex; gap:2px; overflow-x:auto; margin-left:auto; scrollbar-width:none}
+.toc::-webkit-scrollbar{display:none}
+.toc a{color:var(--muted); font-family:"Kanit"; font-weight:500; font-size:.82rem; padding:5px 10px; border-radius:8px; white-space:nowrap}
+.toc a:hover{color:var(--blue); background:var(--blue-soft); text-decoration:none}
+
+.wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+.prose{max-width:none}
+section{padding:46px 0; border-top:1px solid var(--border)}
+section:first-of-type{border-top:none}
+.measure{max-width:68ch}
+
+.hero{padding:52px 0 40px}
+.eyebrow{font-family:"Kanit"; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.72rem; color:var(--blue); display:flex; align-items:center; gap:8px}
+.eyebrow::before{content:""; width:22px; height:2px; background:var(--blue); border-radius:2px}
+.hero h1{font-size:clamp(1.9rem,4.4vw,3rem); font-weight:700; margin:.4em 0 .3em; letter-spacing:-.01em}
+.hero h1 em{font-style:normal; color:var(--blue)}
+.hero .sub{font-size:1.12rem; color:var(--ink-2); max-width:60ch; margin:0}
+.meta-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:22px}
+.chip{display:inline-flex; align-items:center; gap:7px; font-family:"Kanit"; font-weight:500; font-size:.82rem;
+  padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--ink-2)}
+.chip b{color:var(--ink); font-weight:600}
+.chip .sw{width:9px; height:9px; border-radius:50%}
+
+.h-num{display:inline-grid; place-items:center; width:2rem; height:2rem; border-radius:9px;
+  background:var(--blue); color:#fff; font-family:"Kanit"; font-weight:700; font-size:.95rem;
+  font-variant-numeric:tabular-nums; box-shadow:0 3px 10px color-mix(in srgb,var(--blue) 35%,transparent)}
+.sec-h{display:flex; align-items:center; gap:14px; margin:0 0 6px}
+.sec-h h2{font-size:1.55rem; font-weight:700; margin:0}
+.sec-sub{color:var(--muted); margin:2px 0 26px 3rem}
+@media (max-width:560px){.sec-sub{margin-left:0}}
+
+.note{display:grid; grid-template-columns:auto 1fr; gap:12px; padding:14px 16px; border-radius:12px;
+  border:1px solid var(--border); background:var(--surface-2); font-size:.94rem; margin:16px 0}
+.note .ic{width:24px; height:24px; border-radius:7px; display:grid; place-items:center; font-size:.8rem; color:#fff; margin-top:2px}
+.note.info{background:var(--blue-soft); border-color:var(--blue-line)} .note.info .ic{background:var(--blue)}
+.note.ok{background:var(--green-soft); border-color:var(--green-line)} .note.ok .ic{background:var(--green)}
+.note.warn{background:var(--amber-soft); border-color:var(--amber-line)} .note.warn .ic{background:var(--amber)}
+.note.crit{background:var(--red-soft); border-color:var(--red-line)} .note.crit .ic{background:var(--red)}
+.note b{font-family:"Kanit"; font-weight:600}
+
+.step-list{counter-reset:s; list-style:none; padding:0; margin:.4em 0}
+.step-list>li{counter-increment:s; position:relative; padding:2px 0 2px 2.3em; margin:.5em 0}
+.step-list>li::before{content:counter(s); position:absolute; left:0; top:1px; width:1.55em; height:1.55em;
+  border-radius:7px; background:var(--surface-2); border:1px solid var(--border); color:var(--blue);
+  font-family:"JetBrains Mono"; font-weight:700; font-size:.72rem; display:grid; place-items:center}
+
+code.inl{background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.08em .42em; font-size:.86em; color:var(--blue-ink); word-break:break-all}
+
+.term{border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); margin:16px 0}
+.term-bar{background:var(--surface-2); padding:8px 13px; display:flex; align-items:center; gap:7px; border-bottom:1px solid var(--border)}
+.term-bar .b{width:11px; height:11px; border-radius:50%}
+.term-bar .t{margin-left:8px; font-family:"JetBrains Mono"; font-size:.76rem; color:var(--muted)}
+.term-body{background:var(--term-bg); color:var(--term-ink); padding:14px 16px; font-family:"JetBrains Mono"; font-size:.82rem; line-height:1.9; overflow-x:auto}
+.term-body .ok{color:var(--term-green)} .term-body .dim{color:var(--term-dim)} .term-body .hd{color:var(--term-blue)}
+
+.mock{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--surface); margin:16px 0}
+.browser-bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); border-bottom:1px solid var(--border)}
+.browser-bar .b{width:10px; height:10px; border-radius:50%}
+.url{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:4px 11px;
+  font-family:"JetBrains Mono"; font-size:.74rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mbody{padding:18px}
+.ver-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.ver-now{font-size:.78rem; color:var(--muted)}
+.ver-now b{display:block; font-size:1.1rem; color:var(--ink); font-weight:700}
+.btn{display:inline-flex; align-items:center; gap:7px; font-family:"Kanit"; font-weight:600; font-size:.82rem;
+  padding:8px 16px; border-radius:9px; border:none; color:#fff; cursor:default}
+.btn.blue{background:var(--blue)} .btn.green{background:var(--green)} .btn.red{background:var(--red)}
+.btn.outline{background:var(--surface); border:1px solid var(--border-2); color:var(--ink-2)}
+.ver-confirm{margin-top:16px; padding-top:16px; border-top:1px dashed var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.ver-confirm .inp{border:1px solid var(--border-2); border-radius:8px; background:var(--surface-2); padding:7px 11px;
+  font-size:.82rem; color:var(--ink); font-family:"JetBrains Mono"; width:130px}
+
+.flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin:8px 0}
+.node{flex:1; min-width:140px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; box-shadow:var(--shadow)}
+.node .ni{width:38px; height:38px; border-radius:10px; display:grid; place-items:center; margin:0 auto 8px; color:#fff; font-size:1rem}
+.node .nt{font-family:"Kanit"; font-weight:600; font-size:.9rem}
+.node .ns{font-size:.74rem; color:var(--muted); line-height:1.45}
+.arrow{display:grid; place-items:center; padding:0 4px; color:var(--faint); flex:0 0 auto}
+.arrow svg{width:26px; height:16px}
+@media (max-width:760px){.flow{flex-direction:column} .arrow{transform:rotate(90deg); padding:10px 0}}
+
+.tsgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:760px){.tsgrid{grid-template-columns:1fr}}
+.ts{border:1px solid var(--border); border-left-width:4px; border-radius:12px; padding:14px 16px; background:var(--surface); box-shadow:var(--shadow)}
+.ts.r{border-left-color:var(--red)} .ts.a{border-left-color:var(--amber)} .ts.b{border-left-color:var(--blue)}
+.ts h4{margin:0 0 6px; font-size:.95rem; font-weight:600; display:flex; gap:8px; align-items:flex-start}
+.ts h4 .q{color:var(--red)} .ts.a h4 .q{color:var(--amber)} .ts.b h4 .q{color:var(--blue)}
+.ts p{margin:.3em 0; font-size:.9rem; color:var(--ink-2)}
+.ts .fix{color:var(--green); font-weight:700}
+
+.check{list-style:none; padding:0; margin:8px 0; display:grid; gap:9px}
+.check li{display:flex; align-items:flex-start; gap:11px; padding:11px 14px; border:1px solid var(--border);
+  border-radius:11px; background:var(--surface); font-size:.94rem}
+.check .box{width:20px; height:20px; border-radius:6px; border:2px solid var(--border-2); flex-shrink:0; margin-top:2px}
+.check .n{font-family:"JetBrains Mono"; font-size:.72rem; color:var(--faint); margin-top:3px; min-width:1.4em}
+
+footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px solid var(--border)}
+.sec-anchor{scroll-margin-top:80px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="brand"><span class="dot k">↻</span>MedAlert · คู่มืออัปเดต</span>
+    <nav class="toc">
+      <a href="#overview">ภาพรวม</a>
+      <a href="#s1">1 · อัปเดตผ่านเว็บ</a>
+      <a href="#s2">2 · เวอร์ชันเก่า</a>
+      <a href="#trouble">มีปัญหา</a>
+      <a href="#checklist">Checklist</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap prose">
+
+  <header class="hero">
+    <div class="eyebrow">User Manual · สำหรับ IT โรงพยาบาล</div>
+    <h1>อัปเดต <em>MedAlert</em> ให้ทันสมัย</h1>
+    <p class="sub">ดึงโค้ดเวอร์ชันล่าสุดจาก GitHub มาใช้ในไม่กี่คลิก — โดยไม่แตะข้อมูลหรือการตั้งค่าเฉพาะของโรงพยาบาลเลยสักไฟล์</p>
+    <div class="meta-row">
+      <span class="chip"><span class="sw" style="background:var(--green)"></span>สำรองไฟล์ให้ <b>อัตโนมัติ</b>ทุกครั้ง</span>
+      <span class="chip"><span class="sw" style="background:var(--blue)"></span>ไม่แตะ <b>secrets/</b> และ <b>logs/</b></span>
+      <span class="chip"><span class="sw" style="background:var(--amber)"></span>รองรับทั้ง <b>Git</b> และ <b>ZIP</b></span>
+    </div>
+  </header>
+
+  <!-- ══════════════ OVERVIEW ══════════════ -->
+  <section id="overview" class="sec-anchor">
+    <div class="sec-h"><h2>ระบบอัปเดตทำงานอย่างไร</h2></div>
+    <p class="measure">กดปุ่มเดียวในหน้าเว็บ ระบบจะทำ 4 ขั้นตอนนี้ให้อัตโนมัติเบื้องหลัง — ไม่ต้องเข้าใจรายละเอียดทางเทคนิคก็ใช้ได้</p>
+
+    <div class="flow">
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#f59e0b,#d97706)">📦</div>
+        <div class="nt">สำรองไฟล์</div>
+        <div class="ns">ก๊อปทั้งโฟลเดอร์ไปที่<br><code class="inl" style="font-size:.7rem">_backup\</code>ก่อนเสมอ</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">⬇️</div>
+        <div class="nt">ดึงโค้ดใหม่</div>
+        <div class="ns">มี Git → <code class="inl" style="font-size:.7rem">git pull</code><br>ไม่มี → โหลด ZIP</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#22c55e,#059669)">🗄️</div>
+        <div class="nt">อัปเดต DB</div>
+        <div class="ns">สร้างตารางที่ขาด<br>ให้อัตโนมัติ (ถ้ามี)</div>
+      </div>
+      <div class="arrow"><svg viewBox="0 0 26 16"><path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.6" fill="none"/></svg></div>
+      <div class="node">
+        <div class="ni" style="background:linear-gradient(135deg,#22d3ee,#0891b2)">✅</div>
+        <div class="nt">เสร็จ</div>
+        <div class="ns">ระบบพร้อมใช้<br>เวอร์ชันล่าสุด</div>
+      </div>
+    </div>
+
+    <div class="note ok"><div class="ic k">✓</div><div><b>ไฟล์ตั้งค่า/ข้อมูล รพ. ปลอดภัยเสมอ</b> — โฟลเดอร์ <code class="inl">secrets/</code> (คีย์ MOPH, การตั้งค่า DB, เงื่อนไขดึงข้อมูล, ธีม) และ <code class="inl">logs/</code> ไม่ถูกแตะไม่ว่าจะอัปเดตด้วยวิธีไหน</div></div>
+  </section>
+
+  <!-- ══════════════ วิธีที่ 1 ══════════════ -->
+  <section id="s1" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">1</span><h2>อัปเดตผ่านหน้าเว็บ (ปกติ)</h2></div>
+    <p class="sec-sub measure">สำหรับเครื่องที่มีการ์ด "เวอร์ชันระบบ" ในหน้าตั้งค่าอยู่แล้ว — ใช้วิธีนี้ทุกครั้ง</p>
+
+    <ol class="step-list measure">
+      <li>เข้าเมนู <b>ตั้งค่าระบบ</b> แล้วเลื่อนไปที่การ์ด <b>"เวอร์ชันระบบ"</b></li>
+      <li>กด <b>"ตรวจสอบอัปเดต"</b> — ระบบจะเทียบเวอร์ชันปัจจุบันกับ GitHub ให้</li>
+      <li>ถ้ามีเวอร์ชันใหม่กว่า จะมีช่องให้พิมพ์คำว่า <code class="inl">UPDATE</code> เพื่อยืนยัน</li>
+      <li>กด <b>"อัปเดตตอนนี้"</b> แล้วยืนยันอีกครั้งในกล่องเตือน</li>
+      <li>รอสถานะเปลี่ยนเป็น <b>"อัปเดตสำเร็จ"</b> (ปกติไม่กี่นาที ขึ้นกับความเร็วเน็ต)</li>
+    </ol>
+
+    <div class="mock">
+      <div class="browser-bar">
+        <span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span>
+        <span class="url">localhost/Fall_Risk_Alert-main/settings.php</span>
+      </div>
+      <div class="mbody">
+        <div style="font-family:Kanit; font-weight:700; font-size:1.02rem; margin-bottom:2px">เวอร์ชันระบบ</div>
+        <div style="font-size:.8rem; color:var(--muted); margin-bottom:16px">ตรวจสอบและอัปเดตเวอร์ชันจาก GitHub</div>
+        <div class="ver-row">
+          <div class="ver-now">เวอร์ชันปัจจุบัน<b>2026.08.24</b></div>
+          <button class="btn outline">🔄 ตรวจสอบอัปเดต</button>
+          <span style="font-size:.82rem; color:var(--muted)">มีเวอร์ชันใหม่: <b style="color:var(--ink)">2026.09.10</b></span>
+        </div>
+        <div class="ver-confirm">
+          <span class="inp" style="color:var(--faint)">UPDATE</span>
+          <button class="btn red">⬆️ อัปเดตตอนนี้</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="k" style="margin:20px 0 6px; font-weight:600">สถานะที่จะเห็นระหว่างอัปเดต:</p>
+    <div class="term">
+      <div class="term-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="t">update_status.json</span></div>
+      <div class="term-body">
+<span class="dim">[running]</span> กำลังสำรองข้อมูล...<br>
+<span class="dim">[running]</span> สำรองแล้วที่ ..\_backup\Fall_Risk_Alert-main_20260910_090512<br>
+<span class="dim">[running]</span> พบ .git -&gt; git fetch + reset --hard origin/master<br>
+<span class="dim">[running]</span> กำลังตรวจ/สร้างตาราง DB ที่ขาด (migration)...<br>
+<span class="ok">[done]</span> อัปเดตสำเร็จ — เวอร์ชัน 2026.09.10
+      </div>
+    </div>
+
+    <div class="note warn"><div class="ic k">!</div><div><b>ห้ามปิดเครื่อง server ระหว่างอัปเดต</b> และถ้าเคยแก้ไฟล์ PHP/SQL ตรงๆ (นอกเหนือจากตั้งค่าผ่านหน้าเว็บ) การอัปเดตจะเขียนทับสิ่งนั้นทิ้ง — การปรับแต่งทุกอย่างของ MedAlert ควรทำผ่านหน้าเว็บเท่านั้น</div></div>
+  </section>
+
+  <!-- ══════════════ วิธีที่ 2 ══════════════ -->
+  <section id="s2" class="sec-anchor">
+    <div class="sec-h"><span class="h-num">2</span><h2>เวอร์ชันเก่ามาก (ยังไม่มีการ์ดนี้)</h2></div>
+    <p class="sec-sub measure">ถ้าติดตั้งไว้ตั้งแต่ก่อนมีระบบอัปเดตนี้ หน้าตั้งค่าจะยังไม่มีการ์ดให้กด — ต้อง "จุดชนวน" ด้วยมือครั้งเดียวเท่านั้น</p>
+
+    <ol class="step-list measure">
+      <li>เปิดโฟลเดอร์ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main\task\</code> บนเครื่อง server</li>
+      <li>ดาวน์โหลด 2 ไฟล์นี้มาวางในโฟลเดอร์ <code class="inl">task\</code> เดิม (เขียนทับได้ถ้ามีของเก่า):
+        <div class="term" style="margin-top:8px">
+          <div class="term-body" style="line-height:1.7">
+https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.bat<br>
+https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/update.ps1
+          </div>
+        </div>
+      </li>
+      <li>ดับเบิลคลิก <code class="inl">update.bat</code> แล้วกด <b>Yes</b> ตอนขอสิทธิ์ Administrator</li>
+      <li>รอจนจบหน้าต่างขึ้น <code class="inl">Done.</code> — สคริปต์สำรองไฟล์แล้วดึงโค้ดทั้งชุดปัจจุบันมาแทนที่ให้เอง</li>
+    </ol>
+
+    <div class="note info"><div class="ic k">i</div><div>รอบนี้จะเป็นการกระโดดข้ามหลายรีลีสพร้อมกัน (ไม่ใช่ทีละเวอร์ชัน) แต่ปลอดภัยเหมือนอัปเดตปกติทุกประการ — หลังจากนี้การ์ด <b>"เวอร์ชันระบบ"</b> จะโผล่ในหน้าตั้งค่า และใช้ <a href="#s1">วิธีที่ 1</a> ได้ตลอดไปในรอบถัดๆ ไป</div></div>
+  </section>
+
+  <!-- ══════════════ TROUBLESHOOTING ══════════════ -->
+  <section id="trouble" class="sec-anchor">
+    <div class="sec-h"><h2>ถ้ามีปัญหา</h2></div>
+    <p class="sec-sub measure">อาการที่พบบ่อยและวิธีแก้</p>
+    <div class="tsgrid">
+      <div class="ts b"><h4><span class="q">◆</span> กด "อัปเดตตอนนี้" แล้วไม่มีอะไรเกิดขึ้น</h4>
+        <p><span class="fix">แก้:</span> server อาจปิดฟังก์ชันรันโปรแกรมภายนอกไว้ — ระบบจะแจ้งให้ไปดับเบิลคลิก <code class="inl">task\update.bat</code> เองแทน (สคริปต์ตัวเดียวกัน)</p></div>
+
+      <div class="ts r"><h4><span class="q">✕</span> อัปเดตพังกลางทาง</h4>
+        <p><span class="fix">แก้:</span> ไฟล์สำรองอยู่ที่ <code class="inl">C:\xampp\htdocs\_backup\Fall_Risk_Alert-main_&lt;วันที่เวลา&gt;\</code> — copy ทับกลับไปที่ <code class="inl">C:\xampp\htdocs\Fall_Risk_Alert-main</code> ได้เลย</p></div>
+
+      <div class="ts a"><h4><span class="q">▲</span> กด "ตรวจสอบอัปเดต" แล้วขึ้น "เชื่อมต่อ GitHub ไม่สำเร็จ"</h4>
+        <p><span class="fix">แก้:</span> เครื่อง server ต้องออกอินเทอร์เน็ตไปยัง <code class="inl">github.com</code>/<code class="inl">raw.githubusercontent.com</code> ได้ — เช็ค firewall/proxy ขององค์กร</p></div>
+
+      <div class="ts a"><h4><span class="q">▲</span> อัปเดตเสร็จแต่เวอร์ชันในหน้าเว็บไม่เปลี่ยน</h4>
+        <p><span class="fix">แก้:</span> รีเฟรชหน้าเว็บ (Ctrl+F5) — ถ้ายังไม่เปลี่ยน ดู <code class="inl">VERSION</code> ในโฟลเดอร์ติดตั้งว่าอัปเดตจริงไหม</p></div>
+    </div>
+
+    <p class="k" style="margin-top:18px; font-weight:600">ดู log ละเอียดได้ที่</p>
+    <pre style="margin:14px 0; padding:14px 16px; border-radius:12px; overflow-x:auto; font-size:.86rem; line-height:1.7; background:var(--term-bg); color:var(--term-ink); border:1px solid var(--border)">C:\xampp\htdocs\Fall_Risk_Alert-main\logs\update_status.json   <span style="color:var(--term-dim)">:: สถานะล่าสุด</span>
+C:\xampp\htdocs\Fall_Risk_Alert-main\logs\update_&lt;วันที่เวลา&gt;.log   <span style="color:var(--term-dim)">:: log เต็มของรอบนั้น</span></pre>
+  </section>
+
+  <!-- ══════════════ CHECKLIST ══════════════ -->
+  <section id="checklist" class="sec-anchor">
+    <div class="sec-h"><h2>Checklist ก่อน/หลังอัปเดต</h2></div>
+    <ol class="check">
+      <li><span class="n">01</span><span class="box"></span><span>เครื่อง server ออกอินเทอร์เน็ตได้ (ไปยัง github.com)</span></li>
+      <li><span class="n">02</span><span class="box"></span><span>ไม่มีคนกำลังใช้งานระบบพร้อมกันจำนวนมาก (เผื่อเวลาสำรองไฟล์)</span></li>
+      <li><span class="n">03</span><span class="box"></span><span>กด "ตรวจสอบอัปเดต" → พิมพ์ UPDATE ยืนยัน → กด "อัปเดตตอนนี้"</span></li>
+      <li><span class="n">04</span><span class="box"></span><span>ห้ามปิดเครื่อง server จนกว่าจะขึ้นสถานะ "อัปเดตสำเร็จ"</span></li>
+      <li><span class="n">05</span><span class="box"></span><span>รีเฟรชหน้าเว็บ ยืนยันเวอร์ชันใหม่ขึ้นถูกต้อง</span></li>
+      <li><span class="n">06</span><span class="box"></span><span>ทดสอบ "ส่งซ้ำทันที" สักเคสในโมดูลที่ใช้บ่อย ยืนยันยังส่งเข้า LINE/Telegram ได้ปกติ</span></li>
+      <li><span class="n">07</span><span class="box"></span><span>อ่าน <code class="inl">CHANGELOG.md</code> ดูว่ารีลีสนี้เปลี่ยนอะไรบ้าง</span></li>
+    </ol>
+  </section>
+
+  <footer>
+    <div class="k" style="font-weight:700; font-size:.98rem; color:var(--ink)">MedAlert — ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง</div>
+    <p style="margin:.4em 0 0">คู่มืออัปเดตสำหรับ IT โรงพยาบาล · ติดปัญหาให้ตรวจ <code class="inl">logs\</code> ก่อนเสมอ · ไฟล์นี้: <code class="inl">docs/update-guide.html</code> · ดูคู่มือติดตั้งฉบับเต็มที่ <code class="inl">docs/install-guide.html</code></p>
+  </footer>
+</div>
