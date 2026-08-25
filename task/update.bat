@@ -24,6 +24,14 @@ echo   MedAlert - Update
 echo ============================================================
 echo.
 
+:: Some Git clients/checkouts on Windows can strip the UTF-8 BOM from update.ps1
+:: during transfer, which makes PowerShell fall back to the system's ANSI code
+:: page (e.g. Thai 874) to read the file -- corrupting every Thai string and
+:: causing confusing parser errors ("Missing closing paren/brace/quote").
+:: Self-heal by re-writing the file with a guaranteed-correct UTF-8 BOM first
+:: (safe/idempotent -- a no-op if the BOM was already fine).
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%TASKDIR%update.ps1'; [System.IO.File]::WriteAllText($p, [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8), (New-Object System.Text.UTF8Encoding($true)))"
+
 powershell -NoProfile -ExecutionPolicy Bypass -File "%TASKDIR%update.ps1"
 set "RC=%errorlevel%"
 
