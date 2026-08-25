@@ -4,6 +4,7 @@ date_default_timezone_set('Asia/Bangkok');
 
 /* -------------------- Encoding helpers -------------------- */
 require_once __DIR__ . '/flex_builders.php';  // covid_buildMophPayload (config-driven) — ตัวด้านล่างเป็น legacy
+require_once __DIR__ . '/telegram_lib.php';   // telegram_mirror() — mirror เข้า Telegram หลังส่ง MOPH สำเร็จ
 
 if (!function_exists('to_utf8')) {
   function to_utf8($s) {
@@ -297,14 +298,10 @@ function covid_buildMophPayload_legacy(array $row): array {
 function covid_send_via_moph_alert(array $row): array {
   if (!defined('MOPH_API_URL'))   define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
   if (!defined('MOPH_TIMEOUT'))   define('MOPH_TIMEOUT', 30);
-  if (!defined('MOPH_CLIENT_KEY')) {
-    if (defined('FRACTURE_CLIENT_KEY')) define('MOPH_CLIENT_KEY', FRACTURE_CLIENT_KEY);
-    else define('MOPH_CLIENT_KEY', '');
-  }
-  if (!defined('MOPH_SECRET_KEY')) {
-    if (defined('FRACTURE_SECRET_KEY')) define('MOPH_SECRET_KEY', FRACTURE_SECRET_KEY);
-    else define('MOPH_SECRET_KEY', '');
-  }
+  // คีย์เฉพาะ module (ตั้งค่าได้ที่ moph_keys_admin.php) — เดิมโค้ดนี้ก็อปมาจาก fracture
+  // แล้วไม่ได้แก้ชื่อ ทำให้ใช้ MOPH_CLIENT_KEY (default) เสมอ ไม่เคยอ่าน COVID_CLIENT_KEY เลย
+  if (!defined('COVID_CLIENT_KEY')) define('COVID_CLIENT_KEY', defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
+  if (!defined('COVID_SECRET_KEY')) define('COVID_SECRET_KEY', defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : '');
 
   $payload = covid_buildMophPayload($row);
   $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -322,8 +319,8 @@ function covid_send_via_moph_alert(array $row): array {
     CURLOPT_CUSTOMREQUEST  => 'POST',
     CURLOPT_POSTFIELDS     => $body,
     CURLOPT_HTTPHEADER     => [
-      'client-key: ' . MOPH_CLIENT_KEY,
-      'secret-key: ' . MOPH_SECRET_KEY,
+      'client-key: ' . COVID_CLIENT_KEY,
+      'secret-key: ' . COVID_SECRET_KEY,
       'Content-Type: application/json; charset=UTF-8',
       'Accept: application/json'
     ],
@@ -349,6 +346,7 @@ function covid_send_via_moph_alert(array $row): array {
 
   if (($code >= 200 && $code < 300) && $looksSuccess) {
     $ref = $mid ?: ($apiStatus ? "status:$apiStatus" : 'HTTP'.$code);
+    telegram_mirror('covid', 'แจ้งเตือนผู้ป่วย COVID-19 Positive', $row);
     return [true, $ref, null];
   }
 
