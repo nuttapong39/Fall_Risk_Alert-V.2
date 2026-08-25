@@ -743,8 +743,9 @@ require_once __DIR__ . '/partials/header.php';
     if (verPollTimer) clearInterval(verPollTimer);
     const out = document.getElementById('verRunResult');
     const progBar = document.getElementById('verProgressBar');
+    let idleTicks = 0;
     const tick = () => {
-      fetch('system_update_status.php')
+      fetch('system_update_status.php', { cache: 'no-store' })
         .then(r => r.json())
         .then(j => {
           if (!j.ok) return;
@@ -752,7 +753,13 @@ require_once __DIR__ . '/partials/header.php';
           const totalSteps = j.totalSteps || 5;
           const pct = Math.round(step / totalSteps * 100);
           if (step > 0) { progBar.style.width = pct + '%'; progBar.textContent = pct + '%'; }
-          if (j.status === 'running') {
+          if (j.status === 'idle') {
+            idleTicks++;
+            if (idleTicks >= 6) {
+              out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้า — อาจเขียนไฟล์ logs/update_status.json ไม่ได้ (สิทธิ์โฟลเดอร์) แต่การอัปเดตจริงอาจยังทำงานอยู่เบื้องหลัง รอสักครู่แล้วลองรีเฟรชหน้าเพื่อดูเวอร์ชัน</span>';
+            }
+          } else if (j.status === 'running') {
+            idleTicks = 0;
             out.textContent = j.message || 'กำลังอัปเดต...';
           } else if (j.status === 'done') {
             verLastMessage = j.message || '';

@@ -72,9 +72,9 @@ if ($action === 'run') {
   // ก่อนที่ update.ps1 ตัวจริง (ซึ่งเริ่มทำงานแบบ detached, ช้ากว่านี้เล็กน้อย) จะเขียนทับ
   $logDir = __DIR__ . '/logs';
   if (!is_dir($logDir)) { @mkdir($logDir, 0777, true); }
-  @file_put_contents($logDir . '/update_status.json', json_encode([
+  $statusWritten = is_dir($logDir) && @file_put_contents($logDir . '/update_status.json', json_encode([
     'status' => 'running', 'message' => 'กำลังเริ่มอัปเดต...', 'step' => 0, 'totalSteps' => 5, 'updatedAt' => date('c'),
-  ]));
+  ])) !== false;
 
   $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
   $canExec  = function_exists('exec') && !in_array('exec', $disabled, true);
@@ -96,7 +96,11 @@ if ($action === 'run') {
     $cmd = 'wscript.exe //B ' . escapeshellarg($vbsPath) . ' ' . escapeshellarg($batPath);
     exec($cmd, $out, $rc);
     if ($rc === 0) {
-      echo json_encode(['ok'=>true,'msg'=>'เริ่มอัปเดตแล้ว — ระบบกำลังทำงานอยู่เบื้องหลัง']);
+      $msg = 'เริ่มอัปเดตแล้ว — ระบบกำลังทำงานอยู่เบื้องหลัง';
+      if (!$statusWritten) {
+        $msg .= ' (คำเตือน: เขียนไฟล์ logs/update_status.json ไม่ได้ — โฟลเดอร์ logs/ อาจไม่มีสิทธิ์เขียน — progress bar จะไม่อัปเดต แต่การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ)';
+      }
+      echo json_encode(['ok'=>true,'msg'=>$msg,'statusWritten'=>$statusWritten]);
     } else {
       echo json_encode(['ok'=>false,'manual'=>true,'msg'=>'สั่งรันสคริปต์ไม่สำเร็จ — กรุณาดับเบิลคลิก task\\update.bat เอง']);
     }
