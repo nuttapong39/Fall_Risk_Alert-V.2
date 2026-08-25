@@ -67,6 +67,15 @@ if ($action === 'run') {
     echo json_encode(['ok'=>false,'msg'=>'ไม่พบ task\\update.bat หรือ task\\launch_detached.vbs']); exit;
   }
 
+  // เขียนสถานะ "running" step=0 ทันทีแบบ sync ก่อนสั่งรัน — กัน race ที่หน้าเว็บ
+  // poll เจอไฟล์สถานะเก่าค้างจากรอบก่อน (status:'done') ในช่วงไม่กี่วินาทีแรก
+  // ก่อนที่ update.ps1 ตัวจริง (ซึ่งเริ่มทำงานแบบ detached, ช้ากว่านี้เล็กน้อย) จะเขียนทับ
+  $logDir = __DIR__ . '/logs';
+  if (!is_dir($logDir)) { @mkdir($logDir, 0777, true); }
+  @file_put_contents($logDir . '/update_status.json', json_encode([
+    'status' => 'running', 'message' => 'กำลังเริ่มอัปเดต...', 'step' => 0, 'totalSteps' => 5, 'updatedAt' => date('c'),
+  ]));
+
   $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
   $canExec  = function_exists('exec') && !in_array('exec', $disabled, true);
 

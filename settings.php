@@ -711,6 +711,7 @@ require_once __DIR__ . '/partials/header.php';
       const progBar = document.getElementById('verProgressBar');
       progWrap.style.display = 'block';
       progBar.style.width = '0%';
+      progBar.textContent = '';
       progBar.classList.remove('bg-success', 'bg-danger');
       progBar.classList.add('progress-bar-striped', 'progress-bar-animated');
       document.getElementById('verSuccessBtn').style.display = 'none';
@@ -742,20 +743,22 @@ require_once __DIR__ . '/partials/header.php';
     if (verPollTimer) clearInterval(verPollTimer);
     const out = document.getElementById('verRunResult');
     const progBar = document.getElementById('verProgressBar');
-    verPollTimer = setInterval(() => {
+    const tick = () => {
       fetch('system_update_status.php')
         .then(r => r.json())
         .then(j => {
           if (!j.ok) return;
           const step = j.step || 0;
           const totalSteps = j.totalSteps || 5;
-          if (step > 0) { progBar.style.width = Math.round(step / totalSteps * 100) + '%'; }
+          const pct = Math.round(step / totalSteps * 100);
+          if (step > 0) { progBar.style.width = pct + '%'; progBar.textContent = pct + '%'; }
           if (j.status === 'running') {
             out.textContent = j.message || 'กำลังอัปเดต...';
           } else if (j.status === 'done') {
             verLastMessage = j.message || '';
             out.innerHTML = '<span class="text-success">' + j.message + '</span>';
             progBar.style.width = '100%';
+            progBar.textContent = '100%';
             progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
             progBar.classList.add('bg-success');
             document.getElementById('verSuccessBtn').style.display = 'inline-flex';
@@ -769,7 +772,9 @@ require_once __DIR__ . '/partials/header.php';
             document.getElementById('verRunBtn').disabled = false;
           }
         });
-    }, 3000);
+    };
+    tick();
+    verPollTimer = setInterval(tick, 1500);
   }
 
   window.verShowSuccess = function () {
