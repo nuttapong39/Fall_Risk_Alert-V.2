@@ -11,6 +11,10 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth_guard.php';
 header('Content-Type: application/json; charset=utf-8');
 
+// บังคับ PHP ให้คอมไพล์โค้ดใหม่จากดิสก์ (เลี่ยง opcache เก่าค้างหลังอัปเดตทับไฟล์) —
+// เรียกแค่ตอน action=check/run เท่านั้น (ผู้ใช้กดเอง ไม่ใช่ทุก poll) กัน perf กระทบหน้าอื่น
+if (function_exists('opcache_reset')) { @opcache_reset(); }
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
 
 $action = trim($_POST['action'] ?? '');
@@ -72,9 +76,14 @@ if ($action === 'run') {
   // ก่อนที่ update.ps1 ตัวจริง (ซึ่งเริ่มทำงานแบบ detached, ช้ากว่านี้เล็กน้อย) จะเขียนทับ
   $logDir = __DIR__ . '/logs';
   if (!is_dir($logDir)) { @mkdir($logDir, 0777, true); }
-  $statusWritten = is_dir($logDir) && @file_put_contents($logDir . '/update_status.json', json_encode([
+  $statusPath = $logDir . '/update_status.json';
+  $statusWritten = is_dir($logDir) && @file_put_contents($statusPath, json_encode([
     'status' => 'running', 'message' => 'กำลังเริ่มอัปเดต...', 'step' => 0, 'totalSteps' => 5, 'updatedAt' => date('c'),
   ])) !== false;
+  // อ่านกลับทันทีในคำขอเดียวกัน — ยืนยันว่าไฟล์ที่เพิ่งเขียนอ่านได้จริง (ไม่ใช่แค่เขียนสำเร็จ
+  // แต่ระบบไฟล์/สิทธิ์อ่านมีปัญหาแยกต่างหาก) ถ้าไม่ตรงจะแนบ path จริงไว้ใน msg เพื่อ debug ต่อได้ทันที
+  $readback   = $statusWritten ? @file_get_contents($statusPath) : false;
+  $readbackOk = is_string($readback) && strpos($readback, '"running"') !== false;
 
   $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
   $canExec  = function_exists('exec') && !in_array('exec', $disabled, true);
@@ -97,10 +106,11 @@ if ($action === 'run') {
     exec($cmd, $out, $rc);
     if ($rc === 0) {
       $msg = 'เริ่มอัปเดตแล้ว — ระบบกำลังทำงานอยู่เบื้องหลัง';
-      if (!$statusWritten) {
-        $msg .= ' (คำเตือน: เขียนไฟล์ logs/update_status.json ไม่ได้ — โฟลเดอร์ logs/ อาจไม่มีสิทธิ์เขียน — progress bar จะไม่อัปเดต แต่การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ)';
+      if (!$statusWritten || !$readbackOk) {
+        $realDir = realpath($logDir) ?: $logDir;
+        $msg .= " (คำเตือน: เขียนไฟล์สถานะแล้วแต่อ่านกลับไม่ตรง — progress bar อาจไม่อัปเดต แต่การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ — debug: path={$realDir}, written=" . ($statusWritten ? 'y' : 'n') . ', readback=' . ($readbackOk ? 'y' : 'n') . ')';
       }
-      echo json_encode(['ok'=>true,'msg'=>$msg,'statusWritten'=>$statusWritten]);
+      echo json_encode(['ok'=>true,'msg'=>$msg,'statusWritten'=>$statusWritten,'readbackOk'=>$readbackOk]);
     } else {
       echo json_encode(['ok'=>false,'manual'=>true,'msg'=>'สั่งรันสคริปต์ไม่สำเร็จ — กรุณาดับเบิลคลิก task\\update.bat เอง']);
     }
