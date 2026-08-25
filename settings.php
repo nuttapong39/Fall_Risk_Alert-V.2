@@ -662,6 +662,16 @@ require_once __DIR__ . '/partials/header.php';
   let verPollTimer = null;
   let verIdleTicks = 0;
   let verLastMessage = '';
+  let verRunStartTime = null;
+  const VER_EXPECTED_MS = 4 * 60 * 1000; // 4 นาที — ประมาณจากเคสจริงที่ช้าที่สุด (ดาวน์โหลด ZIP ช้า ~3 นาที) เผื่อ margin
+
+  // % จำลองจากเวลาที่ผ่านไปจริง (ไม่พึ่งสถานะจาก server เลย) — กันกรณี logs/update_status.json
+  // อ่านไม่ได้บนบางเครื่อง (เช่น opcache ค้าง) ให้แถบยังขยับเห็นความคืบหน้าเสมอ ไม่ค้างว่างเปล่า
+  // เพดานที่ 95% เพราะไม่ยืนยันว่า "เสร็จจริง" จนกว่าจะเจอสถานะ done จริงจาก server เท่านั้น
+  function verSimPct() {
+    if (!verRunStartTime) return 0;
+    return Math.min(95, Math.round((Date.now() - verRunStartTime) / VER_EXPECTED_MS * 100));
+  }
 
   window.verCheck = function () {
     const btn = document.getElementById('verCheckBtn');
@@ -745,17 +755,21 @@ require_once __DIR__ . '/partials/header.php';
     const progBar = document.getElementById('verProgressBar');
     const step = j.step || 0;
     const totalSteps = j.totalSteps || 5;
-    const pct = Math.round(step / totalSteps * 100);
-    if (step > 0) { progBar.style.width = pct + '%'; progBar.textContent = pct + '%'; }
+    const realPct = step > 0 ? Math.round(step / totalSteps * 100) : 0;
     if (j.status === 'idle') {
       verIdleTicks++;
+      const pct = Math.max(realPct, verSimPct());
+      progBar.style.width = pct + '%'; progBar.textContent = pct + '%';
       if (verIdleTicks >= 6) {
-        out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้า — อาจเขียนไฟล์ logs/update_status.json ไม่ได้ (สิทธิ์โฟลเดอร์) แต่การอัปเดตจริงอาจยังทำงานอยู่เบื้องหลัง รอสักครู่แล้วลองรีเฟรชหน้าเพื่อดูเวอร์ชัน</span>';
+        out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้าจากสถานะจริง (อาจเขียน/อ่านไฟล์ logs/update_status.json ไม่ได้บนเครื่องนี้) — แถบด้านบนกำลังประมาณจากเวลาที่ผ่านไปแทน การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ</span>';
       }
     } else if (j.status === 'running') {
       verIdleTicks = 0;
+      const pct = Math.max(realPct, verSimPct());
+      progBar.style.width = pct + '%'; progBar.textContent = pct + '%';
       out.textContent = j.message || 'กำลังอัปเดต...';
     } else if (j.status === 'done') {
+      verRunStartTime = null;
       verLastMessage = j.message || '';
       out.innerHTML = '<span class="text-success">' + j.message + '</span>';
       progBar.style.width = '100%';
@@ -766,6 +780,7 @@ require_once __DIR__ . '/partials/header.php';
       if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
       document.getElementById('verRunBtn').disabled = false;
     } else if (j.status === 'error') {
+      verRunStartTime = null;
       out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
       progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
       progBar.classList.add('bg-danger');
@@ -781,6 +796,7 @@ require_once __DIR__ . '/partials/header.php';
   function verPollStatus() {
     if (verPollTimer) clearInterval(verPollTimer);
     verIdleTicks = 0;
+    verRunStartTime = Date.now();
     const tick = () => { verFetchStatus().then(applyStatus); };
     tick();
     verPollTimer = setInterval(tick, 1500);
