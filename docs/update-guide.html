@@ -137,6 +137,10 @@ code.inl{background:var(--surface-2); border:1px solid var(--border); border-rad
 .ver-confirm{margin-top:16px; padding-top:16px; border-top:1px dashed var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .ver-confirm .inp{border:1px solid var(--border-2); border-radius:8px; background:var(--surface-2); padding:7px 11px;
   font-size:.82rem; color:var(--ink); font-family:"JetBrains Mono"; width:130px}
+.pbar-wrap{margin-top:14px}
+.pbar-track{height:10px; border-radius:999px; background:var(--surface-2); border:1px solid var(--border); overflow:hidden}
+.pbar-fill{height:100%; border-radius:999px; background:linear-gradient(90deg,var(--green),#10b981)}
+.pbar-label{display:flex; justify-content:space-between; font-size:.74rem; color:var(--muted); margin-top:6px; font-family:"JetBrains Mono"}
 
 .flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin:8px 0}
 .node{flex:1; min-width:140px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; box-shadow:var(--shadow)}
@@ -236,8 +240,8 @@ footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px
       <li>เข้าเมนู <b>ตั้งค่าระบบ</b> แล้วเลื่อนไปที่การ์ด <b>"เวอร์ชันระบบ"</b></li>
       <li>กด <b>"ตรวจสอบอัปเดต"</b> — ระบบจะเทียบเวอร์ชันปัจจุบันกับ GitHub ให้</li>
       <li>ถ้ามีเวอร์ชันใหม่กว่า จะมีช่องให้พิมพ์คำว่า <code class="inl">UPDATE</code> เพื่อยืนยัน</li>
-      <li>กด <b>"อัปเดตตอนนี้"</b> แล้วยืนยันอีกครั้งในกล่องเตือน</li>
-      <li>รอสถานะเปลี่ยนเป็น <b>"อัปเดตสำเร็จ"</b> (ปกติไม่กี่นาที ขึ้นกับความเร็วเน็ต)</li>
+      <li>กด <b>"อัปเดตตอนนี้"</b> แล้วยืนยันอีกครั้งในกล่องเตือน — แถบความคืบหน้าจะขึ้นให้เห็นทันที</li>
+      <li>รอแถบขึ้นจนเต็ม 100% แล้วกดปุ่ม <b>"Update Success"</b> ที่โผล่ขึ้นมาเพื่อยืนยัน (กลุ่ม LINE/Telegram ของ รพ. จะได้รับแจ้งเตือนอัตโนมัติด้วยเช่นกัน)</li>
     </ol>
 
     <div class="mock">
@@ -249,18 +253,23 @@ footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px
         <div style="font-family:Kanit; font-weight:700; font-size:1.02rem; margin-bottom:2px">เวอร์ชันระบบ</div>
         <div style="font-size:.8rem; color:var(--muted); margin-bottom:16px">ตรวจสอบและอัปเดตเวอร์ชันจาก GitHub</div>
         <div class="ver-row">
-          <div class="ver-now">เวอร์ชันปัจจุบัน<b>2026.08.24</b></div>
+          <div class="ver-now">เวอร์ชันปัจจุบัน<b>2026.08.25.1841</b></div>
           <button class="btn outline">🔄 ตรวจสอบอัปเดต</button>
-          <span style="font-size:.82rem; color:var(--muted)">มีเวอร์ชันใหม่: <b style="color:var(--ink)">2026.09.10</b></span>
+          <span style="font-size:.82rem; color:var(--muted)">มีเวอร์ชันใหม่: <b style="color:var(--ink)">2026.09.10.0930</b></span>
         </div>
         <div class="ver-confirm">
           <span class="inp" style="color:var(--faint)">UPDATE</span>
           <button class="btn red">⬆️ อัปเดตตอนนี้</button>
         </div>
+        <div class="pbar-wrap">
+          <div class="pbar-track"><div class="pbar-fill" style="width:100%"></div></div>
+          <div class="pbar-label"><span>อัปเดตสำเร็จ — เวอร์ชัน 2026.09.10.0930</span><span>100%</span></div>
+        </div>
+        <div style="margin-top:12px"><button class="btn green">✓ Update Success</button></div>
       </div>
     </div>
 
-    <p class="k" style="margin:20px 0 6px; font-weight:600">สถานะที่จะเห็นระหว่างอัปเดต:</p>
+    <p class="k" style="margin:20px 0 6px; font-weight:600">Log ละเอียดที่บันทึกไว้เบื้องหลัง (สำหรับตรวจสอบย้อนหลัง):</p>
     <div class="term">
       <div class="term-bar"><span class="b" style="background:#f87171"></span><span class="b" style="background:#fbbf24"></span><span class="b" style="background:#34d399"></span><span class="t">update_status.json</span></div>
       <div class="term-body">
@@ -268,9 +277,11 @@ footer{padding:40px 0 60px; color:var(--muted); font-size:.86rem; border-top:1px
 <span class="dim">[running]</span> สำรองแล้วที่ ..\_backup\Fall_Risk_Alert-main_20260910_090512<br>
 <span class="dim">[running]</span> พบ .git -&gt; git fetch + reset --hard origin/master<br>
 <span class="dim">[running]</span> กำลังตรวจ/สร้างตาราง DB ที่ขาด (migration)...<br>
-<span class="ok">[done]</span> อัปเดตสำเร็จ — เวอร์ชัน 2026.09.10
+<span class="ok">[done]</span> อัปเดตสำเร็จ — เวอร์ชัน 2026.09.10.0930
       </div>
     </div>
+
+    <div class="note info"><div class="ic k">i</div><div><b>รีเฟรชหน้าหรือปิดแท็บระหว่างรอได้ไม่มีปัญหา</b> — ถ้าการอัปเดตใช้เวลานาน (เช่น เน็ตช้าตอนดาวน์โหลด) แล้วสลับแท็บหรือรีเฟรชไปเปิดหน้า "ตั้งค่าระบบ" ใหม่ ระบบจะดึงสถานะล่าสุดมาแสดงแถบความคืบหน้าให้อัตโนมัติทันที ไม่ต้องกดปุ่มซ้ำ</div></div>
 
     <div class="note warn"><div class="ic k">!</div><div><b>ห้ามปิดเครื่อง server ระหว่างอัปเดต</b> และถ้าเคยแก้ไฟล์ PHP/SQL ตรงๆ (นอกเหนือจากตั้งค่าผ่านหน้าเว็บ) การอัปเดตจะเขียนทับสิ่งนั้นทิ้ง — การปรับแต่งทุกอย่างของ MedAlert ควรทำผ่านหน้าเว็บเท่านั้น</div></div>
   </section>
@@ -322,6 +333,9 @@ https://raw.githubusercontent.com/nuttapong39/Fall_Risk_Alert-V.2/master/task/up
 
       <div class="ts a"><h4><span class="q">▲</span> อัปเดตเสร็จแต่เวอร์ชันในหน้าเว็บไม่เปลี่ยน</h4>
         <p><span class="fix">แก้:</span> รีเฟรชหน้าเว็บ (Ctrl+F5) — ถ้ายังไม่เปลี่ยน ดู <code class="inl">VERSION</code> ในโฟลเดอร์ติดตั้งว่าอัปเดตจริงไหม</p></div>
+
+      <div class="ts a"><h4><span class="q">▲</span> แถบความคืบหน้าค้างอยู่แถว 90-95% นานผิดปกติ</h4>
+        <p>ปกติ: ช่วงแรกแถบจะประมาณจากเวลาที่ผ่านไป เพดานไว้ที่ 95% จนกว่าจะยืนยันว่าเสร็จจริง <span class="fix">แก้:</span> รอเพิ่มอีกสักครู่ (โดยเฉพาะถ้าเน็ตช้าตอนดาวน์โหลด ZIP) แล้วลองรีเฟรชหน้าดูเวอร์ชัน</p></div>
     </div>
 
     <p class="k" style="margin-top:18px; font-weight:600">ดู log ละเอียดได้ที่</p>
@@ -336,10 +350,11 @@ C:\xampp\htdocs\Fall_Risk_Alert-main\logs\update_&lt;วันที่เวล
       <li><span class="n">01</span><span class="box"></span><span>เครื่อง server ออกอินเทอร์เน็ตได้ (ไปยัง github.com)</span></li>
       <li><span class="n">02</span><span class="box"></span><span>ไม่มีคนกำลังใช้งานระบบพร้อมกันจำนวนมาก (เผื่อเวลาสำรองไฟล์)</span></li>
       <li><span class="n">03</span><span class="box"></span><span>กด "ตรวจสอบอัปเดต" → พิมพ์ UPDATE ยืนยัน → กด "อัปเดตตอนนี้"</span></li>
-      <li><span class="n">04</span><span class="box"></span><span>ห้ามปิดเครื่อง server จนกว่าจะขึ้นสถานะ "อัปเดตสำเร็จ"</span></li>
-      <li><span class="n">05</span><span class="box"></span><span>รีเฟรชหน้าเว็บ ยืนยันเวอร์ชันใหม่ขึ้นถูกต้อง</span></li>
-      <li><span class="n">06</span><span class="box"></span><span>ทดสอบ "ส่งซ้ำทันที" สักเคสในโมดูลที่ใช้บ่อย ยืนยันยังส่งเข้า LINE/Telegram ได้ปกติ</span></li>
-      <li><span class="n">07</span><span class="box"></span><span>อ่าน <code class="inl">CHANGELOG.md</code> ดูว่ารีลีสนี้เปลี่ยนอะไรบ้าง</span></li>
+      <li><span class="n">04</span><span class="box"></span><span>ห้ามปิดเครื่อง server จนกว่าแถบความคืบหน้าจะขึ้น 100% และกดปุ่ม "Update Success" แล้ว</span></li>
+      <li><span class="n">05</span><span class="box"></span><span>ตรวจว่ากลุ่ม LINE/Telegram ของ รพ. ได้รับข้อความแจ้งเตือน "อัปเดตระบบสำเร็จ" อัตโนมัติ</span></li>
+      <li><span class="n">06</span><span class="box"></span><span>รีเฟรชหน้าเว็บ ยืนยันเวอร์ชันใหม่ขึ้นถูกต้อง</span></li>
+      <li><span class="n">07</span><span class="box"></span><span>ทดสอบ "ส่งซ้ำทันที" สักเคสในโมดูลที่ใช้บ่อย ยืนยันยังส่งเข้า LINE/Telegram ได้ปกติ</span></li>
+      <li><span class="n">08</span><span class="box"></span><span>อ่าน <code class="inl">CHANGELOG.md</code> ดูว่ารีลีสนี้เปลี่ยนอะไรบ้าง</span></li>
     </ol>
   </section>
 
