@@ -39,7 +39,9 @@ try {
   $BackupRoot = Join-Path (Split-Path -Parent $AppDir) '_backup'
   $BackupDir  = Join-Path $BackupRoot "$(Split-Path -Leaf $AppDir)_$Stamp"
   if (!(Test-Path $BackupRoot)) { New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null }
-  robocopy $AppDir $BackupDir /E /XD ".git" /NFL /NDL /NJH /NJS /NC /NS | Out-Null
+  # /R:2 /W:2 สำคัญมาก — robocopy default คือ retry 1,000,000 ครั้ง รอครั้งละ 30 วิ ถ้าไม่ระบุ
+  # (เจอบั๊กจริง: ไฟล์ล็อกอยู่ 1 ไฟล์ทำให้ robocopy ค้างเงียบๆ ไม่ error ไม่ progress ต่อ ดูเหมือนแฮงตลอดกาล)
+  robocopy $AppDir $BackupDir /E /XD ".git" /R:2 /W:2 /NFL /NDL /NJH /NJS /NC /NS | Out-Null
   if ($LASTEXITCODE -ge 8) { throw "สำรองข้อมูลล้มเหลว (robocopy code $LASTEXITCODE)" }
   Set-Status 'running' "สำรองแล้วที่ $BackupDir" 2
 
@@ -74,7 +76,7 @@ try {
     if (!$SrcRoot) { throw 'แตกไฟล์ ZIP แล้วไม่พบโฟลเดอร์โค้ด' }
 
     Set-Status 'running' 'กำลังคัดลอกไฟล์ทับ (ยกเว้น secrets/ และ logs/)' 3
-    robocopy $SrcRoot.FullName $AppDir /E /XD secrets logs .git /NFL /NDL /NJH /NJS /NC /NS | Out-Null
+    robocopy $SrcRoot.FullName $AppDir /E /XD secrets logs .git /R:2 /W:2 /NFL /NDL /NJH /NJS /NC /NS | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "คัดลอกไฟล์ล้มเหลว (robocopy code $LASTEXITCODE)" }
 
     Remove-Item -LiteralPath $TmpZip -Force -ErrorAction SilentlyContinue
