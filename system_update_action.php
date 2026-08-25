@@ -65,6 +65,22 @@ if ($action === 'run') {
     echo json_encode(['ok'=>false,'msg'=>'กรุณาพิมพ์ UPDATE ให้ตรงเพื่อยืนยัน']); exit;
   }
 
+  // กันสั่งอัปเดตซ้ำซ้อน (concurrent run) — ถ้ามีรอบที่ยังทำงานอยู่จริง (status:'running' สดๆ
+  // ไม่เกิน 10 นาที) ปฏิเสธคำขอใหม่ทันที ไม่งั้น 2 โปรเซสจะแย่งกันอ่าน/เขียนไฟล์ temp เดียวกัน
+  // (เช่น คนละคำขอไปลบ/ล้าง temp extract ของอีกคำขอที่ยังแตกไฟล์ ZIP ไม่เสร็จ ทำให้พังแบบสุ่ม
+  // ไม่ซ้ำรูปแบบเดิม — ถ้าเกิน 10 นาทีถือว่าเป็นสถานะค้าง ไม่ block ของจริงไปตลอดกาล)
+  $existingStatusPath = __DIR__ . '/logs/update_status.json';
+  if (is_readable($existingStatusPath)) {
+    $existing = json_decode((string)@file_get_contents($existingStatusPath), true);
+    if (is_array($existing) && ($existing['status'] ?? '') === 'running') {
+      $existingAt = strtotime((string)($existing['updatedAt'] ?? ''));
+      if ($existingAt !== false && (time() - $existingAt) < 600) {
+        echo json_encode(['ok'=>false,'msg'=>'มีการอัปเดตกำลังทำงานอยู่แล้ว — กรุณารอให้เสร็จก่อน (รีเฟรชหน้าเพื่อดูความคืบหน้าปัจจุบัน)']);
+        exit;
+      }
+    }
+  }
+
   $batPath = __DIR__ . '\\task\\update.bat';
   $vbsPath = __DIR__ . '\\task\\launch_detached.vbs';
   if (!is_file($batPath) || !is_file($vbsPath)) {
