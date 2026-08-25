@@ -645,6 +645,14 @@ require_once __DIR__ . '/partials/header.php';
         </button>
       </div>
       <div id="verRunResult" class="small mt-2"></div>
+      <div id="verProgressWrap" style="display:none; margin-top:12px">
+        <div class="progress" style="height:10px">
+          <div id="verProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-success mt-2" id="verSuccessBtn" style="display:none" onclick="verShowSuccess()">
+        <span class="msi me-1">check_circle</span>Update Success
+      </button>
     </div>
   </div>
 </div>
@@ -699,6 +707,13 @@ require_once __DIR__ . '/partials/header.php';
       const btn = document.getElementById('verRunBtn');
       btn.disabled = true;
       out.textContent = 'กำลังสั่งอัปเดต...';
+      const progWrap = document.getElementById('verProgressWrap');
+      const progBar = document.getElementById('verProgressBar');
+      progWrap.style.display = 'block';
+      progBar.style.width = '0%';
+      progBar.classList.remove('bg-success', 'bg-danger');
+      progBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+      document.getElementById('verSuccessBtn').style.display = 'none';
       fetch('system_update_action.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -721,28 +736,51 @@ require_once __DIR__ . '/partials/header.php';
     });
   };
 
+  let verLastMessage = '';
+
   function verPollStatus() {
     if (verPollTimer) clearInterval(verPollTimer);
     const out = document.getElementById('verRunResult');
+    const progBar = document.getElementById('verProgressBar');
     verPollTimer = setInterval(() => {
       fetch('system_update_status.php')
         .then(r => r.json())
         .then(j => {
           if (!j.ok) return;
+          const step = j.step || 0;
+          const totalSteps = j.totalSteps || 5;
+          if (step > 0) { progBar.style.width = Math.round(step / totalSteps * 100) + '%'; }
           if (j.status === 'running') {
             out.textContent = j.message || 'กำลังอัปเดต...';
           } else if (j.status === 'done') {
+            verLastMessage = j.message || '';
             out.innerHTML = '<span class="text-success">' + j.message + '</span>';
+            progBar.style.width = '100%';
+            progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+            progBar.classList.add('bg-success');
+            document.getElementById('verSuccessBtn').style.display = 'inline-flex';
             clearInterval(verPollTimer);
             document.getElementById('verRunBtn').disabled = false;
           } else if (j.status === 'error') {
             out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
+            progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+            progBar.classList.add('bg-danger');
             clearInterval(verPollTimer);
             document.getElementById('verRunBtn').disabled = false;
           }
         });
     }, 3000);
   }
+
+  window.verShowSuccess = function () {
+    Swal.fire({
+      icon: 'success',
+      title: 'อัปเดตสำเร็จ',
+      text: verLastMessage || 'อัปเดตระบบเสร็จสมบูรณ์',
+      confirmButtonText: 'ตกลง',
+    });
+    document.getElementById('verSuccessBtn').style.display = 'none';
+  };
 })();
 </script>
 

@@ -237,6 +237,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; }
   flex-shrink: 0;
 }
 .brand-title { font-weight: 700; font-size: .93rem; color: var(--text); line-height: 1.2; }
+.brand-version { font-size: .66rem; font-weight: 500; color: var(--muted); margin-left: 3px; }
 .brand-sub   { font-size: .72rem; color: var(--muted); }
 
 /* Nav area */
@@ -576,7 +577,7 @@ a.nav-item.logout-item:hover .nav-ic {
            onerror="this.style.display='none'; this.nextElementSibling.style.display='grid'">
       <div class="brand-logo-ic" style="display:none"><span class="msi">monitor_heart</span></div>
       <div>
-        <div class="brand-title">Fall Risk Alert</div>
+        <div class="brand-title">MedAlert <span class="brand-version">V.<?= htmlspecialchars(defined('APP_VERSION') ? APP_VERSION : '0.0.0') ?></span></div>
         <div class="brand-sub"><?= htmlspecialchars(defined('HOSPITAL_SHORT') ? HOSPITAL_SHORT : 'รพ.เชียงกลาง') ?></div>
       </div>
     </a>
