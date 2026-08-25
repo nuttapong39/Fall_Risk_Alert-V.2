@@ -97,6 +97,18 @@ try {
   $NewVersion = 'ไม่ทราบ'
   $VerFile = Join-Path $AppDir 'VERSION'
   if (Test-Path $VerFile) { $NewVersion = (Get-Content -LiteralPath $VerFile -Raw).Trim() }
+
+  # ── 5) แจ้งเตือน "อัปเดตสำเร็จ" ผ่าน LINE/Telegram — best-effort เสมอ ──────
+  # (อัปเดตไฟล์เสร็จสมบูรณ์ไปแล้วตอนนี้ ถ้าแจ้งเตือนพลาดไม่ควรทำให้ดูเหมือนอัปเดตล้มเหลว)
+  if ($PhpExe) {
+    try {
+      $notifyOut = & $PhpExe (Join-Path $AppDir 'send_update_notification.php') $NewVersion 2>&1
+      $notifyOut | ForEach-Object { Add-Content -LiteralPath $LogFile -Value $_ }
+    } catch {
+      Add-Content -LiteralPath $LogFile -Value "แจ้งเตือนอัปเดตสำเร็จล้มเหลว (ไม่กระทบผลอัปเดต): $($_.Exception.Message)"
+    }
+  }
+
   Set-Status 'done' "อัปเดตสำเร็จ — เวอร์ชัน $NewVersion (สำรองไว้ที่ $BackupDir)"
 }
 catch {

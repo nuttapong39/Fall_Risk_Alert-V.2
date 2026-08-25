@@ -36,6 +36,7 @@ try {
     'lepto'     => ['CLIENT'=>'LEPTO_CLIENT_KEY',    'SECRET'=>'LEPTO_SECRET_KEY'],
     'scrub'     => ['CLIENT'=>'SCRUB_CLIENT_KEY',    'SECRET'=>'SCRUB_SECRET_KEY'],
     'sexual'    => ['CLIENT'=>'SEXUAL_CLIENT_KEY',   'SECRET'=>'SEXUAL_SECRET_KEY'],
+    'system_update' => ['CLIENT'=>'SYSTEM_UPDATE_CLIENT_KEY', 'SECRET'=>'SYSTEM_UPDATE_SECRET_KEY'],
   ];
 
   foreach ($modules as $jsonKey => $const) {

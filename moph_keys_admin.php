@@ -25,6 +25,7 @@ $modules = [
   'lepto'     => ['label'=>'เลปโตสไปโรซิส (Lepto)',             'icon'=>'water_drop',         'color'=>'#0f766e', 'grad'=>'135deg,#14b8a6,#0f766e'],
   'scrub'     => ['label'=>'สครับไทฟัส (Scrub Typhus)',         'icon'=>'pest_control',       'color'=>'#854d0e', 'grad'=>'135deg,#d97706,#854d0e'],
   'sexual'    => ['label'=>'โรคติดต่อทางเพศสัมพันธ์ (STI)',    'icon'=>'health_and_safety',  'color'=>'#be185d', 'grad'=>'135deg,#ec4899,#be185d'],
+  'system_update' => ['label'=>'แจ้งเตือนอัปเดตระบบ',          'icon'=>'system_update',      'color'=>'#4338ca', 'grad'=>'135deg,#6366f1,#4338ca'],
 ];
 
 $current = [];
@@ -89,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(403);
     $flashErr = 'Invalid token — กรุณา refresh หน้าแล้วลองใหม่';
   } else {
-    $tgModules = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual'];
+    $tgModules = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual','system_update'];
     // Bot Token ว่าง = คงค่าเดิม (กันเผลอ submit ตอนช่อง token ว่าง แล้วล้าง token ที่ใช้ร่วมทุก feature ทิ้ง)
     // chat_id ปล่อยให้เขียนทับได้ตามเดิม เพราะ "ว่าง = ใช้ Default" เป็น UX ที่ตั้งใจ
     $tgToken = trim($_POST['tg_default_token'] ?? '');
@@ -121,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'lepto'     => $pair('lepto_client',    'lepto_secret',    'lepto'),
       'scrub'     => $pair('scrub_client',    'scrub_secret',    'scrub'),
       'sexual'    => $pair('sexual_client',   'sexual_secret',   'sexual'),
+      'system_update' => $pair('system_update_client', 'system_update_secret', 'system_update'),
       'telegram'  => $tgPayload,
       '_meta'     => ['updated_at'=>$now],
     ];
@@ -354,7 +356,7 @@ require_once __DIR__ . '/partials/header.php';
       <!-- ② Module keys (2×2 grid) -->
       <div class="row g-3">
         <?php
-        $moduleKeys = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual'];
+        $moduleKeys = ['covid','fracture','accident','pharm_lab','drug','dengue','patient','lepto','scrub','sexual','system_update'];
         $fieldMap   = [
           'covid'     => ['client'=>'covid_client',    'secret'=>'covid_secret'],
           'fracture'  => ['client'=>'fracture_client', 'secret'=>'fracture_secret'],
@@ -366,6 +368,7 @@ require_once __DIR__ . '/partials/header.php';
           'lepto'     => ['client'=>'lepto_client',    'secret'=>'lepto_secret'],
           'scrub'     => ['client'=>'scrub_client',    'secret'=>'scrub_secret'],
           'sexual'    => ['client'=>'sexual_client',   'secret'=>'sexual_secret'],
+          'system_update' => ['client'=>'system_update_client', 'secret'=>'system_update_secret'],
         ];
         foreach ($moduleKeys as $mk):
           $m = $modules[$mk];
@@ -524,7 +527,8 @@ require_once __DIR__ . '/partials/header.php';
               <div>
                 <div style="font-size:.76rem; font-weight:600; line-height:1.2">
                   <?= htmlspecialchars($mk === 'default' ? 'Default' :
-                      ($mk === 'pharm_lab' ? 'Pharm' : ucfirst($mk))) ?>
+                      ($mk === 'pharm_lab' ? 'Pharm' :
+                      ($mk === 'system_update' ? 'Update' : ucfirst($mk)))) ?>
                 </div>
                 <div style="font-size:.7rem; color:<?= $hasCfg ? '#059669' : '#94a3b8' ?>">
                   <?= $hasCfg ? 'ตั้งค่าแล้ว ✓' : 'ว่าง' ?>
