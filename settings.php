@@ -660,6 +660,8 @@ require_once __DIR__ . '/partials/header.php';
 (function () {
   const VER_TOKEN = <?= json_encode(defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '') ?>;
   let verPollTimer = null;
+  let verIdleTicks = 0;
+  let verLastMessage = '';
 
   window.verCheck = function () {
     const btn = document.getElementById('verCheckBtn');
@@ -737,49 +739,49 @@ require_once __DIR__ . '/partials/header.php';
     });
   };
 
-  let verLastMessage = '';
+  function applyStatus(j) {
+    if (!j.ok) return;
+    const out = document.getElementById('verRunResult');
+    const progBar = document.getElementById('verProgressBar');
+    const step = j.step || 0;
+    const totalSteps = j.totalSteps || 5;
+    const pct = Math.round(step / totalSteps * 100);
+    if (step > 0) { progBar.style.width = pct + '%'; progBar.textContent = pct + '%'; }
+    if (j.status === 'idle') {
+      verIdleTicks++;
+      if (verIdleTicks >= 6) {
+        out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้า — อาจเขียนไฟล์ logs/update_status.json ไม่ได้ (สิทธิ์โฟลเดอร์) แต่การอัปเดตจริงอาจยังทำงานอยู่เบื้องหลัง รอสักครู่แล้วลองรีเฟรชหน้าเพื่อดูเวอร์ชัน</span>';
+      }
+    } else if (j.status === 'running') {
+      verIdleTicks = 0;
+      out.textContent = j.message || 'กำลังอัปเดต...';
+    } else if (j.status === 'done') {
+      verLastMessage = j.message || '';
+      out.innerHTML = '<span class="text-success">' + j.message + '</span>';
+      progBar.style.width = '100%';
+      progBar.textContent = '100%';
+      progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+      progBar.classList.add('bg-success');
+      document.getElementById('verSuccessBtn').style.display = 'inline-flex';
+      if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
+      document.getElementById('verRunBtn').disabled = false;
+    } else if (j.status === 'error') {
+      out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
+      progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+      progBar.classList.add('bg-danger');
+      if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
+      document.getElementById('verRunBtn').disabled = false;
+    }
+  }
+
+  function verFetchStatus() {
+    return fetch('system_update_status.php', { cache: 'no-store' }).then(r => r.json());
+  }
 
   function verPollStatus() {
     if (verPollTimer) clearInterval(verPollTimer);
-    const out = document.getElementById('verRunResult');
-    const progBar = document.getElementById('verProgressBar');
-    let idleTicks = 0;
-    const tick = () => {
-      fetch('system_update_status.php', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(j => {
-          if (!j.ok) return;
-          const step = j.step || 0;
-          const totalSteps = j.totalSteps || 5;
-          const pct = Math.round(step / totalSteps * 100);
-          if (step > 0) { progBar.style.width = pct + '%'; progBar.textContent = pct + '%'; }
-          if (j.status === 'idle') {
-            idleTicks++;
-            if (idleTicks >= 6) {
-              out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้า — อาจเขียนไฟล์ logs/update_status.json ไม่ได้ (สิทธิ์โฟลเดอร์) แต่การอัปเดตจริงอาจยังทำงานอยู่เบื้องหลัง รอสักครู่แล้วลองรีเฟรชหน้าเพื่อดูเวอร์ชัน</span>';
-            }
-          } else if (j.status === 'running') {
-            idleTicks = 0;
-            out.textContent = j.message || 'กำลังอัปเดต...';
-          } else if (j.status === 'done') {
-            verLastMessage = j.message || '';
-            out.innerHTML = '<span class="text-success">' + j.message + '</span>';
-            progBar.style.width = '100%';
-            progBar.textContent = '100%';
-            progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-            progBar.classList.add('bg-success');
-            document.getElementById('verSuccessBtn').style.display = 'inline-flex';
-            clearInterval(verPollTimer);
-            document.getElementById('verRunBtn').disabled = false;
-          } else if (j.status === 'error') {
-            out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
-            progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-            progBar.classList.add('bg-danger');
-            clearInterval(verPollTimer);
-            document.getElementById('verRunBtn').disabled = false;
-          }
-        });
-    };
+    verIdleTicks = 0;
+    const tick = () => { verFetchStatus().then(applyStatus); };
     tick();
     verPollTimer = setInterval(tick, 1500);
   }
@@ -793,6 +795,39 @@ require_once __DIR__ . '/partials/header.php';
     });
     document.getElementById('verSuccessBtn').style.display = 'none';
   };
+
+  // เช็คสถานะทันทีตอนโหลดหน้า เผื่อมีการอัปเดตค้างอยู่เบื้องหลัง (เช่น รีเฟรชหน้า/
+  // เปิดแท็บใหม่ระหว่างรอ หรือแท็บเดิมโดน browser throttle ตอนไม่ได้โฟกัสนาน ๆ)
+  // จำกัดด้วย freshness window กัน resurrect สถานะเก่าค้างจากวัน/สัปดาห์ก่อน
+  const VER_STALE_MS = 30 * 60 * 1000; // 30 นาที
+
+  function verIsFresh(updatedAt) {
+    if (!updatedAt) return false;
+    const t = new Date(updatedAt).getTime();
+    return !isNaN(t) && (Date.now() - t) < VER_STALE_MS;
+  }
+
+  function verResumeFromStatus() {
+    verFetchStatus().then(j => {
+      if (!j.ok || !j.status || j.status === 'idle') return;
+      if (!verIsFresh(j.updatedAt)) return;
+      document.getElementById('verUpdateBox').style.display = 'block';
+      document.getElementById('verProgressWrap').style.display = 'block';
+      if (j.status === 'running') {
+        document.getElementById('verRunBtn').disabled = true;
+        verPollStatus();
+      } else {
+        applyStatus(j);
+      }
+    }).catch(() => {});
+  }
+  verResumeFromStatus();
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && verPollTimer) {
+      verFetchStatus().then(applyStatus).catch(() => {});
+    }
+  });
 })();
 </script>
 
