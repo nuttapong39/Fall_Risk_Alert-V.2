@@ -25,7 +25,9 @@ $script:LastStep = 0
 function Set-Status([string]$status, [string]$message, [int]$step = 0) {
   if ($step -gt 0) { $script:LastStep = $step }
   $obj = [ordered]@{ status = $status; message = $message; step = $script:LastStep; totalSteps = 5; updatedAt = (Get-Date -Format 's') }
-  ($obj | ConvertTo-Json -Compress) | Set-Content -LiteralPath $StatusFile -Encoding UTF8
+  # ต้องเขียน UTF-8 แบบ "ไม่มี BOM" — Set-Content -Encoding UTF8 บน PowerShell 5.1 ใส่ BOM
+  # ให้เสมอ ทำให้ json_decode ฝั่ง PHP (system_update_status.php) อ่านไฟล์นี้ไม่ผ่าน
+  [System.IO.File]::WriteAllText($StatusFile, ($obj | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
   $line = "[$($obj.updatedAt)] [$status] $message"
   Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8
   Write-Host $line
