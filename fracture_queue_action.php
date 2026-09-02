@@ -87,7 +87,6 @@ $ids    = array_values(array_filter($ids, fn($x)=>ctype_digit((string)$x)));
 if (!$ids) { header('Location: fracture_queue_ui.php?msg=no_ids'); exit; }
 
 // ====== CONFIG (สำหรับส่ง MOPH Alert ฝั่ง Fracture) ======
-if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
 
 // ใช้ key เดียวกับ MOPH ถ้าไม่ได้กำหนดแยก

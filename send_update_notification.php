@@ -57,7 +57,7 @@ if (SYSTEM_UPDATE_CLIENT_KEY !== '' && SYSTEM_UPDATE_SECRET_KEY !== '') {
 
   $ch = curl_init();
   curl_setopt_array($ch, [
-    CURLOPT_URL            => defined('MOPH_API_URL') ? MOPH_API_URL : 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes',
+    CURLOPT_URL            => MOPH_API_URL,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => defined('MOPH_TIMEOUT') ? MOPH_TIMEOUT : 30,
     CURLOPT_CUSTOMREQUEST  => 'POST',

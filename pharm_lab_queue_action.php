@@ -103,7 +103,6 @@ $ids    = array_values(array_filter($ids, fn($x)=>ctype_digit((string)$x)));
 if (!$ids) { header('Location: pharm_lab_queue_ui.php?msg=no_ids'); exit; }
 
 /* ====== CONFIG (ฝั่ง Pharm) ====== */
-if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
 
 if (!defined('PHARM_CLIENT_KEY')) {

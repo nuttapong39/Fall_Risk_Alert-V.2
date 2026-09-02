@@ -45,7 +45,6 @@ if (PHP_SAPI !== 'cli') {
 }
 
 /* ===== Defaults / Keys ===== */
-if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
 if (!defined('DEFAULT_LOOKBACK_DAYS')) define('DEFAULT_LOOKBACK_DAYS', 7);
 

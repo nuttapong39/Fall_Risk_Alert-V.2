@@ -5,15 +5,18 @@ title MedAlert - Update
 :: ============================================================================
 ::  update.bat - Update MedAlert to the latest version from GitHub.
 ::
-::  HOW TO USE : double-click this file. No Administrator/UAC needed - it only
-::               writes inside the app folder and a sibling backup folder,
-::               same as the app itself already does for secrets\/logs\.
+::  HOW TO USE : right-click -> "Run as administrator". (Double-clicking works
+::               too: the script only writes inside the app folder and a sibling
+::               backup folder, same as the app already does for secrets\/logs\,
+::               so it does not strictly require elevation.)
 ::  WHAT IT DOES: backs up the whole app folder, then either
 ::                git pull (if this install has a .git folder) or
 ::                downloads+applies the latest ZIP from GitHub.
 ::                secrets\ and logs\ are never touched. Runs db_migrate.php after.
-::  This is the same script the "update now" button in settings.php launches
-::  (via a background process - it must NOT require a UAC prompt to work).
+::  This is the same script the "update now" button in settings.php launches.
+::  That button opens this window ELEVATED and VISIBLE (task\launch_detached.vbs
+::  uses ShellExecute with the "runas" verb) so the operator can watch the whole
+::  update run and read the result - the web page just waits for it to finish.
 ::  Thai usage guide: see docs/install-guide.html
 :: ============================================================================
 

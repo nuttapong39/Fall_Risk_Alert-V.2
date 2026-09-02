@@ -4,6 +4,7 @@ secrets/moph_keys.json
 secrets/site_config.json
 secrets/flex_themes.json
 secrets/module_filters.json
+secrets/moph_endpoint.json
 secrets/*.bak
 *.env
 .env
@@ -14,6 +15,7 @@ secrets/*.bak
 !secrets/site_config.example.json
 !secrets/flex_themes.example.json
 !secrets/module_filters.example.json
+!secrets/moph_endpoint.example.json
 
 # --- Logs ---
 logs/

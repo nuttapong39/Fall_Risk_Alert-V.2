@@ -296,7 +296,6 @@ function covid_buildMophPayload_legacy(array $row): array {
 
 /* -------------------- Sender (COVID) -------------------- */
 function covid_send_via_moph_alert(array $row): array {
-  if (!defined('MOPH_API_URL'))   define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
   if (!defined('MOPH_TIMEOUT'))   define('MOPH_TIMEOUT', 30);
   // คีย์เฉพาะ module (ตั้งค่าได้ที่ moph_keys_admin.php) — เดิมโค้ดนี้ก็อปมาจาก fracture
   // แล้วไม่ได้แก้ชื่อ ทำให้ใช้ MOPH_CLIENT_KEY (default) เสมอ ไม่เคยอ่าน COVID_CLIENT_KEY เลย

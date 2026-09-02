@@ -23,7 +23,6 @@ if (!defined('UI_ACTION_TOKEN')) {
 }
 
 // ── MOPH ALERT config ────────────────────────────────────────────────────────
-if (!defined('MOPH_API_URL'))  define('MOPH_API_URL',  'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))  define('MOPH_TIMEOUT',  30);
 
 // ใช้ DRUG_CLIENT_KEY หรือ fallback ไป MOPH_CLIENT_KEY

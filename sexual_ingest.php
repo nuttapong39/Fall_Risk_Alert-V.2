@@ -127,7 +127,6 @@ if ($isDry) {
 
 /* ═══ STEP 3: Send pending queue (ถ้า mode=send) ════════════════ */
 if ($isSend && !$isDry) {
-  if (!defined('MOPH_API_URL'))      define('MOPH_API_URL',      'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
   if (!defined('MOPH_TIMEOUT'))      define('MOPH_TIMEOUT',      30);
   if (!defined('SEXUAL_CLIENT_KEY')) define('SEXUAL_CLIENT_KEY', defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
   if (!defined('SEXUAL_SECRET_KEY')) define('SEXUAL_SECRET_KEY', defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : '');

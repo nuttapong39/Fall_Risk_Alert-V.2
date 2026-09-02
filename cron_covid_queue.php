@@ -202,7 +202,7 @@ foreach ($queue as $row) {
   // ส่งไปไลน์
   $ch = curl_init();
   curl_setopt_array($ch, [
-    CURLOPT_URL => 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes',
+    CURLOPT_URL => MOPH_API_URL,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 30,
     CURLOPT_CUSTOMREQUEST => 'POST',

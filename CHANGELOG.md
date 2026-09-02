@@ -11,6 +11,41 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.02.1455
+- **เปลี่ยนวิธีแสดงผลตอนอัปเดต: เปิด Terminal ให้เห็นจริง แทน progress bar**
+  เดิมปุ่ม "อัปเดตตอนนี้" สั่ง `update.bat` ทำงานแบบ**ซ่อนหน้าต่าง** แล้วหน้าเว็บ poll
+  `logs/update_status.json` มาวาดแถบ % ซึ่งเป็น hybrid ระหว่าง step จริงกับ % จำลอง
+  จากเวลา (`verSimPct()` เพดาน 95%) — ซับซ้อนและผู้ใช้ไม่เห็นว่าเกิดอะไรขึ้นจริง
+  เวลาพลาดก็ไม่เห็นสาเหตุ ตอนนี้เปิดหน้าต่าง Terminal ให้ดูของจริงจนจบไปเลย
+  - `task/launch_detached.vbs`: เปลี่ยนจาก `WScript.Shell.Run(cmd, 0, False)` (0 = ซ่อน)
+    เป็น `Shell.Application.ShellExecute(bat, "", "", "runas", 1)` — `1` = แสดงหน้าต่าง,
+    `"runas"` = ยกสิทธิ์เป็น Administrator (ถ้า Apache elevated อยู่แล้วจะรันต่อทันที
+    ไม่มี UAC prompt) ยังต้องผ่าน wscript เหมือนเดิมเพราะ `exec()` ของ PHP จะ *รอ*
+    คำสั่งจบ ถ้าเรียก .bat ตรงๆ request จะค้างตลอดกาลที่คำสั่ง `pause`
+  - `system_update_action.php`: เพิ่ม pre-flight ตรวจ **Session 0** ก่อนสั่งรัน — ถ้าเครื่องไหน
+    ติดตั้ง Apache เป็น Windows Service มันจะอยู่ Session 0 ซึ่ง Windows กั้นขาดจากเดสก์ท็อป
+    ทั้งหน้าต่าง Terminal และกล่อง UAC จะไม่มีทางโผล่ ผู้ใช้จะนั่งรอหน้าต่างที่ไม่มีวันมา
+    จึงตรวจด้วย `tasklist /FI "PID eq <getmypid()>"` (เร็วกว่า PowerShell ~6 เท่า:
+    52ms vs 321ms) แล้วแจ้งให้ไปคลิกขวา `task\update.bat` เลือก Run as administrator แทน
+    — ตรวจ *ก่อน* เขียน `update_status.json` ไม่งั้นสถานะ `running` จะค้างไปบล็อกการกด
+    ครั้งถัดไปผ่าน concurrent guard นานถึง 10 นาที
+  - `settings.php`: ตัด progress bar + ปุ่ม "Update Success" ออกทั้งหมด
+    (`verSimPct`, `VER_EXPECTED_MS`, `verIdleTicks`, `verLastMessage`, `verRunStartTime`)
+    เหลือกล่องบอกให้ดูหน้าต่าง Terminal แทน · ยังคง poll `system_update_status.php`
+    ต่อไปแต่ใช้เพื่อ **รอ `done` แล้วสั่ง `location.reload()` 1 ครั้ง** พอโหลดหน้าใหม่เสร็จ
+    จะเด้ง popup "อัปเดตสำเร็จ" พร้อมเลขเวอร์ชันใหม่ให้
+    - **กันลูป reload:** `verResumeFromStatus()` เช็คสถานะทุกครั้งที่หน้าโหลด และจะเห็น
+      `done` ที่ยัง fresh (< 30 นาที) เสมอ ถ้าไม่กันจะ reload วนไม่รู้จบ — ใช้ `updatedAt`
+      ของรอบนั้นเป็นลายเซ็นเก็บใน `sessionStorage` (`ckh-upd-done`) รอบไหน refresh ไปแล้ว
+      จะไม่ refresh ซ้ำ ส่วนข้อความ popup เก็บแยกที่ `ckh-upd-msg` (ใช้แล้วลบทิ้ง)
+      ทุกการเรียก `sessionStorage` ห่อ try/catch ไว้ (โหมด private / ปิด site data จะ throw)
+  - `task/update.bat`: แก้คอมเมนต์หัวไฟล์ที่เขียนว่า "No Administrator/UAC needed" และ
+    "it must NOT require a UAC prompt to work" ซึ่งขัดกับพฤติกรรมใหม่ · logic ไม่แตะ
+    และคง `pause` ไว้ให้หน้าต่างค้างรอผู้ใช้อ่านผลก่อนปิด
+  - `docs/update-guide.html`: ปรับขั้นตอน/ภาพ mockup/หัวข้อแก้ปัญหาให้ตรงของใหม่
+    (เพิ่มเคส "ไม่มีหน้าต่าง Terminal เด้ง = Apache เป็น Windows Service") + ลบ CSS
+    `.pbar-*` ที่กลายเป็น orphan
+
 ## 2026.08.25.2301
 - ไม่มีการเปลี่ยนโค้ด — bump เวอร์ชันเพื่อทดสอบกดปุ่ม "อัปเดตตอนนี้" ผ่านหน้าเว็บจริง
   (เส้นทางใช้งานปกติตลอดไป) อีกรอบ หลังแก้ปัญหา robocopy ค้าง + BOM หาย + กดซ้อนกัน

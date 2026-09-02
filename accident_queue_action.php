@@ -90,7 +90,6 @@ $ids    = array_values(array_filter($ids, fn($x)=>ctype_digit((string)$x)));
 if (!$ids) { header('Location: accident_queue_ui.php?msg=no_ids'); exit; }
 
 /* ===================== CONFIG ===================== */
-if (!defined('MOPH_API_URL'))         define('MOPH_API_URL',         'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))         define('MOPH_TIMEOUT',         20);
 if (!defined('MOPH_CONNECT_TIMEOUT')) define('MOPH_CONNECT_TIMEOUT', 8);
 

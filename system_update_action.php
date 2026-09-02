@@ -87,6 +87,31 @@ if ($action === 'run') {
     echo json_encode(['ok'=>false,'msg'=>'ไม่พบ task\\update.bat หรือ task\\launch_detached.vbs']); exit;
   }
 
+  // ── Pre-flight: Session 0 เปิดหน้าต่างให้ผู้ใช้เห็นไม่ได้ ─────────────────
+  // ถ้า Apache ถูกติดตั้งเป็น Windows Service มันจะอยู่ Session 0 ซึ่ง Windows กั้นขาด
+  // จากเดสก์ท็อป (Session 0 Isolation) — ทั้งหน้าต่าง Terminal และกล่อง UAC จะไม่มีทาง
+  // โผล่บนจอ ผู้ใช้จะนั่งรอหน้าต่างที่ไม่มีวันมา จึงต้องบอกให้ไปรันเองที่เครื่องแทน
+  // (ต้องเช็คก่อนเขียน update_status.json ไม่งั้นสถานะ 'running' จะค้างไปบล็อกการกด
+  //  ครั้งถัดไปผ่าน concurrent guard ด้านบนนานถึง 10 นาที)
+  // เช็คด้วย tasklist เพราะเร็วกว่า PowerShell ~6 เท่า (52ms vs 321ms) — mod_php ทำให้
+  // getmypid() คืน PID ของ httpd.exe เอง จึงได้ session ของ Apache ตรงๆ
+  if (function_exists('exec')) {
+    $tl = [];
+    @exec('tasklist /FI "PID eq ' . getmypid() . '" /FO CSV /NH', $tl);
+    $row  = isset($tl[0]) ? str_getcsv((string)$tl[0]) : [];
+    $sess = $row[3] ?? null;   // คอลัมน์ Session#  ("1" = เดสก์ท็อป, "0" = service)
+    if ($sess === '0') {
+      echo json_encode([
+        'ok'     => false,
+        'manual' => true,
+        'msg'    => 'เครื่องนี้รัน Apache เป็น Windows Service (Session 0) จึงเปิดหน้าต่าง Terminal '
+                  . 'ให้เห็นบนจอไม่ได้ — กรุณาไปที่เครื่อง server แล้วคลิกขวาไฟล์ task\update.bat '
+                  . 'เลือก "Run as administrator" เพื่ออัปเดตด้วยตนเอง',
+      ]);
+      exit;
+    }
+  }
+
   // เขียนสถานะ "running" step=0 ทันทีแบบ sync ก่อนสั่งรัน — กัน race ที่หน้าเว็บ
   // poll เจอไฟล์สถานะเก่าค้างจากรอบก่อน (status:'done') ในช่วงไม่กี่วินาทีแรก
   // ก่อนที่ update.ps1 ตัวจริง (ซึ่งเริ่มทำงานแบบ detached, ช้ากว่านี้เล็กน้อย) จะเขียนทับ
@@ -114,17 +139,19 @@ if ($action === 'run') {
   }
 
   try {
-    // เปิดแบบ detached จริง (ไม่รอให้จบ) ผ่าน wscript.exe + WScript.Shell.Run —
-    // proc_open()+proc_close() บน Windows ผูก child process กับ Job Object ที่ถูกฆ่า
-    // ทันทีที่ request จบ (แม้จะสั่ง "start /B" ก็ตาม) ทำให้ update.bat ไม่เคยรันจริง
-    // ทดสอบแล้วว่า WScript.Shell.Run(cmd, 0, False) รอดจาก lifecycle ของ PHP request
+    // ต้องผ่าน wscript.exe เสมอ ห้ามเรียก .bat ตรงๆ ด้วย exec() เพราะ exec() จะ "รอ"
+    // จนคำสั่งจบ ส่วน update.bat ปิดท้ายด้วย pause -> request จะค้างตลอดกาล
+    // (proc_open()+proc_close() ก็ใช้ไม่ได้: บน Windows มันผูก child process กับ Job Object
+    //  ที่ถูกฆ่าทันทีที่ request จบ แม้จะสั่ง "start /B" ก็ตาม update.bat จึงไม่เคยรันจริง)
+    // ตัว VBS ใช้ Shell.Application.ShellExecute(..., "runas", 1) -> คืนค่าทันทีไม่รอ
+    // และเปิดหน้าต่างให้ผู้ใช้เห็น พร้อมยกสิทธิ์เป็น Administrator
     $cmd = 'wscript.exe //B ' . escapeshellarg($vbsPath) . ' ' . escapeshellarg($batPath);
     exec($cmd, $out, $rc);
     if ($rc === 0) {
-      $msg = 'เริ่มอัปเดตแล้ว — ระบบกำลังทำงานอยู่เบื้องหลัง';
+      $msg = 'เริ่มอัปเดตแล้ว — ดูความคืบหน้าที่หน้าต่าง Terminal บนเครื่อง server';
       if (!$statusWritten || !$readbackOk) {
         $realDir = realpath($logDir) ?: $logDir;
-        $msg .= " (คำเตือน: เขียนไฟล์สถานะแล้วแต่อ่านกลับไม่ตรง — progress bar อาจไม่อัปเดต แต่การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ — debug: path={$realDir}, written=" . ($statusWritten ? 'y' : 'n') . ', readback=' . ($readbackOk ? 'y' : 'n') . ')';
+        $msg .= " (คำเตือน: เขียนไฟล์สถานะแล้วแต่อ่านกลับไม่ตรง — หน้านี้อาจไม่รีเฟรชให้อัตโนมัติเมื่ออัปเดตเสร็จ ให้ดูผลจากหน้าต่าง Terminal แล้วรีเฟรชเอง — การอัปเดตจริงไม่ได้รับผลกระทบ — debug: path={$realDir}, written=" . ($statusWritten ? 'y' : 'n') . ', readback=' . ($readbackOk ? 'y' : 'n') . ')';
       }
       echo json_encode(['ok'=>true,'msg'=>$msg,'statusWritten'=>$statusWritten,'readbackOk'=>$readbackOk]);
     } else {

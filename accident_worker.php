@@ -18,7 +18,6 @@ date_default_timezone_set('Asia/Bangkok');
 /* ==============================
  *  CONFIG เฉพาะ Accident
  * ============================== */
-if (!defined('MOPH_API_URL'))            define('MOPH_API_URL',            'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))            define('MOPH_TIMEOUT',            20);   // วินาที
 if (!defined('MOPH_CONNECT_TIMEOUT'))    define('MOPH_CONNECT_TIMEOUT',    8);    // TCP connect timeout
 

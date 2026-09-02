@@ -645,14 +645,15 @@ require_once __DIR__ . '/partials/header.php';
         </button>
       </div>
       <div id="verRunResult" class="small mt-2"></div>
-      <div id="verProgressWrap" style="display:none; margin-top:12px">
-        <div class="progress" style="height:10px">
-          <div id="verProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
+      <!-- display คุมที่ div ชั้นนอก เพราะ .alert+.d-flex ของ Bootstrap เป็น display:flex !important
+           ซึ่งจะชนะ style="display:none" ที่เขียน inline บน element เดียวกัน -->
+      <div id="verRunningBox" style="display:none; margin-top:12px">
+        <div class="alert alert-warning py-2 d-flex align-items-start gap-2" style="border-radius:10px; font-size:.85rem; margin-bottom:0">
+          <span class="msi" style="font-size:1rem">terminal</span>
+          <span>กำลังอัปเดต — ดูความคืบหน้าได้ที่หน้าต่าง <b>Terminal</b> ที่เปิดขึ้นบนเครื่อง server
+                (ห้ามปิดหน้าต่างจนกว่าจะขึ้นว่าเสร็จ) เมื่ออัปเดตเสร็จ หน้านี้จะรีเฟรชให้อัตโนมัติ</span>
         </div>
       </div>
-      <button type="button" class="btn btn-success mt-2" id="verSuccessBtn" style="display:none" onclick="verShowSuccess()">
-        <span class="msi me-1">check_circle</span>Update Success
-      </button>
     </div>
   </div>
 </div>
@@ -660,18 +661,15 @@ require_once __DIR__ . '/partials/header.php';
 (function () {
   const VER_TOKEN = <?= json_encode(defined('UI_ACTION_TOKEN') ? UI_ACTION_TOKEN : '') ?>;
   let verPollTimer = null;
-  let verIdleTicks = 0;
-  let verLastMessage = '';
-  let verRunStartTime = null;
-  const VER_EXPECTED_MS = 4 * 60 * 1000; // 4 นาที — ประมาณจากเคสจริงที่ช้าที่สุด (ดาวน์โหลด ZIP ช้า ~3 นาที) เผื่อ margin
 
-  // % จำลองจากเวลาที่ผ่านไปจริง (ไม่พึ่งสถานะจาก server เลย) — กันกรณี logs/update_status.json
-  // อ่านไม่ได้บนบางเครื่อง (เช่น opcache ค้าง) ให้แถบยังขยับเห็นความคืบหน้าเสมอ ไม่ค้างว่างเปล่า
-  // เพดานที่ 95% เพราะไม่ยืนยันว่า "เสร็จจริง" จนกว่าจะเจอสถานะ done จริงจาก server เท่านั้น
-  function verSimPct() {
-    if (!verRunStartTime) return 0;
-    return Math.min(95, Math.round((Date.now() - verRunStartTime) / VER_EXPECTED_MS * 100));
-  }
+  // กุญแจใน sessionStorage — ตัวเดียวกันนี้ทำสองหน้าที่:
+  //   DONE_KEY = updatedAt ของรอบที่ refresh ไปแล้ว (กัน reload วนไม่รู้จบ เพราะ
+  //              verResumeFromStatus() จะเห็น status=done ที่ยัง fresh ทุกครั้งที่โหลดหน้า)
+  //   MSG_KEY  = ข้อความผลลัพธ์ที่ต้องเอาไปเด้ง popup "หลัง" refresh (ใช้แล้วลบทิ้ง)
+  const VER_DONE_KEY = 'ckh-upd-done';
+  const VER_MSG_KEY  = 'ckh-upd-msg';
+
+  function verSS(fn, dflt) { try { return fn(); } catch (e) { return dflt; } }
 
   window.verCheck = function () {
     const btn = document.getElementById('verCheckBtn');
@@ -719,14 +717,7 @@ require_once __DIR__ . '/partials/header.php';
       const btn = document.getElementById('verRunBtn');
       btn.disabled = true;
       out.textContent = 'กำลังสั่งอัปเดต...';
-      const progWrap = document.getElementById('verProgressWrap');
-      const progBar = document.getElementById('verProgressBar');
-      progWrap.style.display = 'block';
-      progBar.style.width = '0%';
-      progBar.textContent = '';
-      progBar.classList.remove('bg-success', 'bg-danger');
-      progBar.classList.add('progress-bar-striped', 'progress-bar-animated');
-      document.getElementById('verSuccessBtn').style.display = 'none';
+      document.getElementById('verRunningBox').style.display = 'block';
       fetch('system_update_action.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -752,40 +743,32 @@ require_once __DIR__ . '/partials/header.php';
   function applyStatus(j) {
     if (!j.ok) return;
     const out = document.getElementById('verRunResult');
-    const progBar = document.getElementById('verProgressBar');
-    const step = j.step || 0;
-    const totalSteps = j.totalSteps || 5;
-    const realPct = step > 0 ? Math.round(step / totalSteps * 100) : 0;
-    if (j.status === 'idle') {
-      verIdleTicks++;
-      const pct = Math.max(realPct, verSimPct());
-      progBar.style.width = pct + '%'; progBar.textContent = pct + '%';
-      if (verIdleTicks >= 6) {
-        out.innerHTML = '<span class="text-warning">ยังไม่เห็นความคืบหน้าจากสถานะจริง (อาจเขียน/อ่านไฟล์ logs/update_status.json ไม่ได้บนเครื่องนี้) — แถบด้านบนกำลังประมาณจากเวลาที่ผ่านไปแทน การอัปเดตจริงยังทำงานอยู่เบื้องหลังตามปกติ</span>';
-      }
-    } else if (j.status === 'running') {
-      verIdleTicks = 0;
-      const pct = Math.max(realPct, verSimPct());
-      progBar.style.width = pct + '%'; progBar.textContent = pct + '%';
-      out.textContent = j.message || 'กำลังอัปเดต...';
-    } else if (j.status === 'done') {
-      verRunStartTime = null;
-      verLastMessage = j.message || '';
-      out.innerHTML = '<span class="text-success">' + j.message + '</span>';
-      progBar.style.width = '100%';
-      progBar.textContent = '100%';
-      progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-      progBar.classList.add('bg-success');
-      document.getElementById('verSuccessBtn').style.display = 'inline-flex';
-      if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
-      document.getElementById('verRunBtn').disabled = false;
+
+    // idle = ยังไม่มีไฟล์สถานะ (update.ps1 ยังไม่ทันเขียนรอบแรก) — นับเป็น "กำลังเริ่ม"
+    // ไม่ต้องเดา % อะไรอีกแล้ว ความคืบหน้าจริงผู้ใช้ดูจากหน้าต่าง Terminal ตรง ๆ
+    if (j.status === 'idle' || j.status === 'running') {
+      out.textContent = j.message || 'กำลังอัปเดต — ดูความคืบหน้าที่หน้าต่าง Terminal';
+      return;
+    }
+
+    if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
+    document.getElementById('verRunBtn').disabled = false;
+
+    if (j.status === 'done') {
+      // refresh ครั้งเดียวต่อการอัปเดตหนึ่งรอบ — ใช้ updatedAt เป็นลายเซ็นของรอบนั้น
+      // ถ้าไม่กันตรงนี้ verResumeFromStatus() จะเห็น done ที่ยัง fresh ทุกครั้งที่หน้าโหลด
+      // แล้วสั่ง reload ซ้ำเป็นวงจรไม่รู้จบ
+      if (verSS(function () { return sessionStorage.getItem(VER_DONE_KEY); }, null) === j.updatedAt) return;
+      verSS(function () {
+        sessionStorage.setItem(VER_DONE_KEY, j.updatedAt || '');
+        sessionStorage.setItem(VER_MSG_KEY,  j.message   || 'อัปเดตระบบเสร็จสมบูรณ์');
+      });
+      out.innerHTML = '<span class="text-success">' + (j.message || '') + ' — กำลังรีเฟรชหน้า...</span>';
+      location.reload();
     } else if (j.status === 'error') {
-      verRunStartTime = null;
-      out.innerHTML = '<span class="text-danger">' + j.message + '</span>';
-      progBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-      progBar.classList.add('bg-danger');
-      if (verPollTimer) { clearInterval(verPollTimer); verPollTimer = null; }
-      document.getElementById('verRunBtn').disabled = false;
+      document.getElementById('verRunningBox').style.display = 'none';
+      out.innerHTML = '<span class="text-danger">' + (j.message || 'อัปเดตล้มเหลว') +
+        '<br>ดูรายละเอียดได้ที่หน้าต่าง Terminal หรือไฟล์ <code>logs/update_*.log</code></span>';
     }
   }
 
@@ -795,22 +778,20 @@ require_once __DIR__ . '/partials/header.php';
 
   function verPollStatus() {
     if (verPollTimer) clearInterval(verPollTimer);
-    verIdleTicks = 0;
-    verRunStartTime = Date.now();
     const tick = () => { verFetchStatus().then(applyStatus); };
     tick();
     verPollTimer = setInterval(tick, 1500);
   }
 
-  window.verShowSuccess = function () {
-    Swal.fire({
-      icon: 'success',
-      title: 'อัปเดตสำเร็จ',
-      text: verLastMessage || 'อัปเดตระบบเสร็จสมบูรณ์',
-      confirmButtonText: 'ตกลง',
-    });
-    document.getElementById('verSuccessBtn').style.display = 'none';
-  };
+  // หน้าโหลดใหม่หลังอัปเดตเสร็จ -> เด้ง popup แจ้งผล แล้วลบข้อความทิ้งเพื่อไม่ให้เด้งซ้ำ
+  // (ข้อความจาก update.ps1 มีเลขเวอร์ชันใหม่อยู่แล้ว: "อัปเดตสำเร็จ — เวอร์ชัน X (สำรองไว้ที่ Y)")
+  // ส่วน VER_DONE_KEY ไม่ลบ — ต้องคงไว้กัน reload ซ้ำของรอบเดียวกัน
+  (function verPopupAfterReload() {
+    const msg = verSS(function () { return sessionStorage.getItem(VER_MSG_KEY); }, null);
+    if (!msg) return;
+    verSS(function () { sessionStorage.removeItem(VER_MSG_KEY); });
+    Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ', text: msg, confirmButtonText: 'ตกลง' });
+  })();
 
   // เช็คสถานะทันทีตอนโหลดหน้า เผื่อมีการอัปเดตค้างอยู่เบื้องหลัง (เช่น รีเฟรชหน้า/
   // เปิดแท็บใหม่ระหว่างรอ หรือแท็บเดิมโดน browser throttle ตอนไม่ได้โฟกัสนาน ๆ)
@@ -827,9 +808,12 @@ require_once __DIR__ . '/partials/header.php';
     verFetchStatus().then(j => {
       if (!j.ok || !j.status || j.status === 'idle') return;
       if (!verIsFresh(j.updatedAt)) return;
+      // รอบที่ refresh ไปแล้วถือว่าจบเรื่อง ไม่ต้องรื้อกล่องอะไรขึ้นมาอีก — ไม่งั้นหน้าที่เพิ่ง
+      // reload หลังอัปเดตเสร็จจะค้างกล่อง "กำลังอัปเดต ดู Terminal" ทั้งที่จบไปแล้ว
+      if (verSS(function () { return sessionStorage.getItem(VER_DONE_KEY); }, null) === j.updatedAt) return;
       document.getElementById('verUpdateBox').style.display = 'block';
-      document.getElementById('verProgressWrap').style.display = 'block';
       if (j.status === 'running') {
+        document.getElementById('verRunningBox').style.display = 'block';
         document.getElementById('verRunBtn').disabled = true;
         verPollStatus();
       } else {

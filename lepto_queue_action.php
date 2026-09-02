@@ -16,7 +16,6 @@ date_default_timezone_set('Asia/Bangkok');
 // ── Constants ─────────────────────────────────────────────────────────────────
 define('LEPTO_Q_UI_TOKEN',  hash('sha256', __DIR__ . '/Leptospira.php' . php_uname() . date('Y-m-d')));
 
-if (!defined('MOPH_API_URL'))         define('MOPH_API_URL',         'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT'))         define('MOPH_TIMEOUT',         30);
 if (!defined('LEPTO_CLIENT_KEY'))    define('LEPTO_CLIENT_KEY',    defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : '');
 if (!defined('LEPTO_SECRET_KEY'))    define('LEPTO_SECRET_KEY',    defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : '');

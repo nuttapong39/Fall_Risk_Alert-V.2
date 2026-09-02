@@ -23,6 +23,9 @@ require_once __DIR__ . '/module_filters_loader.php';
 // โหลดเลขเวอร์ชันปัจจุบันจากไฟล์ VERSION → APP_VERSION
 require_once __DIR__ . '/version_loader.php';
 
+// โหลด endpoint ของ MOPH Alert API จาก secrets/moph_endpoint.json → MOPH_API_URL
+require_once __DIR__ . '/moph_endpoint_loader.php';
+
 // สำหรับปุ่มใน UI (เปลี่ยนเป็นค่าเฉพาะของคุณ)
 if (!defined('UI_ACTION_TOKEN')) {
   define('UI_ACTION_TOKEN', 'change-me-very-secret');
@@ -142,9 +145,7 @@ if (!function_exists('hosxp_db')) {
 define('DELIVERY_DRIVER', 'moph_alert'); // 'moph_alert' | 'file' | 'email'
 
 // === MOPH Alert keys (ใช้ทั้ง manual & auto) ===
-if (!defined('MOPH_API_URL')) {
-  define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
-}
+// MOPH_API_URL ถูก define แล้วโดย moph_endpoint_loader.php ด้านบน
 
 // *** ไม่ต้อง define FRACTURE_CLIENT_KEY/SECRET_KEY ตรงนี้แล้ว ***
 // ปล่อยให้ moph_keys_loader.php เป็นคนกำหนดตามไฟล์ secrets/moph_keys.json
@@ -162,7 +163,6 @@ if (!defined('MOPH_SECRET_KEY') && defined('FRACTURE_SECRET_KEY')) {
   define('MOPH_SECRET_KEY', FRACTURE_SECRET_KEY);
 }
 if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
-if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 
 /** ---------- Defaults for cron/filter ---------- */
 define('DEFAULT_LOOKBACK_DAYS', 7); // ดึงย้อนหลัง N วันถ้าไม่ระบุช่วง

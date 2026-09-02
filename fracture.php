@@ -12,7 +12,6 @@ date_default_timezone_set('Asia/Bangkok');
 /* ==============================
  *  CONFIG เฉพาะ Fracture
  * ============================== */
-if (!defined('MOPH_API_URL')) define('MOPH_API_URL', 'https://morpromt2f.moph.go.th/api/notify/send?messages=yes');
 if (!defined('MOPH_TIMEOUT')) define('MOPH_TIMEOUT', 30);
 
 // ใช้ key จาก config.php เป็น default; ถ้าต้องการแยก key สำหรับ Fracture ให้ define ไว้ใน config.php ก่อน

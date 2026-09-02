@@ -40,12 +40,16 @@ try {
   ];
 
   foreach ($modules as $jsonKey => $const) {
-    $mc = $data[$jsonKey]['client'] ?? $defClient ?? MOPH_CLIENT_KEY ?? null;
-    $ms = $data[$jsonKey]['secret'] ?? $defSecret ?? MOPH_SECRET_KEY ?? null;
+    // NB: ?? ไม่กัน "undefined constant" (PHP 8 throw Error) — ต้องเช็ค defined() ก่อน
+    //     เดิมเขียน `?? MOPH_CLIENT_KEY ??` ทำให้ลูปตายตั้งแต่ module แรกเมื่อไม่มีก้อน default
+    //     ผลคือคีย์ราย module ที่ตั้งไว้จริงไม่ถูก define เลยสักตัว
+    $mc = $data[$jsonKey]['client'] ?? $defClient ?? (defined('MOPH_CLIENT_KEY') ? MOPH_CLIENT_KEY : null);
+    $ms = $data[$jsonKey]['secret'] ?? $defSecret ?? (defined('MOPH_SECRET_KEY') ? MOPH_SECRET_KEY : null);
     _define_if_not($const['CLIENT'], $mc);
     _define_if_not($const['SECRET'], $ms);
   }
 
 } catch (Throwable $e) {
-  // เงียบไว้ไม่ให้กระทบ flow หลัก
+  // ไม่ให้กระทบ flow หลัก แต่ต้องทิ้งร่องรอยไว้ — เดิมเงียบสนิททำให้ไล่หาสาเหตุไม่ได้
+  @error_log('moph_keys_loader: ' . $e->getMessage());
 }
