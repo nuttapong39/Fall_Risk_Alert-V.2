@@ -18,7 +18,7 @@ if (!is_readable($file)) {
 // ทำให้ endpoint นี้ตกไป fallback ตอบ 'idle' ตลอดกาล (คือสาเหตุที่ progress bar เดิม
 // ไม่เคยเห็นสถานะจริงเลย จนต้องมีโหมดเดา % จากเวลามาคั่น) ตัด BOM ทิ้งก่อน decode
 $raw = (string)@file_get_contents($file);
-if (substr($raw, 0, 3) === "ï»¿") { $raw = substr($raw, 3); }
+if (strncmp($raw, pack('C3', 0xEF, 0xBB, 0xBF), 3) === 0) { $raw = substr($raw, 3); }
 $j = json_decode($raw, true);
 if (!is_array($j)) {
   echo json_encode(['ok'=>true,'status'=>'idle','message'=>'','updatedAt'=>null]);
