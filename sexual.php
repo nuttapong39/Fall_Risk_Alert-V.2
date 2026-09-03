@@ -109,14 +109,12 @@ $EXTRA_HEAD = '
   .table td.small-text { font-size:.8rem; color:#6b7280 }
   .dt-buttons .btn { border-radius:.5rem }
 
-  /* ── Sticky action bar ── */
-  .action-bar {
-    position:sticky; bottom:1rem; z-index:50;
-    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
-    padding:.75rem 1rem; box-shadow:0 10px 25px rgba(15,23,42,.12);
-    display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
-  }
-  .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
+  /* ── Floating action bar ── */
+  #sxBar{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);bottom:18px;z-index:1050;
+    display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:10px 16px;
+    border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .22s}
+  #sxBar.show{transform:translateX(-50%) translateY(0)}
+  #sxBar .btn{border-radius:999px;font-size:.82rem}
   .form-check-input:focus { box-shadow:0 0 0 .2rem rgba(219,39,119,.2) }
 
   /* ── Send button (per row) ── */
@@ -288,6 +286,7 @@ require_once __DIR__ . '/partials/header.php';
 <!-- ── Table + Bulk Actions ───────────────────────────────────── -->
 <form method="post" action="sexual_action.php" id="sxActionForm">
   <input type="hidden" name="token" value="<?= htmlspecialchars(SEXUAL_UI_TOKEN) ?>">
+  <input type="hidden" name="action" id="sxAction" value="">
 
   <div class="card p-3 mb-3">
     <div class="table-responsive">
@@ -295,7 +294,7 @@ require_once __DIR__ . '/partials/header.php';
         <thead>
           <tr>
             <th style="width:30px">
-              <input type="checkbox" class="form-check-input" id="chkAll" aria-label="เลือกทั้งหมด">
+              <input type="checkbox" class="form-check-input" id="sxAll" aria-label="เลือกทั้งหมด">
             </th>
             <th>ID</th>
             <th>สถานะ</th>
@@ -331,7 +330,7 @@ require_once __DIR__ . '/partials/header.php';
           $sex     = $r['sex'] ?? '';
         ?>
           <tr>
-            <td><input type="checkbox" class="form-check-input chk" name="ids[]" value="<?= $r['id'] ?>"></td>
+            <td><input type="checkbox" class="form-check-input sxchk" name="ids[]" value="<?= $r['id'] ?>"></td>
             <td class="text-center"><small class="text-muted"><?= $r['id'] ?></small></td>
             <td><?= $badge ?></td>
             <td><strong><?= htmlspecialchars($r['hn'] ?? '') ?></strong></td>
@@ -394,24 +393,18 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 
-  <!-- ── Sticky action bar ─────────────────────────────────── -->
-  <div class="action-bar">
-    <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
-    <button type="button" class="btn btn-sm"
-            style="background:linear-gradient(135deg,#db2777,#be185d);color:#fff;border:none;border-radius:8px"
-            data-action="send_now" data-label="ส่งแจ้งเตือนทันที" data-confirm-icon="question">
-      <span class="msi me-1">send</span> ส่งทันที
-    </button>
-    <button type="button" class="btn btn-warning btn-sm"
-            data-action="requeue" data-label="Requeue" data-confirm-icon="warning">
-      <span class="msi me-1">refresh</span> Requeue
-    </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm"
-            data-action="clear_error" data-label="ล้าง error" data-confirm-icon="warning">
-      <span class="msi me-1">backspace</span> ล้าง error
-    </button>
   </div>
 </form>
+
+<div id="sxBar">
+  <span class="msi" style="color:#fbbf24">checklist</span>
+  <span id="sxCount">0 รายการที่เลือก</span>
+  <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#db2777,#be185d);color:#fff;border:none"
+          data-act="send_now" data-label="ส่งแจ้งเตือนทันที"><span class="msi">send</span> ส่งทันที</button>
+  <button type="button" class="btn btn-warning btn-sm" data-act="requeue"     data-label="Requeue"><span class="msi">refresh</span> Requeue</button>
+  <button type="button" class="btn btn-outline-secondary btn-sm" data-act="clear_error" data-label="ล้าง error"><span class="msi">backspace</span> ล้าง error</button>
+  <button type="button" class="btn btn-outline-light btn-sm" id="sxCancel"><span class="msi">close</span></button>
+</div>
 
 <?php endif; ?>
 
@@ -509,40 +502,46 @@ $(function(){
   });
 
   /* ── Checkbox all ── */
-  const $chkAll = $("#chkAll");
-  $chkAll.on("change", function(){
-    $("#tblSexual tbody .chk").prop("checked", this.checked);
+  const $sxAll = $("#sxAll");
+  $sxAll.on("change", function(){
+    $("#tblSexual tbody .sxchk").prop("checked", this.checked);
     updateCount();
   });
-  $(document).on("change", ".chk", updateCount);
-  table.on("draw", function(){ $chkAll.prop("checked", false); updateCount(); });
+  $(document).on("change", ".sxchk", updateCount);
+  table.on("draw", function(){ $sxAll.prop("checked", false); updateCount(); });
   function updateCount(){
-    const n = $("#tblSexual tbody .chk:checked").length;
-    $("#selectedCount").text("เลือก " + n + " รายการ");
+    const n = $("#tblSexual tbody .sxchk:checked").length;
+    $("#sxCount").text(n + " รายการที่เลือก");
+    $("#sxBar").toggleClass("show", n > 0);
   }
 
-  /* ── Bulk actions ── */
-  $("[data-action]").on("click", function(){
-    const action = $(this).data("action");
+  $("#sxCancel").on("click", function(){
+    $(".sxchk, #sxAll").prop("checked", false);
+    updateCount();
+  });
+
+  /* ── Bulk actions ── ตรวจจาก sexual_action.php:
+     requeue = status=0,attempt=0,last_attempt_at=NULL,last_error=NULL,out_ref=NULL,line_message_id=NULL */
+  const sxDescs = {
+    send_now:    "ส่งแจ้งเตือนทันที (bypass cooldown)",
+    requeue:     "รีเซ็ต attempt=0 status=0",
+    clear_error: "ล้างข้อความ Error",
+  };
+  $("#sxBar [data-act]").on("click", function(){
+    const action = $(this).data("act");
     const label  = $(this).data("label");
-    const icon   = $(this).data("confirm-icon") || "question";
-    const n      = $("#tblSexual tbody .chk:checked").length;
-    if (n === 0){
-      Swal.fire({ icon:"info", title:"ยังไม่ได้เลือกรายการ",
-                  text:"กรุณาติ๊กเลือกรายการในตารางก่อน" });
-      return;
-    }
+    const n      = $("#tblSexual tbody .sxchk:checked").length;
+    if (n === 0) return;
     Swal.fire({
-      icon, title:"ยืนยัน " + label + "?",
-      text:"จะดำเนินการกับรายการที่เลือก " + n + " รายการ",
-      showCancelButton:true, confirmButtonText:label,
+      icon:"question", title:label,
+      html: sxDescs[action] + " สำหรับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)",
+      showCancelButton:true, confirmButtonText:"ยืนยัน",
       cancelButtonText:"ยกเลิก", reverseButtons:true, focusCancel:true,
       confirmButtonColor:"#db2777"
     }).then(r => {
       if (!r.isConfirmed) return;
-      const $form = $("#sxActionForm");
-      $form.append("<input type=\"hidden\" name=\"action\" value=\"" + action + "\">");
-      $form[0].submit();
+      document.getElementById("sxAction").value = action;
+      document.getElementById("sxActionForm").submit();
     });
   });
 

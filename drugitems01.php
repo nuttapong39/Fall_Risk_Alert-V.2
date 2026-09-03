@@ -107,13 +107,11 @@ $EXTRA_HEAD = '
   .table td { font-size:.88rem; vertical-align:middle }
   .table td.small-text { font-size:.82rem }
   .dt-buttons .btn { border-radius:.5rem }
-  .action-bar {
-    position:sticky; bottom:1rem; z-index:50;
-    background:#fff; border:1px solid #e2e8f0; border-radius:14px;
-    padding:.75rem 1rem; box-shadow:0 10px 25px rgba(15,23,42,.12);
-    display:flex; align-items:center; gap:.5rem; flex-wrap:wrap
-  }
-  .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
+  #drugBar{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);bottom:18px;z-index:1050;
+    display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:10px 16px;
+    border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .22s}
+  #drugBar.show{transform:translateX(-50%) translateY(0)}
+  #drugBar .btn{border-radius:999px;font-size:.82rem}
   .form-check-input:focus { box-shadow:0 0 0 .2rem rgba(234,88,12,.25) }
 
   /* ── Import modal ── */
@@ -277,6 +275,7 @@ require_once __DIR__ . '/partials/header.php';
 <!-- Table + Bulk Actions -->
 <form method="post" action="drug_queue_action.php" id="actionForm">
   <input type="hidden" name="token" value="<?= htmlspecialchars(UI_ACTION_TOKEN) ?>">
+  <input type="hidden" name="action" id="drugAction" value="">
 
   <div class="card p-3 mb-3">
     <div class="table-responsive">
@@ -284,7 +283,7 @@ require_once __DIR__ . '/partials/header.php';
         <thead>
           <tr>
             <th style="width:30px">
-              <input type="checkbox" class="form-check-input" id="chkAll" aria-label="เลือกทั้งหมด">
+              <input type="checkbox" class="form-check-input" id="drugAll" aria-label="เลือกทั้งหมด">
             </th>
             <th>ID</th>
             <th>สถานะ</th>
@@ -318,7 +317,7 @@ require_once __DIR__ . '/partials/header.php';
           }
         ?>
           <tr>
-            <td><input type="checkbox" class="form-check-input chk" name="ids[]" value="<?= $r['id'] ?>"></td>
+            <td><input type="checkbox" class="form-check-input drugchk" name="ids[]" value="<?= $r['id'] ?>"></td>
             <td><?= $r['id'] ?></td>
             <td><?= $badge ?></td>
             <td><?= htmlspecialchars($r['hn']) ?></td>
@@ -343,23 +342,16 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 
-  <!-- Sticky action bar -->
-  <div class="action-bar">
-    <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
-    <button type="button" class="btn btn-success btn-sm"
-            data-action="send_now" data-label="ส่งซ้ำทันที" data-confirm-icon="question">
-      <span class="msi me-1">send</span> ส่งซ้ำทันที
-    </button>
-    <button type="button" class="btn btn-warning btn-sm"
-            data-action="requeue" data-label="Requeue" data-confirm-icon="warning">
-      <span class="msi me-1">refresh</span> Requeue
-    </button>
-    <button type="button" class="btn btn-outline-danger btn-sm"
-            data-action="clear_error" data-label="ล้าง error" data-confirm-icon="warning">
-      <span class="msi me-1">backspace</span> ล้าง error
-    </button>
-  </div>
 </form>
+
+<div id="drugBar">
+  <span class="msi" style="color:#fbbf24">checklist</span>
+  <span id="drugCount">0 รายการที่เลือก</span>
+  <button type="button" class="btn btn-success btn-sm" data-act="send_now"    data-label="ส่งซ้ำทันที"><span class="msi">send</span> ส่งซ้ำทันที</button>
+  <button type="button" class="btn btn-warning btn-sm" data-act="requeue"     data-label="Requeue"><span class="msi">refresh</span> Requeue</button>
+  <button type="button" class="btn btn-outline-danger btn-sm" data-act="clear_error" data-label="ล้าง error"><span class="msi">backspace</span> ล้าง error</button>
+  <button type="button" class="btn btn-outline-light btn-sm" id="drugCancel"><span class="msi">close</span></button>
+</div>
 
 <?php endif; // end tableError check ?>
 
@@ -465,47 +457,54 @@ $(function(){
   });
 
   // ── Select-all checkbox ────────────────────────────────────────────────────
-  const $chkAll = $("#chkAll");
-  $chkAll.on("change", function(){
-    $("#tbl tbody .chk").prop("checked", this.checked);
+  const $drugAll = $("#drugAll");
+  $drugAll.on("change", function(){
+    $("#tbl tbody .drugchk").prop("checked", this.checked);
     updateCount();
   });
-  $(document).on("change", ".chk", updateCount);
+  $(document).on("change", ".drugchk", updateCount);
   table.on("draw", function(){
-    $chkAll.prop("checked", false);
+    $drugAll.prop("checked", false);
     updateCount();
   });
   function updateCount(){
-    const n = $("#tbl tbody .chk:checked").length;
-    $("#selectedCount").text("เลือก " + n + " รายการ");
+    const n = $("#tbl tbody .drugchk:checked").length;
+    $("#drugCount").text(n + " รายการที่เลือก");
+    $("#drugBar").toggleClass("show", n > 0);
   }
 
+  $("#drugCancel").on("click", function(){
+    $(".drugchk, #drugAll").prop("checked", false);
+    updateCount();
+  });
+
   // ── Bulk action buttons with SweetAlert2 confirm ───────────────────────────
-  $("[data-action]").on("click", function(){
-    const action = $(this).data("action");
+  // ตรวจจาก drug_queue_action.php: requeue = status=0,attempt=0,last_attempt_at=NULL,
+  // last_error=NULL,out_ref=NULL,line_message_id=NULL
+  const drugDescs = {
+    send_now:    "ส่งซ้ำทันที (bypass cooldown)",
+    requeue:     "รีเซ็ต attempt=0 status=0",
+    clear_error: "ล้างข้อความ Error",
+  };
+  $("#drugBar [data-act]").on("click", function(){
+    const action = $(this).data("act");
     const label  = $(this).data("label");
-    const icon   = $(this).data("confirm-icon") || "question";
-    const n = $("#tbl tbody .chk:checked").length;
-    if (n === 0){
-      Swal.fire({ icon:"info", title:"ยังไม่ได้เลือกรายการ",
-                  text:"กรุณาติ๊กเลือกรายการในตารางก่อน" });
-      return;
-    }
+    const n = $("#tbl tbody .drugchk:checked").length;
+    if (n === 0) return;
     Swal.fire({
-      icon: icon,
-      title: "ยืนยัน " + label + "?",
-      text: "จะดำเนินการกับรายการที่เลือก " + n + " รายการ",
+      icon: "question",
+      title: label,
+      html: drugDescs[action] + " สำหรับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)",
       showCancelButton: true,
-      confirmButtonText: label,
+      confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
       reverseButtons: true,
       focusCancel: true,
       confirmButtonColor: "#059669"
     }).then(r => {
       if (r.isConfirmed){
-        const $form = $("#actionForm");
-        $form.append("<input type=\"hidden\" name=\"action\" value=\""+action+"\">");
-        $form[0].submit();
+        document.getElementById("drugAction").value = action;
+        document.getElementById("actionForm").submit();
       }
     });
   });

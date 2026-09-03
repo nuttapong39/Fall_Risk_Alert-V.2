@@ -8,7 +8,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
-// require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 mb_internal_encoding('UTF-8');
 
@@ -107,30 +107,23 @@ $EXTRA_HEAD = '
   .filter-card { padding: 1rem 1.15rem; margin-bottom: 1rem; }
   .filter-card label { font-size: .82rem; color: #64748b; margin-bottom: .25rem; }
 
-  /* Sticky action bar */
-  #accStickyBar {
+  /* Floating action bar — centered pill (ตาม pattern ใหม่แบบ had/lab_hemato) */
+  #accBar {
     position: fixed;
-    bottom: 0; left: 260px; right: 0;
+    left: 50%; bottom: 18px;
+    transform: translateX(-50%) translateY(120%);
     z-index: 1050;
-    background: #1e293b;
-    border-top: 2px solid #d97706;
-    padding: 12px 24px;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    transform: translateY(100%);
-    transition: transform .25s cubic-bezier(.4,0,.2,1);
-    box-shadow: 0 -4px 20px rgba(0,0,0,.25);
+    background: #0f172a;
+    padding: 10px 16px;
+    border-radius: 999px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    transition: transform .22s;
+    box-shadow: 0 10px 30px rgba(0,0,0,.3);
   }
-  #accStickyBar.show { transform: translateY(0); }
+  #accBar.show { transform: translateX(-50%) translateY(0); }
 
-  @media (max-width: 991.98px) {
-    #accStickyBar { left: 0; }
-  }
-
-  .acc-sel-count {
-    color: #fbbf24; font-weight: 700; font-size: .88rem; flex-shrink: 0;
-  }
   .acc-bar-btn {
-    border: none; border-radius: 8px; font-size: .82rem; padding: .35rem .8rem;
+    border: none; border-radius: 999px; font-size: .82rem; padding: .35rem .8rem;
     display: inline-flex; align-items: center; gap: .3rem; cursor: pointer;
     transition: opacity .2s, transform .1s; font-family: inherit;
   }
@@ -139,7 +132,7 @@ $EXTRA_HEAD = '
   .acc-bar-btn-send    { background: linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
   .acc-bar-btn-requeue { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
   .acc-bar-btn-clear   { background: transparent; color:#f87171; border:1px solid #f87171; }
-  .acc-bar-btn-cancel  { background: rgba(255,255,255,.1); color:#94a3b8; margin-left:auto; }
+  .acc-bar-btn-cancel  { background: rgba(255,255,255,.1); color:#94a3b8; }
 
   /* Padding so last row is not hidden behind sticky bar */
   .content-bottom-pad { padding-bottom: 80px; }
@@ -252,7 +245,7 @@ require_once __DIR__ . '/partials/header.php';
   <div class="p-3">
     <form id="bulkForm" method="post" action="accident_queue_action.php">
       <input type="hidden" name="token"  value="<?= htmlspecialchars(ACCIDENT_UI_ACTION_TOKEN) ?>">
-      <input type="hidden" name="action" id="hiddenAction" value="">
+      <input type="hidden" name="action" id="accAction" value="">
 
       <div class="table-responsive">
         <table id="tblAcc" class="table table-hover align-middle nowrap mb-0" style="width:100%">
@@ -260,7 +253,7 @@ require_once __DIR__ . '/partials/header.php';
             <tr>
               <th>
                 <div class="form-check mb-0">
-                  <input class="form-check-input" type="checkbox" id="chkAll">
+                  <input class="form-check-input" type="checkbox" id="accAll">
                 </div>
               </th>
               <th>ID</th><th>สถานะ</th><th>HN</th><th>AN</th>
@@ -275,7 +268,7 @@ require_once __DIR__ . '/partials/header.php';
             <tr>
               <td>
                 <div class="form-check mb-0">
-                  <input class="form-check-input chk" type="checkbox"
+                  <input class="form-check-input accchk" type="checkbox"
                          name="ids[]" value="<?= $r['id'] ?>">
                 </div>
               </td>
@@ -365,10 +358,10 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<!-- ═══ Sticky Action Bar ═══ -->
-<div id="accStickyBar">
+<!-- ═══ Floating Action Bar ═══ -->
+<div id="accBar">
   <span class="msi" style="color:#fbbf24">checklist</span>
-  <span class="acc-sel-count" id="selCount">0 รายการที่เลือก</span>
+  <span id="accCount">0 รายการที่เลือก</span>
 
   <button type="button" class="acc-bar-btn acc-bar-btn-send"
           data-action="send_now" data-label="ส่งซ้ำทันที">
@@ -383,7 +376,7 @@ require_once __DIR__ . '/partials/header.php';
     <span class="msi">backspace</span> ล้าง Error
   </button>
 
-  <button type="button" class="acc-bar-btn acc-bar-btn-cancel" id="btnCancelSel">
+  <button type="button" class="acc-bar-btn acc-bar-btn-cancel" id="accCancel">
     <span class="msi">close</span> ยกเลิก
   </button>
 </div>
@@ -434,40 +427,41 @@ $(function(){
   });
 
   // ── Select All ────────────────────────────────────────────────────────
-  document.getElementById("chkAll").addEventListener("change", function(){
-    document.querySelectorAll(".chk").forEach(c => c.checked = this.checked);
+  document.getElementById("accAll").addEventListener("change", function(){
+    document.querySelectorAll(".accchk").forEach(c => c.checked = this.checked);
     updateBar();
   });
   document.getElementById("tblAcc").addEventListener("change", function(e){
-    if (e.target.classList.contains("chk")) updateBar();
+    if (e.target.classList.contains("accchk")) updateBar();
   });
 
-  // ── Update sticky bar ─────────────────────────────────────────────────
+  // ── Update floating bar ───────────────────────────────────────────────
   function updateBar() {
-    const count = document.querySelectorAll(".chk:checked").length;
-    document.getElementById("selCount").textContent = count + " รายการที่เลือก";
-    const bar = document.getElementById("accStickyBar");
+    const count = document.querySelectorAll(".accchk:checked").length;
+    document.getElementById("accCount").textContent = count + " รายการที่เลือก";
+    const bar = document.getElementById("accBar");
     if (count > 0) bar.classList.add("show");
     else           bar.classList.remove("show");
-    // Sync chkAll indeterminate
-    const all  = document.querySelectorAll(".chk").length;
-    const chkAll = document.getElementById("chkAll");
-    chkAll.checked       = (count === all && all > 0);
-    chkAll.indeterminate = (count > 0 && count < all);
+    // Sync accAll indeterminate — เก็บ tri-state ไว้ (ดีกว่า reference ที่เป็น boolean เดียว)
+    const all  = document.querySelectorAll(".accchk").length;
+    const accAll = document.getElementById("accAll");
+    accAll.checked       = (count === all && all > 0);
+    accAll.indeterminate = (count > 0 && count < all);
   }
 
   // ── Cancel selection ─────────────────────────────────────────────────
-  document.getElementById("btnCancelSel").addEventListener("click", function(){
-    document.querySelectorAll(".chk, #chkAll").forEach(c => { c.checked = false; c.indeterminate = false; });
+  document.getElementById("accCancel").addEventListener("click", function(){
+    document.querySelectorAll(".accchk, #accAll").forEach(c => { c.checked = false; c.indeterminate = false; });
     updateBar();
   });
 
-  // ── Bulk action buttons ───────────────────────────────────────────────
+  // ── Bulk action buttons — เก็บ dialog เฉพาะ action ของ accident ไว้
+  // (ต้นแบบที่อีก 9 module เอาไปใช้) เพิ่มแค่ disclaimer "เฉพาะหน้าปัจจุบัน" ─────
   document.querySelectorAll(".acc-bar-btn[data-action]").forEach(function(btn){
     btn.addEventListener("click", function(){
       const action = this.dataset.action;
       const label  = this.dataset.label;
-      const count  = document.querySelectorAll(".chk:checked").length;
+      const count  = document.querySelectorAll(".accchk:checked").length;
       if (count === 0) {
         Swal.fire({ icon:"warning", title:"กรุณาเลือกรายการ",
           text:"เลือกรายการในตารางก่อนดำเนินการ", confirmButtonColor:"#d97706" });
@@ -482,7 +476,7 @@ $(function(){
       };
       Swal.fire({
         title: label,
-        html:  \'<div class="text-start" style="font-size:.9rem">\' + descs[action] + \'</div>\',
+        html:  \'<div class="text-start" style="font-size:.9rem">\' + descs[action] + \' (เฉพาะแถวในหน้าปัจจุบัน)</div>\',
         icon: "question",
         showCancelButton: true,
         confirmButtonText: \'<span class="msi me-1">\' + (icons[action]||"check") + \'</span> ยืนยัน\',
@@ -492,7 +486,7 @@ $(function(){
         focusCancel: true,
       }).then(function(r){
         if (r.isConfirmed) {
-          document.getElementById("hiddenAction").value = action;
+          document.getElementById("accAction").value = action;
           document.getElementById("bulkForm").submit();
         }
       });

@@ -11,6 +11,55 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.03.2313
+- **แก้ Auth Bypass (ด่วน) — 8 ไฟล์เปิด `auth_guard` กลับมาทำงาน**
+  ผู้ใช้รายงานว่า `fracture_queue_ui.php` เข้าถึงได้โดยไม่ต้อง login — ตรวจสอบทั้งระบบแล้ว
+  พบว่าไม่ใช่บั๊กเดี่ยว แต่เป็น `require_once auth_guard.php` ที่ถูกคอมเมนต์ปิดไว้แบบเดียวกัน
+  ใน 6 หน้าเว็บ + 2 หน้า flex preview: `fracture_queue_ui.php`, `accident_queue_ui.php`,
+  `covid_queue_ui.php`, `pharm_lab_queue_ui.php`, `lab_hemato_queue_ui.php`,
+  `had_queue_ui.php`, `had_flex_preview.php`, `lab_hemato_flex_preview.php`
+  - 4 ไฟล์แรกเกิดตั้งแต่ commit แรกสุดของ repo (bulk import) ส่วน 4 ไฟล์หลังเป็นไฟล์ที่สร้าง
+    ในเซสชันก่อนหน้านี้เอง — ก็อปปี้ pattern ที่ผิดมาโดยไม่ทันสังเกต
+  - ยืนยันก่อนแก้ว่าปลอดภัย 100%: ทั้ง 8 หน้าเป็นหน้าแสดงผลสำหรับคน login แล้วเท่านั้น
+    ตัว worker จริงที่ยิง HOSxP/MOPH เป็นไฟล์คนละตัว ไม่ผ่านหน้าเหล่านี้เลย และรูปแบบเดียวกัน
+    (`auth_guard` เปิดอยู่) ทำงานปกติอยู่แล้วใน 5 module อื่น (dengue/lepto/scrub/drug/sexual)
+  - grep ทั้ง repo ยืนยันไม่มีไฟล์ไหน include/require/curl เรียกหน้าทั้ง 8 นี้แบบไม่ผ่าน browser
+  - ระหว่างตรวจพบปัญหาที่ใหญ่กว่านี้อีกหลายชั้น (action.php หลายตัวไม่มี auth เลย, หน้า
+    flex_preview ของ patient/fracture/pharm หลุด PHI คนไข้จริงมาตั้งแต่ต้น, `cron_covid_queue.php`
+    ส่ง LINE จริงได้จาก URL เปล่า) — ผู้ใช้ตัดสินใจจำกัดขอบเขตรอบนี้เฉพาะ 8 ไฟล์ที่เป็นบั๊ก
+    เดียวกับที่รายงาน ส่วนที่เหลือบันทึกไว้รอตัดสินใจแยกในรอบถัดไป
+
+- **Restyle ปุ่ม "ส่งซ้ำทันที / Requeue / ล้าง Error" เป็น floating pill bar ใน 10 module**
+  เดิม 9 module ใช้ sticky bar แบบเก่า (แสดงตลอดเวลา ไม่มีปุ่มยกเลิก, เด้ง dialog เดียวกัน
+  ทุก action ไม่บอกผู้ใช้ว่านับเฉพาะแถวหน้าปัจจุบัน) และ `accident_queue_ui.php` ใช้อีกแบบ
+  (fixed full-width strip) — ตอนนี้ทั้ง 10 ไฟล์ใช้ pattern เดียวกับ `had_queue_ui.php`/
+  `lab_hemato_queue_ui.php`: `fracture_queue_ui.php`, `covid_queue_ui.php`,
+  `pharm_lab_queue_ui.php`, `patient.php`, `drugitems01.php`, `dengue_queue_ui.php`,
+  `sexual.php`, `Leptospira.php`, `scrubtyphus.php`, `accident_queue_ui.php`
+  - **Safety invariant ที่ยืนยันก่อนแก้**: `*_action.php` ทุกไฟล์อ่านแค่ 3 field
+    (`$_POST['action']`, `$_POST['ids']`, `$_POST['token']`) ไม่แตะ DOM/id/class เลย —
+    การ restyle จึงเป็นแค่หน้าตา/JS ล้วนๆ ไม่กระทบ backend ไม่ต้องแตะ `*_action.php` แม้แต่ไฟล์เดียว
+  - แก้ทีละไฟล์เรียงจากเสี่ยงน้อยไปมาก verify ครบก่อนไปไฟล์ถัดไป — ทุกไฟล์ผ่าน: `php -l`,
+    diff ชื่อ field ก่อน/หลังเหมือนกันเป๊ะ, ทดสอบ JS จริงด้วย jsdom+jQuery (ไม่ใช่ stub ปลอม)
+    ในแซนด์บ็อกซ์ Node ที่ `submit()`/`Swal.fire` เป็น spy function เปล่า **ไม่มีทาง
+    network I/O หรือส่ง Flex เกิดขึ้นได้จริงระหว่างการทดสอบเลย**, ปิดท้ายด้วย curl ตรวจ markup
+    จริงผ่าน Apache (auth cookie จริง)
+  - **`dengue_queue_ui.php`, `sexual.php`, `Leptospira.php`, `scrubtyphus.php`** มีคอลัมน์
+    ปุ่มส่งทีละแถว (`.btn-send-row` → AJAX `action=send_queue_item`) แยกจาก bulk bar โดยสิ้นเชิง
+    — ไม่ถูกแตะเลย ยืนยันด้วย grep ก่อน/หลังว่าจำนวนเท่าเดิม
+  - **`Leptospira.php`/`scrubtyphus.php`**: form ที่ bulk bar submit เดิมใช้ id ที่ก็อปมาจาก
+    dengue ผิด (`dqActionForm`) ทั้งที่ endpoint จริงชี้ `lepto_queue_action.php`/
+    `scrub_queue_action.php` ถูกอยู่แล้ว — เปลี่ยนแค่ id เป็น `lepForm`/`scrForm` ตามจริง
+    ส่วน Sync-from-HOSxP modal ที่ก็อปผิดเหมือนกัน (`dqSyncModal` ฯลฯ) **ไม่ถูกแตะ** เพราะ
+    อยู่นอกขอบเขตงานนี้ (คนละฟีเจอร์กับ bulk bar)
+  - **`accident_queue_ui.php`**: เก็บ dialog ข้อความเฉพาะราย action ไว้ (ต้นแบบที่อีก 9
+    module เอาไปใช้) + เก็บ tri-state `indeterminate` select-all ไว้ (ดีกว่า reference)
+    เปลี่ยนแค่รูปทรงจาก fixed full-width strip เป็น centered pill ตาม pattern ใหม่
+    และเพิ่ม disclaimer "(เฉพาะแถวในหน้าปัจจุบัน)" ที่ของเดิมไม่มี
+  - `pharm_lab_queue_ui.php` มี auto-sync-on-load เมื่อ URL มี `?start=&end=` — ตรวจ verify
+    ด้วย URL เปล่าเสมอเพื่อไม่ให้เขียน DB จริงโดยไม่ตั้งใจระหว่างทดสอบ
+  - ไม่มีการ POST จริงไปที่ `*_action.php` และไม่มีการส่ง Flex/LINE จริงเกิดขึ้นเลยตลอดการทำงานนี้
+
 ## 2026.09.03.2137
 - **Module ใหม่: HAD Alert (`had`) — High Alert Drug** — แจ้งเตือนคนไข้ที่รับยากลุ่ม
   เฝ้าระวังสูง เมนูอยู่ใต้ "งานเภสัชกรรม" ถัดจาก Hematocrit Alert ในกลุ่มงานสนับสนุน

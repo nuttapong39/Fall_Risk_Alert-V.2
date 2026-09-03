@@ -10,7 +10,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/flex_builders.php';
-// require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');

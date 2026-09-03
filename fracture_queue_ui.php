@@ -1,7 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/partials/filter_modal.php';   // ปุ่ม+modal แก้เงื่อนไขดึงข้อมูล
-// require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/auth_guard.php';
 date_default_timezone_set('Asia/Bangkok');
 
 // ---------------- Filters ----------------
@@ -91,11 +91,11 @@ $EXTRA_HEAD = '
   .table td { font-size:.88rem; vertical-align: middle }
   .table td.small-text { font-size:.82rem }
   .dt-buttons .btn { border-radius:.5rem }
-  .action-bar { position: sticky; bottom: 1rem; z-index:50;
-                background:#fff; border:1px solid #e2e8f0; border-radius:14px;
-                padding:.75rem 1rem; box-shadow: 0 10px 25px rgba(15,23,42,.12);
-                display:flex; align-items:center; gap:.5rem; flex-wrap:wrap }
-  .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
+  #frcBar{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);bottom:18px;z-index:1050;
+    display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:10px 16px;
+    border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .22s}
+  #frcBar.show{transform:translateX(-50%) translateY(0)}
+  #frcBar .btn{border-radius:999px;font-size:.82rem}
   .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(16,185,129,.25) }
 
   /* ── Sync modal ── */
@@ -212,6 +212,7 @@ require_once __DIR__ . '/partials/header.php';
 <!-- Table + Actions -->
 <form method="post" action="fracture_queue_action.php" id="actionForm">
   <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+  <input type="hidden" name="action" id="frcAction" value="">
 
   <div class="card p-3 mb-3">
     <div class="table-responsive">
@@ -219,7 +220,7 @@ require_once __DIR__ . '/partials/header.php';
         <thead>
           <tr>
             <th style="width:30px">
-              <input type="checkbox" class="form-check-input" id="chkAll" aria-label="เลือกทั้งหมด">
+              <input type="checkbox" class="form-check-input" id="frcAll" aria-label="เลือกทั้งหมด">
             </th>
             <th>ID</th>
             <th>สถานะ</th>
@@ -253,7 +254,7 @@ require_once __DIR__ . '/partials/header.php';
             }
         ?>
           <tr>
-            <td><input type="checkbox" class="form-check-input chk" name="ids[]" value="<?=$r['id']?>"></td>
+            <td><input type="checkbox" class="form-check-input frcchk" name="ids[]" value="<?=$r['id']?>"></td>
             <td>
               <a href="fracture_flex_preview.php?id=<?=$r['id']?>" target="_blank" rel="noopener"
                  class="text-decoration-none" title="ดูตัวอย่าง Flex ของแถวนี้">
@@ -336,20 +337,16 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-  <!-- Sticky action bar -->
-  <div class="action-bar">
-    <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
-    <button type="button" class="btn btn-success btn-sm" data-action="send_now" data-label="ส่งซ้ำทันที" data-confirm-icon="question">
-      <span class="msi me-1">send</span> ส่งซ้ำทันที
-    </button>
-    <button type="button" class="btn btn-warning btn-sm" data-action="requeue" data-label="Requeue" data-confirm-icon="warning">
-      <span class="msi me-1">refresh</span> Requeue
-    </button>
-    <button type="button" class="btn btn-outline-danger btn-sm" data-action="clear_error" data-label="ล้าง error" data-confirm-icon="warning">
-      <span class="msi me-1">backspace</span> ล้าง error
-    </button>
-  </div>
 </form>
+
+<div id="frcBar">
+  <span class="msi" style="color:#fbbf24">checklist</span>
+  <span id="frcCount">0 รายการที่เลือก</span>
+  <button type="button" class="btn btn-success btn-sm" data-act="send_now"    data-label="ส่งซ้ำทันที"><span class="msi">send</span> ส่งซ้ำทันที</button>
+  <button type="button" class="btn btn-warning btn-sm" data-act="requeue"     data-label="Requeue"><span class="msi">refresh</span> Requeue</button>
+  <button type="button" class="btn btn-outline-danger btn-sm" data-act="clear_error" data-label="ล้าง error"><span class="msi">backspace</span> ล้าง error</button>
+  <button type="button" class="btn btn-outline-light btn-sm" id="frcCancel"><span class="msi">close</span></button>
+</div>
 
 <?php render_filter_modal('fracture'); ?>
 
@@ -387,46 +384,53 @@ $(function(){
   });
 
   // Select-all (scope to current page only, so users see what they selected)
-  const $chkAll = $("#chkAll");
-  $chkAll.on("change", function(){
-    $("#tbl tbody .chk").prop("checked", this.checked);
+  const $frcAll = $("#frcAll");
+  $frcAll.on("change", function(){
+    $("#tbl tbody .frcchk").prop("checked", this.checked);
     updateCount();
   });
-  $(document).on("change", ".chk", updateCount);
+  $(document).on("change", ".frcchk", updateCount);
   table.on("draw", function(){
-    $chkAll.prop("checked", false);
+    $frcAll.prop("checked", false);
     updateCount();
   });
   function updateCount(){
-    const n = $("#tbl tbody .chk:checked").length;
-    $("#selectedCount").text("เลือก " + n + " รายการ");
+    const n = $("#tbl tbody .frcchk:checked").length;
+    $("#frcCount").text(n + " รายการที่เลือก");
+    $("#frcBar").toggleClass("show", n > 0);
   }
 
-  // SweetAlert confirm for all bulk actions
-  $("[data-action]").on("click", function(){
-    const action = $(this).data("action");
+  $("#frcCancel").on("click", function(){
+    $(".frcchk, #frcAll").prop("checked", false);
+    updateCount();
+  });
+
+  // SweetAlert confirm for all bulk actions — ข้อความตรวจจากพฤติกรรมจริงใน
+  // fracture_queue_action.php: requeue = status=0,attempt=0,last_error=NULL,out_ref=NULL
+  const frcDescs = {
+    send_now:    "ส่งซ้ำทันที (bypass cooldown)",
+    requeue:     "รีเซ็ต attempt=0 status=0",
+    clear_error: "ล้างข้อความ Error",
+  };
+  $("#frcBar [data-act]").on("click", function(){
+    const action = $(this).data("act");
     const label  = $(this).data("label");
-    const icon   = $(this).data("confirm-icon") || "question";
-    const n = $("#tbl tbody .chk:checked").length;
-    if (n === 0){
-      Swal.fire({icon:"info", title:"ยังไม่ได้เลือกรายการ", text:"กรุณาติ๊กเลือกรายการในตารางก่อน"});
-      return;
-    }
+    const n = $("#tbl tbody .frcchk:checked").length;
+    if (n === 0) return;
     Swal.fire({
-      icon: icon,
-      title: "ยืนยัน" + label + "?",
-      text: "จะดำเนินการกับรายการที่เลือก " + n + " รายการ",
+      icon: "question",
+      title: label,
+      html: frcDescs[action] + " สำหรับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)",
       showCancelButton: true,
-      confirmButtonText: label,
+      confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
       reverseButtons: true,
       focusCancel: true,
       confirmButtonColor: "#059669"
     }).then(r=>{
       if (r.isConfirmed){
-        const $form = $("#actionForm");
-        $form.append("<input type=\"hidden\" name=\"action\" value=\""+action+"\">");
-        $form[0].submit();
+        document.getElementById("frcAction").value = action;
+        document.getElementById("actionForm").submit();
       }
     });
   });

@@ -89,11 +89,11 @@ $EXTRA_HEAD = '
   .table td { font-size:.88rem; vertical-align: middle }
   .table td.small-text { font-size:.82rem }
   .dt-buttons .btn { border-radius:.5rem }
-  .action-bar { position: sticky; bottom: 1rem; z-index:50;
-                background:#fff; border:1px solid #e2e8f0; border-radius:14px;
-                padding:.75rem 1rem; box-shadow: 0 10px 25px rgba(15,23,42,.12);
-                display:flex; align-items:center; gap:.5rem; flex-wrap:wrap }
-  .action-bar .selected-count { font-weight:600; color:#0f172a; margin-right:auto }
+  #ptBar{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);bottom:18px;z-index:1050;
+    display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:10px 16px;
+    border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:transform .22s}
+  #ptBar.show{transform:translateX(-50%) translateY(0)}
+  #ptBar .btn{border-radius:999px;font-size:.82rem}
   .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(220,38,38,.25) }
   /* เฉดแดง-ส้มสำหรับหัวข้อเร่งด่วน (จิตเวช) */
   .page-header h1 .text-danger { color:#B91C1C !important }
@@ -206,6 +206,7 @@ require_once __DIR__ . '/partials/header.php';
 <!-- Table + Actions -->
 <form method="post" action="patient_action.php" id="actionForm">
   <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+  <input type="hidden" name="action" id="ptAction" value="">
 
   <div class="card p-3 mb-3">
     <div class="table-responsive">
@@ -213,7 +214,7 @@ require_once __DIR__ . '/partials/header.php';
         <thead>
           <tr>
             <th style="width:30px">
-              <input type="checkbox" class="form-check-input" id="chkAll" aria-label="เลือกทั้งหมด">
+              <input type="checkbox" class="form-check-input" id="ptAll" aria-label="เลือกทั้งหมด">
             </th>
             <th>ID</th>
             <th>สถานะ</th>
@@ -247,7 +248,7 @@ require_once __DIR__ . '/partials/header.php';
             }
         ?>
           <tr>
-            <td><input type="checkbox" class="form-check-input chk" name="ids[]" value="<?=$r['id']?>"></td>
+            <td><input type="checkbox" class="form-check-input ptchk" name="ids[]" value="<?=$r['id']?>"></td>
             <td>
               <a href="patient_flex_preview.php?id=<?=$r['id']?>" target="_blank" rel="noopener"
                  class="text-decoration-none" title="ดูตัวอย่าง Flex ของแถวนี้">
@@ -277,20 +278,16 @@ require_once __DIR__ . '/partials/header.php';
     </div>
   </div>
 
-  <!-- Sticky action bar -->
-  <div class="action-bar">
-    <span class="selected-count" id="selectedCount">เลือก 0 รายการ</span>
-    <button type="button" class="btn btn-danger btn-sm" data-action="send_now" data-label="ส่งซ้ำทันที" data-confirm-icon="question">
-      <span class="msi me-1">send</span> ส่งซ้ำทันที
-    </button>
-    <button type="button" class="btn btn-warning btn-sm" data-action="requeue" data-label="Requeue" data-confirm-icon="warning">
-      <span class="msi me-1">refresh</span> Requeue
-    </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="clear_error" data-label="ล้าง error" data-confirm-icon="warning">
-      <span class="msi me-1">backspace</span> ล้าง error
-    </button>
-  </div>
 </form>
+
+<div id="ptBar">
+  <span class="msi" style="color:#fbbf24">checklist</span>
+  <span id="ptCount">0 รายการที่เลือก</span>
+  <button type="button" class="btn btn-danger btn-sm" data-act="send_now"    data-label="ส่งซ้ำทันที"><span class="msi">send</span> ส่งซ้ำทันที</button>
+  <button type="button" class="btn btn-warning btn-sm" data-act="requeue"     data-label="Requeue"><span class="msi">refresh</span> Requeue</button>
+  <button type="button" class="btn btn-outline-secondary btn-sm" data-act="clear_error" data-label="ล้าง error"><span class="msi">backspace</span> ล้าง error</button>
+  <button type="button" class="btn btn-outline-light btn-sm" id="ptCancel"><span class="msi">close</span></button>
+</div>
 
 <?php render_filter_modal('patient'); ?>
 
@@ -327,45 +324,53 @@ $(function(){
     ]
   });
 
-  const $chkAll = $("#chkAll");
-  $chkAll.on("change", function(){
-    $("#tbl tbody .chk").prop("checked", this.checked);
+  const $ptAll = $("#ptAll");
+  $ptAll.on("change", function(){
+    $("#tbl tbody .ptchk").prop("checked", this.checked);
     updateCount();
   });
-  $(document).on("change", ".chk", updateCount);
+  $(document).on("change", ".ptchk", updateCount);
   table.on("draw", function(){
-    $chkAll.prop("checked", false);
+    $ptAll.prop("checked", false);
     updateCount();
   });
   function updateCount(){
-    const n = $("#tbl tbody .chk:checked").length;
-    $("#selectedCount").text("เลือก " + n + " รายการ");
+    const n = $("#tbl tbody .ptchk:checked").length;
+    $("#ptCount").text(n + " รายการที่เลือก");
+    $("#ptBar").toggleClass("show", n > 0);
   }
 
-  $("[data-action]").on("click", function(){
-    const action = $(this).data("action");
+  $("#ptCancel").on("click", function(){
+    $(".ptchk, #ptAll").prop("checked", false);
+    updateCount();
+  });
+
+  // ตรวจจาก patient_action.php: requeue = status=0,attempt=0,last_attempt_at=NULL,
+  // last_error=NULL,out_ref=NULL,line_message_id=NULL
+  const ptDescs = {
+    send_now:    "ส่งซ้ำทันที (bypass cooldown)",
+    requeue:     "รีเซ็ต attempt=0 status=0",
+    clear_error: "ล้างข้อความ Error",
+  };
+  $("#ptBar [data-act]").on("click", function(){
+    const action = $(this).data("act");
     const label  = $(this).data("label");
-    const icon   = $(this).data("confirm-icon") || "question";
-    const n = $("#tbl tbody .chk:checked").length;
-    if (n === 0){
-      Swal.fire({icon:"info", title:"ยังไม่ได้เลือกรายการ", text:"กรุณาติ๊กเลือกรายการในตารางก่อน"});
-      return;
-    }
+    const n = $("#tbl tbody .ptchk:checked").length;
+    if (n === 0) return;
     Swal.fire({
-      icon: icon,
-      title: "ยืนยัน" + label + "?",
-      text: "จะดำเนินการกับรายการที่เลือก " + n + " รายการ",
+      icon: "question",
+      title: label,
+      html: ptDescs[action] + " สำหรับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)",
       showCancelButton: true,
-      confirmButtonText: label,
+      confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
       reverseButtons: true,
       focusCancel: true,
       confirmButtonColor: "#DC2626"
     }).then(r=>{
       if (r.isConfirmed){
-        const $form = $("#actionForm");
-        $form.append("<input type=\"hidden\" name=\"action\" value=\""+action+"\">");
-        $form[0].submit();
+        document.getElementById("ptAction").value = action;
+        document.getElementById("actionForm").submit();
       }
     });
   });
