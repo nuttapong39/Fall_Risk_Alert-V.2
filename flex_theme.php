@@ -58,6 +58,8 @@ if (!function_exists('_flex_theme_defaults')) {
       // hue ทั้ง 10 วงเดิมถูกใช้หมดแล้ว — เลือก rose (เลือด) ให้เข้ากับ Hematocrit
       // และยังแยกจาก dengue(#B91C1C แดง) กับ drug(#BE185D ชมพู) ได้ · แก้ได้ที่ flex_editor
       'lab_hemato'=> $mk('ค่าความเข้มข้นเลือดผิดปกติ','Hematocrit Alert','เฝ้าระวัง','#F43F5E','#9F1239','#9F1239'),
+      // cyan — hue สุดท้ายที่ยังไม่ชนใน 12 module (แดง/ส้ม/อำพัน/เขียว/teal/ฟ้า/คราม/ม่วง/บานเย็น/ชมพู/rose ถูกใช้หมดแล้ว)
+      'had'       => $mk('HAD Alert','High Alert Drug','เฝ้าระวังสูง','#22D3EE','#0E7490','#0E7490'),
       'sexual'    => $mk('ความรุนแรงทางเพศ','Sexual Assault','ด่วน · ลับ','#C026D3','#86198F','#86198F'),
       'drug'      => $mk('ยาอันตราย (High-Alert)','High-Alert Medication','ด่วน','#EC4899','#BE185D','#BE185D'),
     ];

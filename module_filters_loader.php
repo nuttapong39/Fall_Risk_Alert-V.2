@@ -38,6 +38,15 @@ $GLOBALS['MODULE_FILTER_DEFAULTS'] = [
                    ['t'=>'prefix','v'=>'S220'],['t'=>'prefix','v'=>'S221'],['t'=>'prefix','v'=>'S320'],
                    ['t'=>'prefix','v'=>'S327'],
                  ]],
+  // HAD Alert (High Alert Drug) — default = รายการยา HAD จริงของ รพ.
+  // ยืนยันจากข้อมูลจริงใน HOSxP: drugitems.name ของทุก icode นี้มีคำว่า "[HAD]" ต่อท้าย
+  // (ต่างจาก lab_hemato ที่ query ต้นแบบเป็น placeholder ให้กรอกเอง — อันนี้เป็นรายการจริง)
+  'had'       => ['icodes' => [
+                    '1431108','1590004','1481247','1483900','1483983',
+                    '1431107','1510045','1483846','1510030','1483896',
+                    '1000196','1000010','1000118','1000177','1650074',
+                    '1000114','1483814',
+                  ]],
   // Hematocrit Alert — กลุ่มเงื่อนไขค่าตัวเลขต่อชุด lab_items_code
   // ops = เซ็ตของ lt/gt/eq ที่ติ๊กไว้ → ประกอบเป็น < > = <= >= <>
   // ในกลุ่มรวมด้วย OR · ระหว่างกลุ่มรวมด้วย OR (ค่าผิดปกติ = ต่ำเกินหรือสูงเกิน)
@@ -80,6 +89,9 @@ $GLOBALS['MODULE_FILTER_SCHEMA'] = [
   'fracture' => ['label'=>'พลัดตก/หกล้ม',          'fields'=>[
                    ['key'=>'min_age','type'=>'int','label'=>'อายุขั้นต่ำ (ปี)'],
                    ['key'=>'icd','type'=>'patterns','label'=>'ICD (pdx)','hint'=>'ช่วง W00-W19 · prefix เช่น S720*'],
+                 ]],
+  'had'       => ['label'=>'HAD Alert (High Alert Drug)', 'fields'=>[
+                   ['key'=>'icodes','type'=>'codes','label'=>'รหัสยา (icode)','hint'=>'คั่นด้วย , เช่น 1431108, 1590004'],
                  ]],
   'lab_hemato'=> ['label'=>'Hematocrit Alert',    'fields'=>[
                    ['key'=>'groups','type'=>'labconds','label'=>'เงื่อนไขค่าผลตรวจต่อรหัส Lab',

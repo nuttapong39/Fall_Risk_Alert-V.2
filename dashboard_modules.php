@@ -92,6 +92,21 @@ $DASH_MODULES = [
     ],
   ],
 
+  'had' => [
+    'label' => 'HAD Alert (High Alert Drug)', 'icon' => 'medication_liquid',
+    'color' => '#0e7490', 'grad' => '135deg,#22d3ee,#0e7490',
+    'table' => 'had_queue', 'date' => 'vstdate', 'ui' => 'had_queue_ui.php',
+    'tops' => [
+      ['label' => 'Top รหัสยา (icode)', 'cols' => ['icode'],     'icon' => 'medication_liquid'],
+      ['label' => 'Top ชื่อยา',          'cols' => ['drug_name'], 'icon' => 'science'],
+    ],
+    'columns' => [
+      'status'=>'สถานะ','hn'=>'HN','fullname'=>'ชื่อ-สกุล','age'=>'อายุ','sex'=>'เพศ',
+      'icode'=>'รหัสยา','drug_name'=>'ชื่อยา','qty'=>'จำนวน','sum_price'=>'ราคารวม',
+      'vstdate'=>'วันที่รับยา','created_at'=>'Created','sent_at'=>'Sent',
+    ],
+  ],
+
   'pharm_lab' => [
     'label' => 'เภสัชกรรม / Lab วิกฤต', 'icon' => 'medication',
     'color' => '#0891b2', 'grad' => '135deg,#22d3ee,#0891b2',

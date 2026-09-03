@@ -49,6 +49,27 @@ if (!function_exists('buildPharmPayload')) {
   }
 }
 
+/* ── HAD (High Alert Drug) ────────────────────────────────────────────── */
+if (!function_exists('buildHadPayload')) {
+  function buildHadPayload(array $r): array {
+    if (function_exists('row_to_utf8')) $r = row_to_utf8($r);
+    $hn = (string)($r['hn'] ?? '-');
+    $fn = (string)($r['fullname'] ?? '-');
+    $dn = (string)($r['drug_name'] ?? '-');
+    return flex_render_card('had', [
+      'patient' => ['hn'=>$hn,'fullname'=>$fn,'agesex'=>flex_agesex($r['age']??'',$r['sex']??''),'cid'=>$r['cid']??'-'],
+      'mid' => [['label'=>'รายการยา HAD','items'=>[
+        ['kv','ชื่อยา',$dn],
+        ['kv','รหัสยา (icode)',$r['icode']??'-'],
+        ['kvlight','จำนวน',trim(($r['qty']??'-').' '.($r['sum_price'] ? '· '.number_format((float)$r['sum_price'],2).' บาท' : ''))],
+        ['kvlight','วันที่รับยา',flex_thai_date($r['vstdate']??'')],
+      ]]],
+      'contact' => ['address'=>$r['address']??'-','phone'=>$r['hometel']??'-'],
+      'alt' => "[แจ้งเตือน] ยากลุ่มเฝ้าระวังสูง (HAD) HN {$hn} {$fn} ({$dn})",
+    ]);
+  }
+}
+
 /* ── LAB HEMATO (ค่าความเข้มข้นเลือดผิดปกติ) ──────────────────────────── */
 if (!function_exists('buildLabHematoPayload')) {
   function buildLabHematoPayload(array $r): array {

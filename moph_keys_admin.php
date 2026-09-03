@@ -20,6 +20,7 @@ $modules = [
   'accident'  => ['label'=>'พ.ร.บ. / อุบัติเหตุ',             'icon'=>'car_crash',          'color'=>'#d97706', 'grad'=>'135deg,#f59e0b,#d97706'],
   'pharm_lab' => ['label'=>'เภสัชกรรม / Lab',                  'icon'=>'medication',         'color'=>'#0891b2', 'grad'=>'135deg,#22d3ee,#0891b2'],
   'lab_hemato'=> ['label'=>'Hematocrit Alert',                 'icon'=>'bloodtype',          'color'=>'#9f1239', 'grad'=>'135deg,#f43f5e,#9f1239'],
+  'had'       => ['label'=>'HAD Alert',                        'icon'=>'medication_liquid',  'color'=>'#0e7490', 'grad'=>'135deg,#22d3ee,#0e7490'],
   'drug'      => ['label'=>'ยาอันตราย (Drug Alert)',            'icon'=>'medication_liquid',  'color'=>'#7c3aed', 'grad'=>'135deg,#8b5cf6,#7c3aed'],
   'dengue'    => ['label'=>'ไข้เลือดออก (Dengue)',              'icon'=>'bug_report',         'color'=>'#dc2626', 'grad'=>'135deg,#ef4444,#dc2626'],
   'patient'   => ['label'=>'ผู้ป่วย OPD ทั่วไป (Patient)',     'icon'=>'personal_injury',    'color'=>'#0369a1', 'grad'=>'135deg,#0ea5e9,#0369a1'],
@@ -91,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(403);
     $flashErr = 'Invalid token — กรุณา refresh หน้าแล้วลองใหม่';
   } else {
-    $tgModules = ['covid','fracture','accident','pharm_lab','lab_hemato','drug','dengue','patient','lepto','scrub','sexual','system_update'];
+    $tgModules = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','system_update'];
     // Bot Token ว่าง = คงค่าเดิม (กันเผลอ submit ตอนช่อง token ว่าง แล้วล้าง token ที่ใช้ร่วมทุก feature ทิ้ง)
     // chat_id ปล่อยให้เขียนทับได้ตามเดิม เพราะ "ว่าง = ใช้ Default" เป็น UX ที่ตั้งใจ
     $tgToken = trim($_POST['tg_default_token'] ?? '');
@@ -118,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'accident'  => $pair('accident_client', 'accident_secret', 'accident'),
       'pharm_lab' => $pair('pharm_client',    'pharm_secret',    'pharm_lab'),
       'lab_hemato'=> $pair('lab_hemato_client','lab_hemato_secret','lab_hemato'),
+      'had'       => $pair('had_client',       'had_secret',       'had'),
       'drug'      => $pair('drug_client',     'drug_secret',     'drug'),
       'dengue'    => $pair('dengue_client',   'dengue_secret',   'dengue'),
       'patient'   => $pair('patient_client',  'patient_secret',  'patient'),
@@ -358,13 +360,14 @@ require_once __DIR__ . '/partials/header.php';
       <!-- ② Module keys (2×2 grid) -->
       <div class="row g-3">
         <?php
-        $moduleKeys = ['covid','fracture','accident','pharm_lab','lab_hemato','drug','dengue','patient','lepto','scrub','sexual','system_update'];
+        $moduleKeys = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','system_update'];
         $fieldMap   = [
           'covid'     => ['client'=>'covid_client',    'secret'=>'covid_secret'],
           'fracture'  => ['client'=>'fracture_client', 'secret'=>'fracture_secret'],
           'accident'  => ['client'=>'accident_client', 'secret'=>'accident_secret'],
           'pharm_lab' => ['client'=>'pharm_client',    'secret'=>'pharm_secret'],
           'lab_hemato'=> ['client'=>'lab_hemato_client','secret'=>'lab_hemato_secret'],
+          'had'       => ['client'=>'had_client',       'secret'=>'had_secret'],
           'drug'      => ['client'=>'drug_client',     'secret'=>'drug_secret'],
           'dengue'    => ['client'=>'dengue_client',   'secret'=>'dengue_secret'],
           'patient'   => ['client'=>'patient_client',  'secret'=>'patient_secret'],

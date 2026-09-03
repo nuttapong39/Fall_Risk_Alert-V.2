@@ -11,7 +11,7 @@ require_once __DIR__ . '/auth_guard.php';
 require_once __DIR__ . '/flex_theme.php';
 date_default_timezone_set('Asia/Bangkok');
 
-$MODS = ['dengue','accident','fracture','scrub','lepto','covid','patient','pharm_lab','sexual','drug','lab_hemato'];
+$MODS = ['dengue','accident','fracture','scrub','lepto','covid','patient','pharm_lab','sexual','drug','lab_hemato','had'];
 $LABEL_KEYS = ['sec_patient','sec_diagnosis','sec_contact','icd','disease','lab','vstdate','doctor','address','phone'];
 
 $msg = ''; $err = '';
