@@ -102,15 +102,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'default' => ['token'=>$tgToken, 'chat_id'=>trim($_POST['tg_default_chat']??'')],
     ];
     foreach ($tgModules as $tm) { $tgPayload[$tm] = ['chat_id'=>trim($_POST['tg_'.$tm.'_chat']??'')]; }
-    /* field ว่าง = คงค่าเดิมไว้ (กัน stale-form/ช่องว่างเขียนทับ key เดิมด้วยค่าว่าง)
-       ถ้าต้องการล้าง key จริง ๆ ให้แก้ที่ secrets/moph_keys.json ตรง ๆ */
-    $keep = function(string $postKey, string $mod, string $field) use ($current): string {
-      $v = trim($_POST[$postKey] ?? '');
-      return $v !== '' ? $v : (string)($current[$mod][$field] ?? '');
+    // field ว่าง = บันทึกว่างจริง (เหมือน tg_*_chat ด้านบน) — ช่องนี้ pre-fill ด้วยค่าจริง
+    // จาก secrets/moph_keys.json เสมอทุกครั้งที่โหลดหน้า จึงว่างได้ก็ต่อเมื่อผู้ใช้ลบเอง
+    // โดยตั้งใจเท่านั้น ไม่มีเคส stale-form submit ว่างโดยไม่ตั้งใจแบบที่เคยกลัวไว้
+    $keep = function(string $postKey): string {
+      return trim($_POST[$postKey] ?? '');
     };
     $pair = fn(string $pc, string $ps, string $mod) => [
-      'client' => $keep($pc, $mod, 'client'),
-      'secret' => $keep($ps, $mod, 'secret'),
+      'client' => $keep($pc),
+      'secret' => $keep($ps),
     ];
     $payload = [
       'default'   => $pair('default_client',  'default_secret',  'default'),
