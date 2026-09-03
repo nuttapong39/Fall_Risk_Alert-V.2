@@ -55,6 +55,9 @@ if (!function_exists('_flex_theme_defaults')) {
       'covid'     => $mk('COVID-19','COVID-19 Lab Positive','Positive','#0EA5E9','#0369A1','#0369A1'),
       'patient'   => $mk('จิตเวช / ทำร้ายตนเอง','Psychiatric / Self-harm','ด่วน · 24 ชม.','#6366F1','#4338CA','#4338CA'),
       'pharm_lab' => $mk('Lab วิกฤต (ห้องยา)','Critical Pharmacy Lab','วิกฤต','#8B5CF6','#6D28D9','#6D28D9'),
+      // hue ทั้ง 10 วงเดิมถูกใช้หมดแล้ว — เลือก rose (เลือด) ให้เข้ากับ Hematocrit
+      // และยังแยกจาก dengue(#B91C1C แดง) กับ drug(#BE185D ชมพู) ได้ · แก้ได้ที่ flex_editor
+      'lab_hemato'=> $mk('ค่าความเข้มข้นเลือดผิดปกติ','Hematocrit Alert','เฝ้าระวัง','#F43F5E','#9F1239','#9F1239'),
       'sexual'    => $mk('ความรุนแรงทางเพศ','Sexual Assault','ด่วน · ลับ','#C026D3','#86198F','#86198F'),
       'drug'      => $mk('ยาอันตราย (High-Alert)','High-Alert Medication','ด่วน','#EC4899','#BE185D','#BE185D'),
     ];

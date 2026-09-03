@@ -38,6 +38,14 @@ $GLOBALS['MODULE_FILTER_DEFAULTS'] = [
                    ['t'=>'prefix','v'=>'S220'],['t'=>'prefix','v'=>'S221'],['t'=>'prefix','v'=>'S320'],
                    ['t'=>'prefix','v'=>'S327'],
                  ]],
+  // Hematocrit Alert — กลุ่มเงื่อนไขค่าตัวเลขต่อชุด lab_items_code
+  // ops = เซ็ตของ lt/gt/eq ที่ติ๊กไว้ → ประกอบเป็น < > = <= >= <>
+  // ในกลุ่มรวมด้วย OR · ระหว่างกลุ่มรวมด้วย OR (ค่าผิดปกติ = ต่ำเกินหรือสูงเกิน)
+  // default = ว่าง โดยตั้งใจ → mf_labconds_clause คืน '1=0' ไม่ดึงอะไรเลยจนกว่าจะตั้งค่า
+  // (ถ้าใส่รหัสตัวอย่างไว้ แล้วบังเอิญตรงกับรหัสจริงของ รพ. ที่ deploy ไป จะยิงแจ้งเตือน
+  //  ผิดเคสทันทีที่เปิด Task Scheduler — ทดสอบแล้วเจอจริง: รหัส 51 คืน 163 เคส/7 วัน
+  //  ซึ่งเป็นค่า RBC ไม่ใช่ Hematocrit) ตั้งรหัสจริงผ่านหน้า lab_hemato_queue_ui.php
+  'lab_hemato'=> ['groups' => []],
   'pharm_lab'=> ['rules' => [
                    ['name'=>'INR',             'codes'=>['539'],       'op'=>'>=','value'=>5,   'also_text'=>false],
                    ['name'=>'Depakin level',   'codes'=>['2368'],      'op'=>'>', 'value'=>150, 'also_text'=>true],
@@ -72,6 +80,10 @@ $GLOBALS['MODULE_FILTER_SCHEMA'] = [
   'fracture' => ['label'=>'พลัดตก/หกล้ม',          'fields'=>[
                    ['key'=>'min_age','type'=>'int','label'=>'อายุขั้นต่ำ (ปี)'],
                    ['key'=>'icd','type'=>'patterns','label'=>'ICD (pdx)','hint'=>'ช่วง W00-W19 · prefix เช่น S720*'],
+                 ]],
+  'lab_hemato'=> ['label'=>'Hematocrit Alert',    'fields'=>[
+                   ['key'=>'groups','type'=>'labconds','label'=>'เงื่อนไขค่าผลตรวจต่อรหัส Lab',
+                    'hint'=>'1 ฟอร์ม = 1 ชุด lab_items_code · ในฟอร์มเพิ่มเงื่อนไขได้หลายแถว (รวมกันแบบ OR) · ติ๊ก < กับ = พร้อมกัน = <='],
                  ]],
   'pharm_lab'=> ['label'=>'Lab วิกฤต ห้องยา',      'fields'=>[
                    ['key'=>'rules','type'=>'rules','label'=>'เกณฑ์ค่าวิกฤตต่อรหัส Lab',
@@ -125,7 +137,10 @@ if (!function_exists('module_filter_parse_post')) {
     $schema = module_filter_schema($mod);
     $cfg = [];
     foreach ($schema['fields'] ?? [] as $f) {
-      $k = $f['key']; $raw = (string)($post['f_' . $k] ?? '');
+      $k = $f['key']; $rawAny = $post['f_' . $k] ?? '';
+      // labconds รับค่าเป็น array ซ้อน — cast เป็น string ตรงนี้จะได้ warning
+      // "Array to string conversion" จึง cast เฉพาะชนิดที่เป็น string จริง
+      $raw = is_array($rawAny) ? '' : (string)$rawAny;
       switch ($f['type']) {
         case 'codes':    $cfg[$k] = mf_codes(preg_split('/[\s,]+/', trim($raw)));      break;
         case 'results':  $cfg[$k] = mf_texts(preg_split('/[\r\n,]+/', trim($raw)));    break;
@@ -133,6 +148,8 @@ if (!function_exists('module_filter_parse_post')) {
         case 'int':      $cfg[$k] = max(0, (int)$raw);                                 break;
         case 'patterns': $cfg[$k] = mf_text_to_patterns($raw);                         break;
         case 'rules':    $cfg[$k] = mf_text_to_rules($raw);                            break;
+        // labconds รับเป็น array ซ้อน (f_groups[i][codes], f_groups[i][conds][j][ops][]) ไม่ใช่ string
+        case 'labconds': $cfg[$k] = mf_parse_labconds($post['f_' . $k] ?? []);          break;
         default:         $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
       }
     }
@@ -291,5 +308,98 @@ if (!function_exists('mf_text_to_rules')) {
       $out[] = ['name'=>$name, 'codes'=>$codes, 'op'=>$op, 'value'=>$value, 'also_text'=>$also];
     }
     return $out;
+  }
+}
+
+/* ══ labconds — เงื่อนไขค่าตัวเลขต่อชุด lab code (ใช้โดย lab_hemato) ═══════════
+ * โครงที่เก็บ: [ ['codes'=>['51'], 'conds'=>[ ['ops'=>['lt','eq'],'value'=>25.0], ... ] ], ... ]
+ * ops เก็บเป็น "เซ็ตของ lt/gt/eq ที่ติ๊ก" ไม่ใช่ operator สำเร็จรูป — เพื่อให้ checkbox
+ * ใน UI กับค่าที่เก็บเป็นรูปเดียวกัน ไม่ต้องแปลงกลับไปกลับมาให้พลาด
+ */
+
+if (!function_exists('mf_ops_to_sql')) {
+  /** เซ็ต ops → operator SQL · คืน '' ถ้าไม่มีความหมาย (ว่าง หรือติ๊กครบ 3 = จริงเสมอ) */
+  function mf_ops_to_sql(array $ops): string {
+    $lt = in_array('lt', $ops, true);
+    $gt = in_array('gt', $ops, true);
+    $eq = in_array('eq', $ops, true);
+    if ($lt && $gt && $eq) return '';        // < หรือ > หรือ = → จริงเสมอ ไม่ใช่เงื่อนไข
+    if ($lt && $gt)  return '<>';
+    if ($lt && $eq)  return '<=';
+    if ($gt && $eq)  return '>=';
+    if ($lt)         return '<';
+    if ($gt)         return '>';
+    if ($eq)         return '=';
+    return '';
+  }
+}
+
+if (!function_exists('mf_parse_labconds')) {
+  /** ค่าดิบจาก modal (array ซ้อน) → โครง groups ที่ validate แล้ว */
+  function mf_parse_labconds($raw): array {
+    if (!is_array($raw)) return [];
+    $out = [];
+    foreach ($raw as $g) {
+      if (!is_array($g)) continue;
+      $codes = mf_codes(preg_split('/[\s,]+/', trim((string)($g['codes'] ?? ''))));
+      if (!$codes) continue;                              // ไม่มี lab code = ทิ้งทั้งกลุ่ม
+      $conds = [];
+      foreach ((array)($g['conds'] ?? []) as $c) {
+        if (!is_array($c)) continue;
+        $ops    = array_values(array_intersect(['lt','gt','eq'], (array)($c['ops'] ?? [])));
+        $valRaw = trim((string)($c['value'] ?? ''));
+        if (!$ops || $valRaw === '' || !is_numeric($valRaw)) continue;
+        if (mf_ops_to_sql($ops) === '') continue;         // ติ๊กครบ 3 = ข้าม
+        $conds[] = ['ops' => $ops, 'value' => (float)$valRaw];
+      }
+      if (!$conds) continue;                              // ไม่มีเงื่อนไขใช้ได้ = ทิ้งกลุ่ม
+      $out[] = ['codes' => $codes, 'conds' => $conds];
+    }
+    return $out;
+  }
+}
+
+if (!function_exists('mf_labconds_clause')) {
+  /**
+   * groups → ชิ้นส่วน WHERE + params (bind ทุกค่า ไม่ concat ค่าผู้ใช้ลง SQL)
+   * $numExpr = นิพจน์ที่แปลงผลเป็นตัวเลขแล้ว (ต่างกันตาม dialect)
+   * คืน '1=0' ถ้าไม่มีเงื่อนไขใช้ได้เลย — กันดึงทั้งตารางออกมาโดยไม่ตั้งใจ
+   */
+  function mf_labconds_clause(array &$params, array $groups, string $numExpr, string $codeCol = 'l.lab_items_code'): string {
+    $parts = [];
+    foreach ($groups as $g) {
+      $codes = mf_codes((array)($g['codes'] ?? []));
+      if (!$codes) continue;
+      $ors = []; $orParams = [];
+      foreach ((array)($g['conds'] ?? []) as $c) {
+        $op = mf_ops_to_sql(array_values((array)($c['ops'] ?? [])));
+        if ($op === '' || !isset($c['value']) || !is_numeric($c['value'])) continue;
+        $ors[]      = "{$numExpr} {$op} ?";
+        $orParams[] = (float)$c['value'];
+      }
+      if (!$ors) continue;
+      $place   = implode(',', array_fill(0, count($codes), '?'));
+      $parts[] = "({$codeCol} IN ($place) AND (" . implode(' OR ', $ors) . '))';
+      foreach ($codes as $cd) $params[] = $cd;
+      foreach ($orParams as $v) $params[] = $v;
+    }
+    return $parts ? '(' . implode(' OR ', $parts) . ')' : '1=0';
+  }
+}
+
+if (!function_exists('mf_labconds_summary')) {
+  /** สรุปเงื่อนไขเป็นข้อความสั้น ใช้โชว์บน UI / log */
+  function mf_labconds_summary(array $groups): string {
+    $out = [];
+    foreach ($groups as $g) {
+      $codes = implode(',', mf_codes((array)($g['codes'] ?? [])));
+      $cs = [];
+      foreach ((array)($g['conds'] ?? []) as $c) {
+        $op = mf_ops_to_sql(array_values((array)($c['ops'] ?? [])));
+        if ($op !== '') $cs[] = $op . ' ' . (float)($c['value'] ?? 0);
+      }
+      if ($codes !== '' && $cs) $out[] = "[{$codes}] " . implode(' หรือ ', $cs);
+    }
+    return $out ? implode(' · ', $out) : '(ยังไม่ได้ตั้งเงื่อนไข)';
   }
 }

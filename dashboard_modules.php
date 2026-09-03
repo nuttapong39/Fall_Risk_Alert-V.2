@@ -76,6 +76,22 @@ $DASH_MODULES = [
     ],
   ],
 
+  'lab_hemato' => [
+    'label' => 'Hematocrit Alert', 'icon' => 'bloodtype',
+    'color' => '#9f1239', 'grad' => '135deg,#f43f5e,#9f1239',
+    'table' => 'lab_hemato_queue', 'date' => 'lab_date', 'ui' => 'lab_hemato_queue_ui.php',
+    'tops' => [
+      ['label' => 'Top รหัสรายการตรวจ', 'cols' => ['lab_items_code'], 'icon' => 'science'],
+      ['label' => 'Top ค่าที่ตรวจได้',   'cols' => ['result'],         'icon' => 'lab_research'],
+    ],
+    'columns' => [
+      'status'=>'สถานะ','hn'=>'HN','fullname'=>'ชื่อ-สกุล','age'=>'อายุ','sex'=>'เพศ',
+      'lab_items_code'=>'รหัส Lab','result'=>'ผลตรวจ','patient_type'=>'ประเภท',
+      'lab_date'=>'วันที่ตรวจ','lab_time'=>'เวลา','doctor'=>'แพทย์',
+      'created_at'=>'Created','sent_at'=>'Sent',
+    ],
+  ],
+
   'pharm_lab' => [
     'label' => 'เภสัชกรรม / Lab วิกฤต', 'icon' => 'medication',
     'color' => '#0891b2', 'grad' => '135deg,#22d3ee,#0891b2',

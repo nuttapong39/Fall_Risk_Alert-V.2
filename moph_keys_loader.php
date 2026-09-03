@@ -30,6 +30,7 @@ try {
     'fracture'  => ['CLIENT'=>'FRACTURE_CLIENT_KEY', 'SECRET'=>'FRACTURE_SECRET_KEY'],
     'accident'  => ['CLIENT'=>'ACCIDENT_CLIENT_KEY', 'SECRET'=>'ACCIDENT_SECRET_KEY'],
     'pharm_lab' => ['CLIENT'=>'PHARM_CLIENT_KEY',    'SECRET'=>'PHARM_SECRET_KEY'],
+    'lab_hemato'=> ['CLIENT'=>'LAB_HEMATO_CLIENT_KEY','SECRET'=>'LAB_HEMATO_SECRET_KEY'],
     'drug'      => ['CLIENT'=>'DRUG_CLIENT_KEY',     'SECRET'=>'DRUG_SECRET_KEY'],
     'dengue'    => ['CLIENT'=>'DENGUE_CLIENT_KEY',   'SECRET'=>'DENGUE_SECRET_KEY'],
     'patient'   => ['CLIENT'=>'PATIENT_CLIENT_KEY',  'SECRET'=>'PATIENT_SECRET_KEY'],

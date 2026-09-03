@@ -9,6 +9,8 @@
  * ต้องมี Bootstrap 5 JS (bootstrap.bundle) โหลดแล้ว (partials/footer.php)
  */
 
+require_once __DIR__ . '/filter_labconds.php';   // field type 'labconds' (ฟอร์มเพิ่ม/ลบได้)
+
 if (!function_exists('filter_flash_html')) {
   function filter_flash_html(): string {
     $map = [
@@ -87,6 +89,8 @@ if (!function_exists('render_filter_modal')) {
                     <textarea name="f_<?= $e($k) ?>" class="form-control font-monospace" rows="5"
                               placeholder="ชื่อ | รหัส Lab | >= หรือ > | ค่า | yes/no"
                               ><?= $e(mf_rules_to_text(is_array($v) ? $v : [])) ?></textarea>
+                  <?php elseif ($f['type'] === 'labconds'): ?>
+                    <?php lc_render_field($mod, $k, $v); ?>
                   <?php else: ?>
                     <div class="text-muted" style="font-size:.83rem">ฟิลด์ประเภทนี้ยังไม่รองรับการแก้ไข</div>
                   <?php endif; ?>
@@ -137,5 +141,6 @@ if (!function_exists('render_filter_modal')) {
       </div>
     </div>
     <?php
+    lc_render_assets();
   }
 }

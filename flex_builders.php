@@ -49,6 +49,30 @@ if (!function_exists('buildPharmPayload')) {
   }
 }
 
+/* ── LAB HEMATO (ค่าความเข้มข้นเลือดผิดปกติ) ──────────────────────────── */
+if (!function_exists('buildLabHematoPayload')) {
+  function buildLabHematoPayload(array $r): array {
+    if (function_exists('row_to_utf8')) $r = row_to_utf8($r);
+    $hn   = (string)($r['hn'] ?? '-');
+    $fn   = (string)($r['fullname'] ?? '-');
+    $code = (string)($r['lab_items_code'] ?? '-');
+    $res  = (string)($r['result'] ?? '-');
+    return flex_render_card('lab_hemato', [
+      'patient' => ['hn'=>$hn,'fullname'=>$fn,'agesex'=>flex_agesex($r['age']??'',$r['sex']??''),'cid'=>$r['cid']??'-'],
+      'mid' => [['label'=>'ผลตรวจ','items'=>[
+        // big = ค่าเด่นตัวใหญ่ — ค่าผลคือสิ่งที่ผู้รับต้องเห็นก่อนอย่างอื่น
+        ['big','ค่าที่ตรวจได้',$res],
+        ['kv','รหัสรายการตรวจ',$code],
+        ['kvlight','วันที่ตรวจ',flex_thai_date($r['lab_date']??'')],
+        ['kvlight','แพทย์',$r['doctor']??'-'],
+        ['kvlight','ประเภท',$r['patient_type']??'-'],
+      ]]],
+      'contact' => ['address'=>'','phone'=>$r['hometel'] ?? ''],
+      'alt' => "[แจ้งเตือน] ค่าความเข้มข้นเลือดผิดปกติ HN {$hn} {$fn} (รหัส {$code} = {$res})",
+    ]);
+  }
+}
+
 /* ── PATIENT (จิตเวช/ทำร้ายตนเอง) ─────────────────────────────────────── */
 if (!function_exists('buildPatientPayload')) {
   function buildPatientPayload(array $row): array {

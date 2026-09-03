@@ -654,6 +654,9 @@ a.nav-item.logout-item:hover .nav-ic {
           <span class="nav-ic"><span class="msi">medication</span></span><span>งานเภสัชกรรม</span>
           <span class="nav-badge">Feature หลัก</span>
         </a>
+        <a href="lab_hemato_queue_ui.php" class="nav-item<?= ckh_active('lab_hemato', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">bloodtype</span></span><span>Hematocrit Alert</span>
+        </a>
       </div>
     </div>
 

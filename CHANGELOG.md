@@ -11,6 +11,36 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.03.0911
+- **Module ใหม่: Hematocrit Alert (`lab_hemato`)** — แจ้งเตือนค่าผลตรวจเลือดผิดปกติ
+  เมนูอยู่ใต้ "งานเภสัชกรรม" ในกลุ่มงานสนับสนุน
+  - **field type ใหม่ `labconds`** ในระบบ filter modal — ของเดิมมีแต่ textarea
+    (`codes/results/single/int/patterns/rules`) ทำ UI แบบนี้ไม่ได้ ตัวใหม่เป็นฟอร์มที่
+    เพิ่ม/ลบได้: 1 ฟอร์ม = 1 ชุด `lab_items_code` + เงื่อนไขหลายแถว · แต่ละแถวติ๊ก
+    `<` `>` `=` ร่วมกันได้ (`<` กับ `=` = `<=`) แล้วกรอกค่าเอง · ในฟอร์มรวมด้วย OR
+    ระหว่างฟอร์มก็ OR · ติ๊กครบ 3 = จริงเสมอ ระบบตัดทิ้งพร้อมเตือนบน UI
+    - แยกเป็น `partials/filter_labconds.php` เพราะ DOM เป็นของ JS ทั้งก้อน
+    - helper ใหม่ใน `module_filters_loader.php`: `mf_ops_to_sql()`, `mf_parse_labconds()`,
+      `mf_labconds_clause()`, `mf_labconds_summary()`
+  - `sources/lab_hemato_source.php` — รองรับทั้ง MySQL และ PostgreSQL · **guard ว่าผลเป็น
+    ตัวเลขล้วนก่อน cast เสมอ** (PostgreSQL จะ throw ทั้ง query ถ้าเจอแถวที่ cast ไม่ได้
+    แม้แถวนั้นจะไม่เข้าเงื่อนไข) · ค่าทุกตัว bind ไม่มี concat ลง SQL
+  - `lab_hemato_queue.sql` — UNIQUE `(hn, lab_order_number, lab_items_code)` ต้องมี
+    `lab_items_code` ในคีย์ด้วย เพราะ 1 ใบสั่ง lab มีได้หลายรายการตรวจ
+  - `lab_hemato_queue_ui.php` — ปุ่มครบ: แก้เงื่อนไข · Sync จาก HOSxP · ดูตัวอย่าง Flex ·
+    Dashboard · รายงานรายวัน
+  - `lab_hemato_flex_preview.php` — ใช้หน้าตาการ์ดชุดเดียวกับ `flex_editor.php`
+    (ดีไซน์ปัจจุบัน) แทนแบบเก่าของ `pharm_flex_preview.php` + validator สีในหน้าเดียวกัน
+  - `lab_hemato.php` + `run_lab_hemato.bat` + `task/Lab_Hemato_Auto Sender.xml`
+    (worker เรียก `lab_hemato.php` ตรง แบบเดียวกับ pharm_lab/covid/drug ที่ไม่มีไฟล์ `_ingest` แยก)
+  - ต่อเข้าระบบเดิม: sidebar · `dashboard_modules.php` · `flex_theme`/`flex_themes.json`/
+    `flex_builders`/`flex_editor` (accent `#9F1239` rose — hue ที่ยังไม่ชนกับ 10 module เดิม) ·
+    `moph_keys_loader` + `moph_keys_admin` (5 จุด ไม่งั้นคีย์จะถูกลบตอน save)
+  - **default ของเงื่อนไข = ว่างโดยตั้งใจ** → ไม่ดึงอะไรเลยจนกว่าจะตั้งค่าผ่านหน้าเว็บ
+    ตอนทดสอบใส่รหัสตัวอย่าง `51` ไว้ แล้วพบว่าตรงกับรหัสจริงในระบบ คืนมา 163 เคส/7 วัน
+    ซึ่งเป็นค่า RBC ไม่ใช่ Hematocrit — ถ้าปล่อยไว้ รพ. ที่เปิด Task Scheduler ก่อนตั้งค่า
+    จะยิงแจ้งเตือนผิดทันที
+
 ## 2026.09.02.1518
 - **แก้ตามรอบก่อน: โค้ดตัด BOM ใน `system_update_status.php` เขียนผิดจนไม่ทำงาน**
   รอบ 1515 เขียนเงื่อนไขเป็น `substr($raw,0,3) === "<BOM ตัวอักษรจริง>"` — ฝั่งขวาเป็น
