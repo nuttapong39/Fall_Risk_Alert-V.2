@@ -4,7 +4,7 @@
 
 ### ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง → **LINE &amp; Telegram** อัตโนมัติ
 
-ดึงข้อมูลจาก HOSxP · ยิงแจ้งเตือนผ่าน MOPH Alert เข้ากลุ่มเจ้าหน้าที่ · ครบ **10 โมดูล** ในระบบเดียว
+ดึงข้อมูลจาก HOSxP · ยิงแจ้งเตือนผ่าน MOPH Alert เข้ากลุ่มเจ้าหน้าที่ · ครบ **12 โมดูล** ในระบบเดียว
 
 <br/>
 
@@ -24,7 +24,7 @@
 ## 📋 สารบัญ
 
 - [ระบบทำงานอย่างไร](#-ระบบทำงานอย่างไร)
-- [10 โมดูลแจ้งเตือน](#-10-โมดูลแจ้งเตือน)
+- [12 โมดูลแจ้งเตือน](#-12-โมดูลแจ้งเตือน)
 - [Quick Start (ติดตั้งใน 9 ขั้น)](#-quick-start)
 - [การตั้งค่าหลัก](#-การตั้งค่าหลัก)
 - [Dashboard](#-dashboard)
@@ -40,7 +40,7 @@
 
 ```mermaid
 flowchart LR
-    A["🏥 HOSxP<br/>MySQL / PostgreSQL<br/>(อ่านอย่างเดียว)"] -->|อ่านข้อมูลผู้ป่วย| B["⚙️ MedAlert_DB<br/>คิว + worker<br/>10 โมดูล"]
+    A["🏥 HOSxP<br/>MySQL / PostgreSQL<br/>(อ่านอย่างเดียว)"] -->|อ่านข้อมูลผู้ป่วย| B["⚙️ MedAlert_DB<br/>คิว + worker<br/>12 โมดูล"]
     B -->|POST| C["📡 MOPH Alert API<br/>client / secret key"]
     C -->|แจ้งเตือน| D["💬 LINE<br/>กลุ่มเจ้าหน้าที่"]
     B -.->|mirror| E["✈️ Telegram"]
@@ -51,7 +51,7 @@ flowchart LR
 
 ---
 
-## 🧩 10 โมดูลแจ้งเตือน
+## 🧩 12 โมดูลแจ้งเตือน
 
 | โมดูล | งาน | ตารางคิว | หน้าใช้งาน |
 |---|---|---|---|
@@ -60,13 +60,15 @@ flowchart LR
 | ⚠️ ยาอันตราย | High-Alert Drug | `drug_queue` | `drugitems01.php` |
 | 🚑 อุบัติเหตุ พ.ร.บ. | Accident | `accident_queue` | `accident_queue_ui.php` |
 | 💊 เภสัชกรรม / Lab | Lab วิกฤต | `pharm_lab_queue` | `pharm_lab_queue_ui.php` |
+| 🩸 Hematocrit วิกฤต | Hematocrit Alert | `lab_hemato_queue` | `lab_hemato_queue_ui.php` |
+| 💉 ยา High-Alert | HAD Alert | `had_queue` | `had_queue_ui.php` |
 | 🦠 COVID-19 | ผลตรวจ Positive | `covid_queue` | `covid_queue_ui.php` |
 | 🦟 ไข้เลือดออก | Dengue | `dengue_queue` | `dengue_queue_ui.php` |
 | 🐀 เลปโตสไปโรซิส | Leptospirosis | `lepto_queue` | `Leptospira.php` |
 | 🌿 สครับไทฟัส | Scrub Typhus | `scrub_queue` | `scrubtyphus.php` |
 | 🚨 โรคติดต่อทางเพศ | STI / ความรุนแรง | `sexual_alert_queue` | `sexual.php` |
 
-แต่ละโมดูลใช้ **MOPH client-key แยกกัน** (ผูกกับกลุ่ม LINE คนละกลุ่มได้) และ mirror เข้า Telegram ได้ทั้งหมด
+แต่ละโมดูลใช้ **MOPH client-key แยกกัน** (ผูกกับกลุ่ม LINE คนละกลุ่มได้) และ mirror เข้า Telegram ได้ (ยกเว้น Hematocrit Alert และ HAD Alert ที่ยังไม่รองรับ mirror ในตอนนี้)
 
 ---
 
@@ -96,7 +98,7 @@ flowchart TD
 3. **เปิด** `http://localhost/Fall_Risk_Alert-main/` → ระบบ **เด้งไปหน้า Setup อัตโนมัติ** (`db_config_admin.php`)
 4. **กรอก HOSxP + MedAlert_DB + บัญชี admin** → กดปุ่ม **`Setup MedAlert_DB`** → ระบบ **สร้างฐานข้อมูล + ตารางทั้งหมด + บัญชีผู้ดูแลคนแรก** ให้อัตโนมัติ (ไม่ต้อง import SQL เอง)
 5. **Login** → ตั้ง **ชื่อโรงพยาบาล** (`settings.php`) และ **MOPH keys + Telegram** (`moph_keys_admin.php`)
-6. **ทดสอบส่ง** จากหน้าคิว → ยืนยันเข้ากลุ่ม LINE/Telegram → ดับเบิลคลิก **`task\install_tasks.bat`** เพื่อ **ติดตั้ง Scheduled Task ทั้ง 10 ในคลิกเดียว**
+6. **ทดสอบส่ง** จากหน้าคิว → ยืนยันเข้ากลุ่ม LINE/Telegram → ดับเบิลคลิก **`task\install_tasks.bat`** เพื่อ **ติดตั้ง Scheduled Task ทั้ง 12 ในคลิกเดียว**
 
 > [!WARNING]
 > ต้องวางที่พาธ `C:\xampp\htdocs\Fall_Risk_Alert-main` เป๊ะ — `install_tasks.bat` และ `run_*.bat` อ้างพาธนี้แบบตายตัว
@@ -110,7 +112,7 @@ flowchart TD
 | `db_config_admin.php` | ตั้งค่า **2 ฐานข้อมูล** (HOSxP source + MedAlert_DB) · ตัวช่วยสร้าง DB/ตาราง/admin อัตโนมัติ |
 | `settings.php` | **ชื่อโรงพยาบาล** (ย่อ/เต็ม) · ธีม (Light/Dark/Pastel/Classic) · ขนาดฟอนต์ |
 | `moph_keys_admin.php` | **MOPH client/secret key** รายโมดูล (ว่าง = ใช้ default) · **Telegram** bot token + chat_id + ปุ่มทดสอบ |
-| `task\install_tasks.bat` | ติดตั้ง Scheduled Task ทั้ง 10 (self-elevate UAC) · ถอนด้วย `uninstall_tasks.bat` |
+| `task\install_tasks.bat` | ติดตั้ง Scheduled Task ทั้ง 12 (self-elevate UAC) · ถอนด้วย `uninstall_tasks.bat` |
 
 > [!NOTE]
 > **Telegram:** ต้อง **ติ๊กเปิดใช้งาน + บันทึก** เคสจริงถึงจะ mirror (ปุ่มทดสอบส่งได้แม้ยังไม่เปิด) · Chat ID กลุ่มขึ้นต้นด้วย `-100…` (ไม่ใช่เลขหน้า `:` ใน bot token)
@@ -121,7 +123,7 @@ flowchart TD
 
 `dashboard.php` — **ศูนย์รวมสถิติทุกโมดูลในหน้าเดียว**
 
-- กราฟเทรนด์ 12 เดือน (Chart.js) แยกเส้นตามโมดูล + การ์ดสรุปราย 10 โมดูล
+- กราฟเทรนด์ 12 เดือน (Chart.js) แยกเส้นตามโมดูล + การ์ดสรุปราย 12 โมดูล
 - เลือกช่วงเวลา: **รายเดือน / 3 / 6 / 9 เดือน / ไตรมาส (ปีงบ ต.ค.–ก.ย.)**
 - Drill-in ราย module: Top station/PDX/Lab/ยา + ตาราง + **Export Excel (CSV)**
 
@@ -143,8 +145,8 @@ Fall_Risk_Alert-main/
 ├─ dashboard_modules.php      # registry กลาง (metadata ราย module)
 ├─ dashboard_export.php       # Export CSV ราย module/ช่วงเวลา
 │
-├─ *_queue_ui.php · patient.php · sexual.php … # หน้าคิว 10 โมดูล
-├─ run_*.bat                  # worker ราย 10 โมดูล
+├─ *_queue_ui.php · patient.php · sexual.php … # หน้าคิว 12 โมดูล
+├─ run_*.bat                  # worker ราย 12 โมดูล
 ├─ *_ingest.php · *_queue_action.php           # ดึง/ส่ง ราย module
 │
 ├─ partials/{header,footer}.php   # Layout HR-CENTER 4.0 (sidebar/topbar/theme)
@@ -152,7 +154,7 @@ Fall_Risk_Alert-main/
 │
 ├─ task/                      # 🗓️ ตัวติดตั้ง Scheduled Task
 │   ├─ install_tasks.bat  ·  uninstall_tasks.bat  ·  README.txt
-│   └─ *.xml   (10 ไฟล์ export)
+│   └─ *.xml   (12 ไฟล์ export)
 │
 ├─ docs/install-guide.html    # 📘 คู่มือติดตั้งฉบับภาพ
 ├─ secrets/                   # 🔒 .gitignore — สร้างเมื่อบันทึกผ่านหน้าเว็บ

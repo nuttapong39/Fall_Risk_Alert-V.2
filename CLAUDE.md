@@ -12,6 +12,10 @@ Default canonical label names (needs-triage, needs-info, ready-for-agent, ready-
 
 Single-context repo — one CONTEXT.md + docs/adr/ at the repo root. See `docs/agents/domain.md`.
 
+### System workflow
+
+Before adding/changing any feature or module, read `work-flow.md` at the repo root — it documents the data-flow architecture, the read-only HOSxP invariant, and known gaps.
+
 ## Language
 Always communicate in Thai (ภาษาไทย) for all responses, questions, and recommendations.
 

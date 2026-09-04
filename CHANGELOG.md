@@ -11,6 +11,19 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.04.1519
+- **เพิ่ม `work-flow.md` — เอกสาร Work-Flow ของระบบ (อ่านก่อนเพิ่ม/แก้ feature ทุกครั้ง)**
+  รวมกฎเหล็ก HOSxP ต้อง Read-Only เท่านั้น (SELECT อย่างเดียว ห้าม
+  CREATE/INSERT/UPDATE/DELETE เด็ดขาด), pipeline มาตรฐานของ 1 Alert Module,
+  Telegram mirror, การจัดการ secrets, ระบบเวอร์ชัน, และ Known Gaps/Security
+  Backlog ที่ยืนยันสถานะกับโค้ดจริงแล้ว — เพิ่ม pointer ใน `CLAUDE.md` เพื่อการันตี
+  ว่าถูกโหลดเข้า context ทุก session
+  - พบระหว่างเขียนเอกสารว่า `CONTEXT.md`, `README.md`, `docs/PROJECT-STRUCTURE.md`
+    ตกยุคตรงกัน — เขียนว่า "10 โมดูล" ทั้งที่มี 12 โมดูลทางคลินิกแล้ว (ขาด
+    `lab_hemato`, `had` ที่เพิ่งสร้างก่อนหน้านี้) — แก้ทั้ง 3 ไฟล์ให้ตรงกันในคราวเดียว
+  - แก้ประโยคใน README.md ที่อ้างผิดว่า Telegram mirror ครบทุกโมดูล (ที่จริง
+    `had`/`lab_hemato` ยังไม่ mirror — บันทึกเป็น known gap ใน work-flow.md ด้วย)
+
 ## 2026.09.04.0007
 - **แก้บั๊ก `moph_keys_admin.php` — ลบ Client/Secret Key แล้ว Save ไม่ว่างจริง (ด่วน)**
   ผู้ใช้รายงานว่าลบค่าในช่อง Client Key/Secret Key แล้วกด Save แต่ค่าเดิมยังอยู่ ไม่กลาย

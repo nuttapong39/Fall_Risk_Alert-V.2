@@ -17,7 +17,7 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 
 ---
 
-## 📇 แผนที่ต่อ module (10 โมดูล)
+## 📇 แผนที่ต่อ module (12 โมดูล)
 
 | module | หน้าจอ (URL) | worker (run_*.bat เรียก) | ตารางคิว | Flex builder |
 |---|---|---|---|---|
@@ -26,6 +26,8 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 | drug (ยาอันตราย) | `drugitems01.php` | `drug_send.php` | `drug_queue` | `flex_drug.php` |
 | accident (พ.ร.บ.) | `accident_queue_ui.php` | `accident_worker.php` | `accident_queue` | `flex_accident.php` |
 | pharm_lab (Lab วิกฤต) | `pharm_lab_queue_ui.php` | `pharm_lab.php` | `pharm_lab_queue` | `flex_pharm.php` |
+| lab_hemato (Hematocrit) | `lab_hemato_queue_ui.php` | `lab_hemato.php` | `lab_hemato_queue` | `flex_builders.php` (buildLabHematoPayload) |
+| had (High-Alert Drug) | `had_queue_ui.php` | `HAD.php` | `had_queue` | `flex_builders.php` (buildHadPayload) |
 | covid | `covid_queue_ui.php` | `covid.php` | `covid_queue` | `flex_builders.php` (covid_buildMophPayload) |
 | dengue | `dengue_queue_ui.php` | `dengue_ingest.php` | `dengue_queue` | `flex_disease.php` |
 | lepto | `Leptospira.php` | `lepto_ingest.php` | `lepto_queue` | `flex_disease.php` |
@@ -55,11 +57,11 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - Dashboard: `dashboard.php` + `dashboard_modules.php` (registry) + `dashboard_export.php` (CSV)
 
 ### 3) Worker / อัตโนมัติ — root + `task/`
-- `run_<mod>.bat` (10) — ตัวตั้งเวลาเรียก worker
+- `run_<mod>.bat` (12) — ตัวตั้งเวลาเรียก worker
 - worker `.php` — ตาม "แผนที่ต่อ module"
 - `<mod>_ingest.php` / `<mod>_send.php` — ตัวดึง HOSxP + ส่ง MOPH
 - `cron_covid_queue.php` — cron เสริม covid
-- `task/` — **ตัวติดตั้ง Scheduled Task**: `install_tasks.bat`, `uninstall_tasks.bat`, `*.xml` (10), `README.txt`
+- `task/` — **ตัวติดตั้ง Scheduled Task**: `install_tasks.bat`, `uninstall_tasks.bat`, `*.xml` (12), `README.txt`
 - `enable_php_extensions.bat` — เปิด PHP extension อัตโนมัติ (ตอนติดตั้ง)
 
 ### 3b) ระบบอัปเดตเวอร์ชัน (Version update)
@@ -87,7 +89,7 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - แก้ได้ผ่านหน้าเว็บ ไม่ต้องแตะโค้ด — มีผลทั้ง worker อัตโนมัติและปุ่ม Import (ใช้ store เดียวกัน)
 
 ### 6) Schema — root (`*.sql`)
-- `users.sql` + `<mod>_queue.sql` (10) — ตัวช่วย `db_config_admin.php` deploy ให้อัตโนมัติ
+- `users.sql` + `<mod>_queue.sql` (12) — ตัวช่วย `db_config_admin.php` deploy ให้อัตโนมัติ
 
 ### 7) Config / secrets — `secrets/` (🔒 gitignore)
 - `db_config.json` · `moph_keys.json` · `site_config.json` · `flex_themes.json` · `module_filters.json` (ตัวจริง — per-install)
