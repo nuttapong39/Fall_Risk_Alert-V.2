@@ -79,10 +79,11 @@ if ($action === 'import_hosxp') {
   exit;
 }
 
-/* ══ Token (เฉพาะ module นี้) ═══════════════════════════════════════════════ */
+/* ══ Token (เฉพาะ module นี้) — ต้องคำนวณด้วยสตริงเดียวกับ drugs_alert.php เป๊ะ
+   (รวม separator) ไม่งั้น hash ไม่ตรงกันบน Windows ที่ __DIR__ คืนแบ็กสแลช
+   แต่ตรงนี้เคยต่อด้วย DIRECTORY_SEPARATOR ทำให้ token ไม่ตรงกับฝั่ง UI ตลอด (403 เสมอ) ══ */
 if (!defined('DRUGS_ALERT_UI_ACTION_TOKEN')) {
-  $uiFile = __DIR__ . DIRECTORY_SEPARATOR . 'drugs_alert.php';
-  define('DRUGS_ALERT_UI_ACTION_TOKEN', hash('sha256', $uiFile . php_uname() . date('Y-m-d')));
+  define('DRUGS_ALERT_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/drugs_alert.php' . php_uname() . date('Y-m-d')));
 }
 if (!isset($_POST['token']) || $_POST['token'] !== DRUGS_ALERT_UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
