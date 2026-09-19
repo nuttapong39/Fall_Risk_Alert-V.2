@@ -18,8 +18,8 @@ require_once __DIR__ . '/flex_drug.php';
 
 date_default_timezone_set('Asia/Bangkok');
 
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/drugitems01.php' . php_uname() . date('Y-m-d')));
+if (!defined('DRUG_UI_ACTION_TOKEN')) {
+  define('DRUG_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/drugitems01.php' . php_uname() . date('Y-m-d')));
 }
 
 // ── MOPH ALERT config ────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ if ($action === 'import_hosxp') {
 }
 
 // ── CSRF Token check (bulk actions only) ─────────────────────────────────────
-if (!isset($_POST['token']) || $_POST['token'] !== UI_ACTION_TOKEN) {
+if (!isset($_POST['token']) || $_POST['token'] !== DRUG_UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
 }
 

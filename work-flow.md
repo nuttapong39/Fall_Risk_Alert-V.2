@@ -13,7 +13,7 @@ flowchart LR
     B -.->|mirror หลัง Send สำเร็จ<br/>เฉพาะ 11/13 โมดูล ดู §4| E["✈️ Telegram"]
 ```
 
-12 Alert Module ทางคลินิก + 1 การแจ้งเตือนระบบ (`system_update` — ไม่ใช่ Alert Module
+13 Alert Module ทางคลินิก + 1 การแจ้งเตือนระบบ (`system_update` — ไม่ใช่ Alert Module
 ตามนิยามใน CONTEXT.md) ดูตารางเต็มที่ [CONTEXT.md § Alert Modules](CONTEXT.md) และแผนที่
 ไฟล์ต่อโมดูลที่ [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md)
 

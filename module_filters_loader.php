@@ -61,6 +61,9 @@ $GLOBALS['MODULE_FILTER_DEFAULTS'] = [
                    ['name'=>'Lithium level',   'codes'=>['697','2388'],'op'=>'>', 'value'=>1.2, 'also_text'=>true],
                    ['name'=>'Phenytoin level', 'codes'=>['2370'],      'op'=>'>', 'value'=>20,  'also_text'=>true],
                  ]],
+  // Drug Alert — เภสัชเลือกยาที่ต้องเฝ้าระวังเอง (ค้นจาก drugitems ผ่าน picker) default = ว่าง
+  // โดยตั้งใจ (fail-closed แบบ lab_hemato) → ไม่ดึง/ไม่แจ้งอะไรจนกว่าจะเลือกยาผ่านหน้าเว็บ
+  'drugs_alert' => ['icodes' => []],
 ];
 
 /* ── schema: อธิบายฟิลด์ที่ modal แก้ได้ (ขับทั้ง UI + parse ตอน save) ─────────── */
@@ -100,6 +103,10 @@ $GLOBALS['MODULE_FILTER_SCHEMA'] = [
   'pharm_lab'=> ['label'=>'Lab วิกฤต ห้องยา',      'fields'=>[
                    ['key'=>'rules','type'=>'rules','label'=>'เกณฑ์ค่าวิกฤตต่อรหัส Lab',
                     'hint'=>'บรรทัดละ 1 เกณฑ์: ชื่อ | รหัส Lab (คั่นด้วย ,) | เงื่อนไข (>= หรือ >) | ค่า | แจ้งเมื่อผลเป็นข้อความ (yes/no)'],
+                 ]],
+  'drugs_alert' => ['label'=>'ยาเฝ้าระวัง (เภสัชกรรม)', 'fields'=>[
+                   ['key'=>'icodes','type'=>'drugpicker','label'=>'รายการยาที่เฝ้าระวัง',
+                    'hint'=>'ค้นชื่อยาหรือรหัสยา แล้วกดเพิ่มเป็น tag — ไม่ต้องพิมพ์ icode เอง'],
                  ]],
 ];
 
@@ -162,6 +169,8 @@ if (!function_exists('module_filter_parse_post')) {
         case 'rules':    $cfg[$k] = mf_text_to_rules($raw);                            break;
         // labconds รับเป็น array ซ้อน (f_groups[i][codes], f_groups[i][conds][j][ops][]) ไม่ใช่ string
         case 'labconds': $cfg[$k] = mf_parse_labconds($post['f_' . $k] ?? []);          break;
+        // drugpicker ส่ง f_<key>[] เป็น array ของ icode ล้วน (1 tag = 1 hidden input) — ทำความสะอาดแบบเดียวกับ 'codes'
+        case 'drugpicker': $cfg[$k] = mf_codes((array)($post['f_' . $k] ?? []));         break;
         default:         $cur = module_filter($mod); if (isset($cur[$k])) $cfg[$k] = $cur[$k];
       }
     }

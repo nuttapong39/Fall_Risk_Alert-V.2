@@ -71,8 +71,8 @@ if (!function_exists('to_utf8')) {
   }
 }
 
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/patient.php' . php_uname() . date('Y-m-d')));
+if (!defined('PATIENT_UI_ACTION_TOKEN')) {
+  define('PATIENT_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/patient.php' . php_uname() . date('Y-m-d')));
 }
 
 $PAGE_TITLE = 'คิวแจ้งเตือนจิตเวช / ทำร้ายตนเอง';
@@ -205,7 +205,7 @@ require_once __DIR__ . '/partials/header.php';
 
 <!-- Table + Actions -->
 <form method="post" action="patient_action.php" id="actionForm">
-  <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+  <input type="hidden" name="token" value="<?=htmlspecialchars(PATIENT_UI_ACTION_TOKEN)?>">
   <input type="hidden" name="action" id="ptAction" value="">
 
   <div class="card p-3 mb-3">

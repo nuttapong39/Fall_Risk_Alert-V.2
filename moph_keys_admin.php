@@ -21,12 +21,13 @@ $modules = [
   'pharm_lab' => ['label'=>'เภสัชกรรม / Lab',                  'icon'=>'medication',         'color'=>'#0891b2', 'grad'=>'135deg,#22d3ee,#0891b2'],
   'lab_hemato'=> ['label'=>'Hematocrit Alert',                 'icon'=>'bloodtype',          'color'=>'#9f1239', 'grad'=>'135deg,#f43f5e,#9f1239'],
   'had'       => ['label'=>'HAD Alert',                        'icon'=>'medication_liquid',  'color'=>'#0e7490', 'grad'=>'135deg,#22d3ee,#0e7490'],
-  'drug'      => ['label'=>'ยาอันตราย (Drug Alert)',            'icon'=>'medication_liquid',  'color'=>'#7c3aed', 'grad'=>'135deg,#8b5cf6,#7c3aed'],
+  'drug'      => ['label'=>'ยาอันตราย',                         'icon'=>'medication_liquid',  'color'=>'#7c3aed', 'grad'=>'135deg,#8b5cf6,#7c3aed'],
   'dengue'    => ['label'=>'ไข้เลือดออก (Dengue)',              'icon'=>'bug_report',         'color'=>'#dc2626', 'grad'=>'135deg,#ef4444,#dc2626'],
   'patient'   => ['label'=>'ผู้ป่วย OPD ทั่วไป (Patient)',     'icon'=>'personal_injury',    'color'=>'#0369a1', 'grad'=>'135deg,#0ea5e9,#0369a1'],
   'lepto'     => ['label'=>'เลปโตสไปโรซิส (Lepto)',             'icon'=>'water_drop',         'color'=>'#0f766e', 'grad'=>'135deg,#14b8a6,#0f766e'],
   'scrub'     => ['label'=>'สครับไทฟัส (Scrub Typhus)',         'icon'=>'pest_control',       'color'=>'#854d0e', 'grad'=>'135deg,#d97706,#854d0e'],
   'sexual'    => ['label'=>'โรคติดต่อทางเพศสัมพันธ์ (STI)',    'icon'=>'health_and_safety',  'color'=>'#be185d', 'grad'=>'135deg,#ec4899,#be185d'],
+  'drugs_alert' => ['label'=>'ยาเฝ้าระวัง (เภสัชกรรม)',        'icon'=>'pill',                'color'=>'#65a30d', 'grad'=>'135deg,#84cc16,#65a30d'],
   'system_update' => ['label'=>'แจ้งเตือนอัปเดตระบบ',          'icon'=>'system_update',      'color'=>'#4338ca', 'grad'=>'135deg,#6366f1,#4338ca'],
 ];
 
@@ -92,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(403);
     $flashErr = 'Invalid token — กรุณา refresh หน้าแล้วลองใหม่';
   } else {
-    $tgModules = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','system_update'];
+    $tgModules = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','drugs_alert','system_update'];
     // Bot Token ว่าง = คงค่าเดิม (กันเผลอ submit ตอนช่อง token ว่าง แล้วล้าง token ที่ใช้ร่วมทุก feature ทิ้ง)
     // chat_id ปล่อยให้เขียนทับได้ตามเดิม เพราะ "ว่าง = ใช้ Default" เป็น UX ที่ตั้งใจ
     $tgToken = trim($_POST['tg_default_token'] ?? '');
@@ -126,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'lepto'     => $pair('lepto_client',    'lepto_secret',    'lepto'),
       'scrub'     => $pair('scrub_client',    'scrub_secret',    'scrub'),
       'sexual'    => $pair('sexual_client',   'sexual_secret',   'sexual'),
+      'drugs_alert' => $pair('drugs_alert_client', 'drugs_alert_secret', 'drugs_alert'),
       'system_update' => $pair('system_update_client', 'system_update_secret', 'system_update'),
       'telegram'  => $tgPayload,
       '_meta'     => ['updated_at'=>$now],
@@ -360,7 +362,7 @@ require_once __DIR__ . '/partials/header.php';
       <!-- ② Module keys (2×2 grid) -->
       <div class="row g-3">
         <?php
-        $moduleKeys = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','system_update'];
+        $moduleKeys = ['covid','fracture','accident','pharm_lab','lab_hemato','had','drug','dengue','patient','lepto','scrub','sexual','drugs_alert','system_update'];
         $fieldMap   = [
           'covid'     => ['client'=>'covid_client',    'secret'=>'covid_secret'],
           'fracture'  => ['client'=>'fracture_client', 'secret'=>'fracture_secret'],
@@ -374,6 +376,7 @@ require_once __DIR__ . '/partials/header.php';
           'lepto'     => ['client'=>'lepto_client',    'secret'=>'lepto_secret'],
           'scrub'     => ['client'=>'scrub_client',    'secret'=>'scrub_secret'],
           'sexual'    => ['client'=>'sexual_client',   'secret'=>'sexual_secret'],
+          'drugs_alert' => ['client'=>'drugs_alert_client', 'secret'=>'drugs_alert_secret'],
           'system_update' => ['client'=>'system_update_client', 'secret'=>'system_update_secret'],
         ];
         foreach ($moduleKeys as $mk):
@@ -534,7 +537,8 @@ require_once __DIR__ . '/partials/header.php';
                 <div style="font-size:.76rem; font-weight:600; line-height:1.2">
                   <?= htmlspecialchars($mk === 'default' ? 'Default' :
                       ($mk === 'pharm_lab' ? 'Pharm' :
-                      ($mk === 'system_update' ? 'Update' : ucfirst($mk)))) ?>
+                      ($mk === 'drugs_alert' ? 'DrugAlert' :
+                      ($mk === 'system_update' ? 'Update' : ucfirst($mk))))) ?>
                 </div>
                 <div style="font-size:.7rem; color:<?= $hasCfg ? '#059669' : '#94a3b8' ?>">
                   <?= $hasCfg ? 'ตั้งค่าแล้ว ✓' : 'ว่าง' ?>
@@ -604,6 +608,7 @@ require_once __DIR__ . '/partials/header.php';
             'lepto'     => ['LEPTO_CLIENT_KEY',    'LEPTO_SECRET_KEY'],
             'scrub'     => ['SCRUB_CLIENT_KEY',    'SCRUB_SECRET_KEY'],
             'sexual'    => ['SEXUAL_CLIENT_KEY',   'SEXUAL_SECRET_KEY'],
+            'drugs_alert' => ['DRUGS_ALERT_CLIENT_KEY', 'DRUGS_ALERT_SECRET_KEY'],
           ];
           foreach ($constMap as $mk => [$c, $s]):
           ?>

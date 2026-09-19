@@ -114,8 +114,8 @@ foreach ($rows as $r) {
 }
 
 
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/pharm_lab_queue_ui.php' . php_uname() . date('Y-m-d')));
+if (!defined('PHARM_LAB_UI_ACTION_TOKEN')) {
+  define('PHARM_LAB_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/pharm_lab_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
 /* ---------- Flash message ---------- */
@@ -313,7 +313,7 @@ require_once __DIR__ . '/partials/header.php';
 
 <!-- Table + Actions -->
 <form method="post" action="pharm_lab_queue_action.php" id="actionForm">
-  <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+  <input type="hidden" name="token" value="<?=htmlspecialchars(PHARM_LAB_UI_ACTION_TOKEN)?>">
   <input type="hidden" name="action" id="plAction" value="">
 
   <div class="card p-3 mb-3">

@@ -62,6 +62,8 @@ if (!function_exists('_flex_theme_defaults')) {
       'had'       => $mk('HAD Alert','High Alert Drug','เฝ้าระวังสูง','#22D3EE','#0E7490','#0E7490'),
       'sexual'    => $mk('ความรุนแรงทางเพศ','Sexual Assault','ด่วน · ลับ','#C026D3','#86198F','#86198F'),
       'drug'      => $mk('ยาอันตราย (High-Alert)','High-Alert Medication','ด่วน','#EC4899','#BE185D','#BE185D'),
+      // lime — hue ใหม่ยังไม่ชนกับ 13 module เดิม (drug ใช้ชมพู/BE185D แล้ว)
+      'drugs_alert'=> $mk('ยาเฝ้าระวัง','Drug Alert','เฝ้าระวัง','#84CC16','#65A30D','#65A30D'),
     ];
   }
 }

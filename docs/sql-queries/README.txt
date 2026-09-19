@@ -33,6 +33,7 @@ Dialect : PostgreSQL (HOSxP XE4) — เปิดใน Navicat for PostgreSQL
   accident.txt   อุบัติเหตุ พ.ร.บ.      pttype 33/35/36/39 (ผู้ป่วยใน ipt)
   patient.txt    จิตเวช / ทำร้ายตนเอง  pdx T71 / X60-X70 / X84
   pharm_lab.txt  Lab วิกฤต ห้องยา
+  drugs_alert.txt Drug Alert (ยาเฝ้าระวังที่เภสัชเลือกเอง) — icode ไม่มี default ฝังไว้
 
 ----------------------------------------------------------------------
 หมายเหตุ

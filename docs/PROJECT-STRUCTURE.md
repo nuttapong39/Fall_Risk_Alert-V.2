@@ -17,7 +17,7 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 
 ---
 
-## 📇 แผนที่ต่อ module (12 โมดูล)
+## 📇 แผนที่ต่อ module (13 โมดูล)
 
 | module | หน้าจอ (URL) | worker (run_*.bat เรียก) | ตารางคิว | Flex builder |
 |---|---|---|---|---|
@@ -28,6 +28,7 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 | pharm_lab (Lab วิกฤต) | `pharm_lab_queue_ui.php` | `pharm_lab.php` | `pharm_lab_queue` | `flex_pharm.php` |
 | lab_hemato (Hematocrit) | `lab_hemato_queue_ui.php` | `lab_hemato.php` | `lab_hemato_queue` | `flex_builders.php` (buildLabHematoPayload) |
 | had (High-Alert Drug) | `had_queue_ui.php` | `HAD.php` | `had_queue` | `flex_builders.php` (buildHadPayload) |
+| drugs_alert (Drug Alert) | `drugs_alert.php` | `drugs_alert_worker.php` | `drugs_alert_queue` | `flex_builders.php` (buildDrugsAlertPayload) |
 | covid | `covid_queue_ui.php` | `covid.php` | `covid_queue` | `flex_builders.php` (covid_buildMophPayload) |
 | dengue | `dengue_queue_ui.php` | `dengue_ingest.php` | `dengue_queue` | `flex_disease.php` |
 | lepto | `Leptospira.php` | `lepto_ingest.php` | `lepto_queue` | `flex_disease.php` |

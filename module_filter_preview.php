@@ -39,6 +39,7 @@ $fnMap = [
   'fracture'  => ['fracture_source_rows', fn($c) => [$c['min_age'], $c['icd']]],
   'pharm_lab' => ['pharm_lab_source_rows',fn($c) => [$c['rules']]],
   'lab_hemato'=> ['lab_hemato_source_rows',fn($c) => [$c['groups']]],
+  'drugs_alert'=> ['drugs_alert_source_rows', fn($c) => [$c['icodes']]],
 ];
 if (!isset($fnMap[$mod])) { echo json_encode(['ok'=>false,'msg'=>'module นี้ยังไม่รองรับการทดสอบนับผล']); exit; }
 [$fn, $argsFn] = $fnMap[$mod];

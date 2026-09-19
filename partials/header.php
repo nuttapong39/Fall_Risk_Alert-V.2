@@ -660,6 +660,9 @@ a.nav-item.logout-item:hover .nav-ic {
         <a href="had_queue_ui.php" class="nav-item<?= ckh_active('had', $PAGE_KEY) ?>">
           <span class="nav-ic"><span class="msi">medication_liquid</span></span><span>HAD Alert</span>
         </a>
+        <a href="drugs_alert.php" class="nav-item<?= ckh_active('drugs_alert', $PAGE_KEY) ?>">
+          <span class="nav-ic"><span class="msi">pill</span></span><span>Drug Alert</span>
+        </a>
       </div>
     </div>
 

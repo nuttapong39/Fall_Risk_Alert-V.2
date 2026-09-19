@@ -4,7 +4,7 @@
 
 ### ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง → **LINE &amp; Telegram** อัตโนมัติ
 
-ดึงข้อมูลจาก HOSxP · ยิงแจ้งเตือนผ่าน MOPH Alert เข้ากลุ่มเจ้าหน้าที่ · ครบ **12 โมดูล** ในระบบเดียว
+ดึงข้อมูลจาก HOSxP · ยิงแจ้งเตือนผ่าน MOPH Alert เข้ากลุ่มเจ้าหน้าที่ · ครบ **13 โมดูล** ในระบบเดียว
 
 <br/>
 
@@ -24,7 +24,7 @@
 ## 📋 สารบัญ
 
 - [ระบบทำงานอย่างไร](#-ระบบทำงานอย่างไร)
-- [12 โมดูลแจ้งเตือน](#-12-โมดูลแจ้งเตือน)
+- [13 โมดูลแจ้งเตือน](#-13-โมดูลแจ้งเตือน)
 - [Quick Start (ติดตั้งใน 9 ขั้น)](#-quick-start)
 - [การตั้งค่าหลัก](#-การตั้งค่าหลัก)
 - [Dashboard](#-dashboard)
@@ -40,7 +40,7 @@
 
 ```mermaid
 flowchart LR
-    A["🏥 HOSxP<br/>MySQL / PostgreSQL<br/>(อ่านอย่างเดียว)"] -->|อ่านข้อมูลผู้ป่วย| B["⚙️ MedAlert_DB<br/>คิว + worker<br/>12 โมดูล"]
+    A["🏥 HOSxP<br/>MySQL / PostgreSQL<br/>(อ่านอย่างเดียว)"] -->|อ่านข้อมูลผู้ป่วย| B["⚙️ MedAlert_DB<br/>คิว + worker<br/>13 โมดูล"]
     B -->|POST| C["📡 MOPH Alert API<br/>client / secret key"]
     C -->|แจ้งเตือน| D["💬 LINE<br/>กลุ่มเจ้าหน้าที่"]
     B -.->|mirror| E["✈️ Telegram"]
@@ -51,7 +51,7 @@ flowchart LR
 
 ---
 
-## 🧩 12 โมดูลแจ้งเตือน
+## 🧩 13 โมดูลแจ้งเตือน
 
 | โมดูล | งาน | ตารางคิว | หน้าใช้งาน |
 |---|---|---|---|
@@ -62,6 +62,7 @@ flowchart LR
 | 💊 เภสัชกรรม / Lab | Lab วิกฤต | `pharm_lab_queue` | `pharm_lab_queue_ui.php` |
 | 🩸 Hematocrit วิกฤต | Hematocrit Alert | `lab_hemato_queue` | `lab_hemato_queue_ui.php` |
 | 💉 ยา High-Alert | HAD Alert | `had_queue` | `had_queue_ui.php` |
+| 💊 ยาเฝ้าระวัง (เลือกเอง) | Drug Alert | `drugs_alert_queue` | `drugs_alert.php` |
 | 🦠 COVID-19 | ผลตรวจ Positive | `covid_queue` | `covid_queue_ui.php` |
 | 🦟 ไข้เลือดออก | Dengue | `dengue_queue` | `dengue_queue_ui.php` |
 | 🐀 เลปโตสไปโรซิส | Leptospirosis | `lepto_queue` | `Leptospira.php` |
@@ -123,7 +124,7 @@ flowchart TD
 
 `dashboard.php` — **ศูนย์รวมสถิติทุกโมดูลในหน้าเดียว**
 
-- กราฟเทรนด์ 12 เดือน (Chart.js) แยกเส้นตามโมดูล + การ์ดสรุปราย 12 โมดูล
+- กราฟเทรนด์ 12 เดือน (Chart.js) แยกเส้นตามโมดูล + การ์ดสรุปราย 13 โมดูล
 - เลือกช่วงเวลา: **รายเดือน / 3 / 6 / 9 เดือน / ไตรมาส (ปีงบ ต.ค.–ก.ย.)**
 - Drill-in ราย module: Top station/PDX/Lab/ยา + ตาราง + **Export Excel (CSV)**
 
@@ -145,8 +146,8 @@ Fall_Risk_Alert-main/
 ├─ dashboard_modules.php      # registry กลาง (metadata ราย module)
 ├─ dashboard_export.php       # Export CSV ราย module/ช่วงเวลา
 │
-├─ *_queue_ui.php · patient.php · sexual.php … # หน้าคิว 12 โมดูล
-├─ run_*.bat                  # worker ราย 12 โมดูล
+├─ *_queue_ui.php · patient.php · sexual.php … # หน้าคิว 13 โมดูล
+├─ run_*.bat                  # worker ราย 13 โมดูล
 ├─ *_ingest.php · *_queue_action.php           # ดึง/ส่ง ราย module
 │
 ├─ partials/{header,footer}.php   # Layout HR-CENTER 4.0 (sidebar/topbar/theme)

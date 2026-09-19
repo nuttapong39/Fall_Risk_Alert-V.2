@@ -11,9 +11,9 @@ require_once __DIR__ . '/flex_pharm.php';  // buildPharmPayload, extract_moph_me
 
 date_default_timezone_set('Asia/Bangkok');
 
-/* ให้ action สร้าง UI_ACTION_TOKEN แบบเดียวกับหน้า UI */
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/pharm_lab_queue_ui.php' . php_uname() . date('Y-m-d')));
+/* ให้ action สร้าง PHARM_LAB_UI_ACTION_TOKEN แบบเดียวกับหน้า UI */
+if (!defined('PHARM_LAB_UI_ACTION_TOKEN')) {
+  define('PHARM_LAB_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/pharm_lab_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
@@ -95,7 +95,7 @@ if ($action === 'import_hosxp') {
   exit;
 }
 
-if (!isset($_POST['token']) || $_POST['token'] !== UI_ACTION_TOKEN) { http_response_code(403); exit('Forbidden'); }
+if (!isset($_POST['token']) || $_POST['token'] !== PHARM_LAB_UI_ACTION_TOKEN) { http_response_code(403); exit('Forbidden'); }
 
 $action = $_POST['action'] ?? '';
 $ids    = isset($_POST['ids']) ? (array)$_POST['ids'] : [];

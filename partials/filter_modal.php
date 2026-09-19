@@ -10,6 +10,7 @@
  */
 
 require_once __DIR__ . '/filter_labconds.php';   // field type 'labconds' (ฟอร์มเพิ่ม/ลบได้)
+require_once __DIR__ . '/filter_drugpicker.php'; // field type 'drugpicker' (ค้นยา + tag-input)
 
 if (!function_exists('filter_flash_html')) {
   function filter_flash_html(): string {
@@ -91,6 +92,8 @@ if (!function_exists('render_filter_modal')) {
                               ><?= $e(mf_rules_to_text(is_array($v) ? $v : [])) ?></textarea>
                   <?php elseif ($f['type'] === 'labconds'): ?>
                     <?php lc_render_field($mod, $k, $v); ?>
+                  <?php elseif ($f['type'] === 'drugpicker'): ?>
+                    <?php dp_render_field($mod, $k, $v, 'dp_' . $mod . '_' . $k); ?>
                   <?php else: ?>
                     <div class="text-muted" style="font-size:.83rem">ฟิลด์ประเภทนี้ยังไม่รองรับการแก้ไข</div>
                   <?php endif; ?>
@@ -142,5 +145,6 @@ if (!function_exists('render_filter_modal')) {
     </div>
     <?php
     lc_render_assets();
+    dp_render_assets();
   }
 }

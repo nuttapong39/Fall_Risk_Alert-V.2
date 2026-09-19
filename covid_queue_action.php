@@ -10,9 +10,9 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/covid_lib.php'; // to_utf8(), row_to_utf8(), send_one_by_id(), extract_moph_message_id()
 date_default_timezone_set('Asia/Bangkok');
 
-// ให้ action สร้าง UI_ACTION_TOKEN แบบเดียวกับหน้า UI
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/covid_queue_ui.php' . php_uname() . date('Y-m-d')));
+// ให้ action สร้าง COVID_UI_ACTION_TOKEN แบบเดียวกับหน้า UI
+if (!defined('COVID_UI_ACTION_TOKEN')) {
+  define('COVID_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/covid_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
@@ -103,7 +103,7 @@ if ($action === 'import_hosxp') {
 }
 
 /* ── CSRF check (สำหรับ bulk actions จาก form) ─────────────────────────── */
-if (!isset($_POST['token']) || !defined('UI_ACTION_TOKEN') || $_POST['token'] !== UI_ACTION_TOKEN) {
+if (!isset($_POST['token']) || !defined('COVID_UI_ACTION_TOKEN') || $_POST['token'] !== COVID_UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
 }
 

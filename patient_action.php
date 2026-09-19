@@ -13,13 +13,13 @@ require_once __DIR__ . '/flex_patient.php';   // ไลบรารี Flex (bui
 
 date_default_timezone_set('Asia/Bangkok');
 
-/* ให้ action สร้าง UI_ACTION_TOKEN แบบเดียวกับหน้า UI */
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/patient.php' . php_uname() . date('Y-m-d')));
+/* ให้ action สร้าง PATIENT_UI_ACTION_TOKEN แบบเดียวกับหน้า UI */
+if (!defined('PATIENT_UI_ACTION_TOKEN')) {
+  define('PATIENT_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/patient.php' . php_uname() . date('Y-m-d')));
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Method not allowed'); }
-if (!isset($_POST['token']) || !defined('UI_ACTION_TOKEN') || $_POST['token'] !== UI_ACTION_TOKEN) {
+if (!isset($_POST['token']) || !defined('PATIENT_UI_ACTION_TOKEN') || $_POST['token'] !== PATIENT_UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
 }
 

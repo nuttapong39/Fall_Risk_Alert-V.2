@@ -47,7 +47,7 @@ $DASH_MODULES = [
   ],
 
   'drug' => [
-    'label' => 'ยาอันตราย (Drug Alert)', 'icon' => 'medication_liquid',
+    'label' => 'ยาอันตราย', 'icon' => 'medication_liquid',
     'color' => '#7c3aed', 'grad' => '135deg,#8b5cf6,#7c3aed',
     'table' => 'drug_queue', 'date' => 'vstdate', 'ui' => 'drugitems01.php',
     'tops' => [
@@ -195,6 +195,21 @@ $DASH_MODULES = [
       'status'=>'สถานะ','hn'=>'HN','fullname'=>'ชื่อ-สกุล','age'=>'อายุ','sex'=>'เพศ',
       'lab_items_name_ref'=>'รายการ Lab','lab_order_result'=>'ผล',
       'lab_date'=>'วันที่ออกผล','lab_time'=>'เวลา','created_at'=>'Created','sent_at'=>'Sent',
+    ],
+  ],
+
+  'drugs_alert' => [
+    'label' => 'ยาเฝ้าระวัง (Drug Alert)', 'icon' => 'pill',
+    'color' => '#65a30d', 'grad' => '135deg,#84cc16,#65a30d',
+    'table' => 'drugs_alert_queue', 'date' => 'vstdate', 'ui' => 'drugs_alert.php',
+    'tops' => [
+      ['label' => 'Top ยาที่เฝ้าระวัง',     'cols' => ['icode','drug_name'], 'icon' => 'pill'],
+      ['label' => 'Top สถานะการส่ง',        'cols' => ['status'],            'icon' => 'checklist'],
+    ],
+    'columns' => [
+      'status'=>'สถานะ','hn'=>'HN','fullname'=>'ชื่อ-สกุล','age'=>'อายุ',
+      'icode'=>'รหัสยา','drug_name'=>'ชื่อยา','strength'=>'ความแรง','units'=>'หน่วย',
+      'vstdate'=>'วันรับยา','created_at'=>'Created','sent_at'=>'Sent',
     ],
   ],
 ];

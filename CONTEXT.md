@@ -1,6 +1,6 @@
 # MedAlert
 
-ระบบแจ้งเตือนทางการแพทย์สำหรับ รพ.เชียงกลาง ดึงข้อมูลผู้ป่วยจาก HOSxP แล้วยิง LINE Flex Message ผ่าน MOPH Alert API มี 12 โมดูลแจ้งเตือนตามกลุ่มโรค/สิทธิ์ผู้ป่วย
+ระบบแจ้งเตือนทางการแพทย์สำหรับ รพ.เชียงกลาง ดึงข้อมูลผู้ป่วยจาก HOSxP แล้วยิง LINE Flex Message ผ่าน MOPH Alert API มี 13 โมดูลแจ้งเตือนตามกลุ่มโรค/สิทธิ์ผู้ป่วย
 
 ## Language
 
@@ -56,6 +56,10 @@ _Avoid_: API Key, credential, MOPH Key, Client Key, Secret Key
 Token Key สำรองที่ใช้เมื่อ Alert Module ไม่มี Token Key เป็นของตัวเอง กำหนดไว้ใน secrets/moph_keys.json ใต้ key "default"
 _Avoid_: fallback key, master key, global key
 
+**UI Action Token**:
+Token ป้องกัน CSRF สำหรับฟอร์ม bulk action (ส่งซ้ำ/Requeue/ล้าง error) ในหน้า Queue UI แต่ละ Alert Module มี UI Action Token เป็นของตัวเอง แยกวัตถุประสงค์จาก Token Key โดยสิ้นเชิง — คนละเรื่องกัน (Token Key ใช้ authenticate กับ MOPHAlert)
+_Avoid_: CSRF token, form token, Token Key
+
 **Resend**:
 การส่ง Flex Message ซ้ำสำหรับ Queue item ที่ยังไม่สำเร็จ มี Cooldown และจำนวนครั้งสูงสุดที่กำหนดต่อ Alert Module
 _Avoid_: retry, re-notify, re-send
@@ -106,7 +110,7 @@ _Avoid_: Fall Risk, Fall Risk Alert
 
 ## Alert Modules
 
-12 โมดูลแจ้งเตือนของ MedAlert แต่ละโมดูลมีชื่อในโค้ดและชื่อที่ใช้เรียกในทีม:
+13 โมดูลแจ้งเตือนของ MedAlert แต่ละโมดูลมีชื่อในโค้ดและชื่อที่ใช้เรียกในทีม:
 
 | ชื่อในโค้ด | ชื่อที่ใช้เรียก | กลุ่มผู้ป่วย |
 |---|---|---|
@@ -122,3 +126,4 @@ _Avoid_: Fall Risk, Fall Risk Alert
 | `scrub` | Scrub | ผู้ป่วย Scrub Typhus |
 | `sexual` | ถูกล่วงละเมิด | ผู้ป่วยถูกล่วงละเมิดทางเพศ |
 | `patient` | จิตเวช | ผู้ป่วยจิตเวชและกลุ่มอื่น ๆ |
+| `drugs_alert` | Drug Alert | ผู้ป่วยที่ได้รับยาในรายการเฝ้าระวังที่เภสัชเลือกเอง (ค้นจาก drugitems ผ่านหน้าเว็บ ไม่มี default ฝังไว้) |

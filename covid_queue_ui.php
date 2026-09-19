@@ -63,8 +63,8 @@ if (!function_exists('to_utf8')) {
   }
 }
 
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/covid_queue_ui.php' . php_uname() . date('Y-m-d')));
+if (!defined('COVID_UI_ACTION_TOKEN')) {
+  define('COVID_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/covid_queue_ui.php' . php_uname() . date('Y-m-d')));
 }
 
 /* ---------- Flash message ---------- */
@@ -221,7 +221,7 @@ require_once __DIR__ . '/partials/header.php';
 
 <!-- Table + Actions -->
 <form method="post" action="covid_queue_action.php" id="actionForm">
-  <input type="hidden" name="token" value="<?=htmlspecialchars(UI_ACTION_TOKEN)?>">
+  <input type="hidden" name="token" value="<?=htmlspecialchars(COVID_UI_ACTION_TOKEN)?>">
   <input type="hidden" name="action" id="covAction" value="">
 
   <div class="card p-3 mb-3">

@@ -11,6 +11,21 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.19.1344
+- **Module ใหม่ที่ 13: `drugs_alert` (Drug Alert)** — เภสัชเลือกยาที่ต้องเฝ้าระวังเอง
+  ไม่ต้อง hardcode รหัสยาแบบ HAD อีกต่อไป hero feature = tag-input picker ค้นจาก
+  `drugitems` แบบ real-time (`search_drug.php` + field type ใหม่ `drugpicker` ใน filter
+  modal) เลือกแล้วโชว์จำนวนจ่ายเมื่อวาน+วันนี้ก่อนบันทึก · icode ไม่มี default ฝังไว้
+  (fail-closed) · worker รองรับ `mode=backfill` (เก็บประวัติเป็น Sent ไม่ยิง LINE) และ
+  ข้าม icode ที่ถูกเอาออกจากรายการไปแล้วตอน auto-send · แก้ป้าย module `drug` เดิมจาก
+  "ยาอันตราย (Drug Alert)" เป็น "ยาอันตราย" กันชื่อซ้ำกับโมดูลใหม่
+- **แก้บั๊ก CSRF token ใช้ร่วมกัน 5 module** (fracture, pharm_lab, covid, patient, drug) —
+  เดิม `config.php` กำหนด `UI_ACTION_TOKEN` เป็นค่าตายตัวไว้ก่อนเสมอ ทำให้ logic
+  "hash รายวันเฉพาะโมดูล" ที่ตั้งใจไว้เป็น dead code จริง ทั้ง 5 module เปลี่ยนไปใช้
+  `<MOD>_UI_ACTION_TOKEN` เฉพาะตัว (แพทเทิร์นเดียวกับ accident/had/lab_hemato)
+- เพิ่มคำศัพท์ **"UI Action Token"** ใน `CONTEXT.md` แยกความหมายจาก "Token Key" ที่มีอยู่แล้ว
+- Sync จำนวนโมดูลจาก 12 → 13 ใน `CONTEXT.md`/`README.md`/`work-flow.md`/`docs/PROJECT-STRUCTURE.md`
+
 ## 2026.09.04.1519
 - **เพิ่ม `work-flow.md` — เอกสาร Work-Flow ของระบบ (อ่านก่อนเพิ่ม/แก้ feature ทุกครั้ง)**
   รวมกฎเหล็ก HOSxP ต้อง Read-Only เท่านั้น (SELECT อย่างเดียว ห้าม

@@ -1,0 +1,45 @@
+-- ============================================================
+-- MedAlert · Query ดึงผู้ป่วย: Drug Alert (ยาเฝ้าระวังที่เภสัชเลือกเอง)
+-- จาก HOSxP (PostgreSQL / XE4) — รันใน Navicat for PostgreSQL
+-- ใช้ตรวจสอบว่าระบบจะดึงเคสไหนเข้าคิวแจ้งเตือน module 'drugs_alert'
+--
+-- ต่างจาก module อื่น: รายการ icode ไม่มี default ฝังไว้ (fail-closed) — เภสัชเลือกยาเอง
+-- ผ่าน tag-input picker ในหน้า drugs_alert.php รายการจริงที่ใช้งานอยู่ ณ ขณะนี้ ดูได้ที่
+-- secrets/module_filters.json คีย์ drugs_alert.icodes (หรือเปิดหน้าเว็บดูตรงๆ)
+--
+-- ค่าที่ปรับได้:
+--   • ช่วงวันที่  BETWEEN 'YYYY-MM-DD' AND 'YYYY-MM-DD'  (ตัวอย่าง = เมื่อวาน+วันนี้)
+--   • รหัสยา (icode)  ← แทนด้วยรายการจริงที่เลือกไว้ในหน้าเว็บ (ตัวอย่างด้านล่างเป็น placeholder)
+-- (query นี้ตรงกับ sources/drugs_alert_source.php — ตัวจริงที่ worker ใช้)
+-- ============================================================
+
+SELECT
+    o.hn,
+    CONCAT(COALESCE(p.pname,''), COALESCE(p.fname,''), ' ', COALESCE(p.lname,'')) AS fullname,
+    p.cid,
+    p.hometel,
+    EXTRACT(YEAR FROM age(o.vstdate, p.birthday)) AS age,
+    CASE WHEN p.sex = '1' THEN 'ชาย' WHEN p.sex = '2' THEN 'หญิง' ELSE '' END AS sex,
+    p.addrpart AS address,
+    d.icode,
+    d.name AS drug_name,
+    d.strength,
+    d.units,
+    o.vstdate,
+    o.qty,
+    o.sum_price
+FROM   opitemrece o
+JOIN   drugitems  d ON o.icode = d.icode
+JOIN   patient    p ON o.hn    = p.hn
+WHERE  o.vstdate BETWEEN CURRENT_DATE - INTERVAL '1 day' AND CURRENT_DATE
+AND    d.icode IN ('1431108')   -- ← แทนด้วยรายการยาจริงที่เลือกไว้ในหน้า drugs_alert.php
+AND    o.hn IS NOT NULL AND o.hn <> ''
+ORDER BY o.hn, o.vstdate, d.icode;
+
+-- ── ค้นหายาจากตาราง drugitems (เหมือนที่ tag-input picker ใช้) ──────────────
+-- SELECT icode, name, strength, units, dosageform, unitprice, drugcategory, therapeutic, istatus
+-- FROM   drugitems
+-- WHERE  (icode ILIKE '%คำค้น%' OR name ILIKE '%คำค้น%')
+-- AND    istatus = 'Y'
+-- ORDER BY name ASC
+-- LIMIT 20;

@@ -89,8 +89,8 @@ function to_utf8_dq($s){
   return @iconv('UTF-8','UTF-8//IGNORE',$s);
 }
 
-if (!defined('UI_ACTION_TOKEN')) {
-  define('UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/drugitems01.php' . php_uname() . date('Y-m-d')));
+if (!defined('DRUG_UI_ACTION_TOKEN')) {
+  define('DRUG_UI_ACTION_TOKEN', hash('sha256', __DIR__ . '/drugitems01.php' . php_uname() . date('Y-m-d')));
 }
 
 // ─── Page variables ───────────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ require_once __DIR__ . '/partials/header.php';
 
 <!-- Table + Bulk Actions -->
 <form method="post" action="drug_queue_action.php" id="actionForm">
-  <input type="hidden" name="token" value="<?= htmlspecialchars(UI_ACTION_TOKEN) ?>">
+  <input type="hidden" name="token" value="<?= htmlspecialchars(DRUG_UI_ACTION_TOKEN) ?>">
   <input type="hidden" name="action" id="drugAction" value="">
 
   <div class="card p-3 mb-3">
