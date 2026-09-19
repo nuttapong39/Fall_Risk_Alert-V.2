@@ -112,6 +112,12 @@ Windows quirks ของระบบอัปเดต (`task/update.bat`/`updat
 ไม่งั้น retry ค้างเป็นล้านครั้ง · git checkout บางเครื่องทำ UTF-8 BOM ของ `.ps1` หาย →
 ต้อง self-heal BOM ก่อนรันเสมอ
 
+`update.ps1` ยังรีเฟรช CA certificate bundle (`curl.cainfo`/`openssl.cafile` ตาม php.ini
+ของเครื่องนั้นๆ) จาก `https://curl.se/ca/cacert.pem` ให้อัตโนมัติทุกครั้งที่อัปเดต (best-effort,
+สำรองไฟล์เดิมไว้ก่อนทับเสมอ, ไม่ throw ถ้าพลาด) — แก้ปัญหาที่เจอจริง: CA bundle ที่ติดมากับ
+XAMPP ค้างวันที่ตั้งแต่ติดตั้ง ทำให้ root cert ใหม่ๆ (เช่นของ MOPHAlert) ขาดหายไป จน HTTPS
+ทุกทางจาก PHP/cURL พังด้วย "unable to get local issuer certificate"
+
 ## 7. Known Gaps / Security Backlog
 
 ยืนยันสถานะกับโค้ดจริงแล้ว ณ วันที่เขียนเอกสารนี้ — **เป็นของที่รู้อยู่แล้วและตั้งใจเลื่อน

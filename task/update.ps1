@@ -6,7 +6,8 @@
     1) สำรองทั้งโฟลเดอร์ไป ..\_backup\ ก่อนแตะอะไร
     2) ถ้ามี .git (และมี git.exe ใช้ได้) -> git fetch + git reset --hard origin/master
        ถ้าไม่มี -> ดาวน์โหลด ZIP จาก GitHub มาทับ (robocopy, ไม่แตะ secrets/ กับ logs/)
-    3) รัน db_migrate.php (deploy ตาราง queue ใหม่ถ้ามี)
+    3) รัน db_migrate.php (deploy ตาราง queue ใหม่ถ้ามี) + รีเฟรช CA certificate bundle ที่
+       PHP/cURL ใช้ตรวจ SSL (curl.cainfo/openssl.cafile) ถ้าตั้งค่าไว้ — best-effort เสมอ
     4) เขียนผลลง logs\update_status.json (ให้หน้าเว็บ poll) + logs\update_<timestamp>.log
 
   ปลอดภัยกับ secrets/*.json และ logs/ เสมอ (ไม่ถูกเขียนทับไม่ว่าทางไหน)
@@ -123,6 +124,77 @@ try {
     $migrateOut | ForEach-Object { Add-Content -LiteralPath $LogFile -Value $_ }
   } else {
     Add-Content -LiteralPath $LogFile -Value 'ไม่พบ php.exe — ข้าม migration (รัน db_migrate.php เองภายหลังได้)'
+  }
+
+  # ── 3.5) รีเฟรช CA certificate bundle ที่ PHP/cURL ใช้ตรวจ SSL (curl.cainfo/openssl.cafile) ──
+  # เคสจริงที่เจอ: รพ.หนึ่งใช้ curl-ca-bundle.crt ที่ค้างมาตั้งแต่ปี 2022 ทำให้ HTTPS ทุกทาง
+  # จาก PHP/cURL พังหมด (root CA ใหม่ๆ เช่น Sectigo Public Server Authentication Root R46
+  # ไม่อยู่ใน bundle เก่า) — ขั้นตอนนี้ best-effort เสมอ พลาดแล้วต้อง "ข้าม" ห้ามทำให้อัปเดต
+  # ทั้งก้อนดูเหมือนล้มเหลว (เหมือนขั้นแจ้งเตือนด้านล่าง) และไม่สั่ง restart Apache เอง เพราะ
+  # PHP/cURL อ่านเนื้อหาไฟล์นี้ใหม่ทุกครั้งที่เชื่อมต่ออยู่แล้ว (พาธใน php.ini ไม่ได้เปลี่ยน)
+  try {
+    if (!$PhpExe) {
+      Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] ไม่พบ php.exe — ข้ามการอัปเดต CA bundle (ตรวจสอบ/อัปเดตเองภายหลังได้)"
+    } else {
+      $caRaw = (& $PhpExe -r "echo ini_get('curl.cainfo') ?: ini_get('openssl.cafile');" 2>$null | Out-String).Trim()
+
+      if ([string]::IsNullOrWhiteSpace($caRaw)) {
+        Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [info] PHP ไม่ได้ตั้งค่า curl.cainfo/openssl.cafile ไว้ — ข้ามขั้นตอนอัปเดต CA bundle (ไม่มีไฟล์ต้องรีเฟรช)"
+      } elseif (!(Test-Path -LiteralPath $caRaw)) {
+        Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] curl.cainfo/openssl.cafile ชี้ไปที่ไฟล์ที่ไม่พบ ($caRaw) — ข้ามขั้นตอนอัปเดต CA bundle"
+      } else {
+        $CaBundlePath = $caRaw
+        Set-Status 'running' 'กำลังตรวจสอบ/อัปเดตชุดใบรับรอง CA (CA bundle) สำหรับ HTTPS...' 4
+
+        $CaUrl         = 'https://curl.se/ca/cacert.pem'
+        $CaTmpFile     = Join-Path $env:TEMP "medalert_cacert_$Stamp.pem"
+        $caMaxAttempts = 4
+        $caLastError   = $null
+        $caDownloadOk  = $false
+        for ($attempt = 1; $attempt -le $caMaxAttempts; $attempt++) {
+          try {
+            if ($attempt -gt 1) {
+              Set-Status 'running' "ดาวน์โหลด CA bundle ไม่สำเร็จ กำลังลองใหม่ (ครั้งที่ $attempt/$caMaxAttempts)..." 4
+            }
+            Remove-Item -LiteralPath $CaTmpFile -Force -ErrorAction SilentlyContinue
+            Invoke-WebRequest -Uri $CaUrl -OutFile $CaTmpFile -UseBasicParsing -TimeoutSec 30
+            $caDownloadOk = $true
+            break
+          } catch {
+            $caLastError = $_.Exception.Message
+            Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] ดาวน์โหลด CA bundle ล้มเหลว (ครั้งที่ $attempt/$caMaxAttempts): $caLastError"
+            if ($attempt -lt $caMaxAttempts) { Start-Sleep -Seconds (10 * $attempt) }
+          }
+        }
+
+        if (!$caDownloadOk) {
+          Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] ดาวน์โหลด CA bundle จาก curl.se ล้มเหลวหลังลองแล้ว $caMaxAttempts ครั้ง ($caLastError) — ข้ามขั้นตอนนี้ ใช้ไฟล์เดิมต่อไป (ไม่กระทบผลอัปเดตหลัก)"
+        } else {
+          $validSize    = (Get-Item -LiteralPath $CaTmpFile).Length -ge 50KB
+          $validContent = $validSize -and (Select-String -LiteralPath $CaTmpFile -Pattern '-----BEGIN CERTIFICATE-----' -SimpleMatch -Quiet)
+
+          if (!$validSize -or !$validContent) {
+            Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] ไฟล์ CA bundle ที่ดาวน์โหลดมาไม่ผ่านการตรวจสอบ (ขนาด/รูปแบบไม่ถูกต้อง) — ไม่ทับไฟล์เดิมเพื่อความปลอดภัย"
+          } else {
+            $CaBackupDir = Join-Path $BackupDir '_ca_bundle_backup'
+            if (!(Test-Path $CaBackupDir)) { New-Item -ItemType Directory -Path $CaBackupDir -Force | Out-Null }
+            $CaBackupFile = Join-Path $CaBackupDir (Split-Path -Leaf $CaBundlePath)
+            Copy-Item -LiteralPath $CaBundlePath -Destination $CaBackupFile -Force
+
+            # copy+rename ในโฟลเดอร์เดียวกับไฟล์ปลายทางแทน copy ตรงๆ — rename ในไดรฟ์เดียวกัน
+            # เป็น atomic ระดับ NTFS ลดโอกาส Apache อ่านไฟล์ครึ่งเดียวขณะกำลังเขียนทับ
+            $CaSwapFile = "$CaBundlePath.new"
+            Copy-Item -LiteralPath $CaTmpFile -Destination $CaSwapFile -Force
+            Move-Item -LiteralPath $CaSwapFile -Destination $CaBundlePath -Force
+
+            Set-Status 'running' "อัปเดต CA bundle สำเร็จ (สำรองไฟล์เดิมไว้ที่ $CaBackupFile)" 4
+          }
+        }
+        Remove-Item -LiteralPath $CaTmpFile -Force -ErrorAction SilentlyContinue
+      }
+    }
+  } catch {
+    Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] อัปเดต CA bundle ล้มเหลว (ไม่กระทบผลอัปเดตหลัก): $($_.Exception.Message)"
   }
 
   # ── 4) จบ ─────────────────────────────────────────────────────────────

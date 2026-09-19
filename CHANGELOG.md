@@ -11,6 +11,20 @@
 ในวันเดียวโดยไม่แตะ VERSION เลย ทำให้เครื่องที่อัปเดตแล้วกับเครื่องที่ยังไม่ได้
 อัปเดตโชว์เลขเวอร์ชันเดียวกัน)
 
+## 2026.09.19.2257
+- **`task/update.ps1` รีเฟรช CA certificate bundle อัตโนมัติทุกครั้งที่อัปเดต** — เจอจริงจาก
+  รพ. หนึ่ง: ปุ่ม "ส่งซ้ำทันที" error `SSL certificate problem: unable to get local issuer
+  certificate` ทุกครั้ง สาเหตุคือไฟล์ที่ `curl.cainfo`/`openssl.cafile` ใน php.ini ชี้ไป
+  (`curl-ca-bundle.crt` ที่ติดมากับ XAMPP) ค้างมาตั้งแต่เมษายน 2022 ไม่มี root cert ใหม่ๆ
+  เช่น Sectigo Public Server Authentication Root R46 ที่ฝั่ง MOPHAlert ใช้อยู่ ทำให้ HTTPS
+  ทุกทางจาก PHP/cURL พังหมด ไม่ใช่แค่ MOPHAlert เท่านั้น — เพิ่ม step ใหม่ใน `update.ps1`:
+  ถาม php.exe ว่า curl.cainfo/openssl.cafile ตั้งไว้เป็นไฟล์ไหน (dynamic ไม่ hardcode path
+  เพราะแต่ละ รพ. ติดตั้ง XAMPP คนละที่ได้), ดาวน์โหลด `cacert.pem` ล่าสุดจาก curl.se แบบ
+  retry 4 ครั้งเหมือนขั้น ZIP, ตรวจขนาด/รูปแบบไฟล์ก่อนทับเสมอ, สำรองไฟล์เดิมไว้ใต้โฟลเดอร์
+  backup ของรอบอัปเดตนั้นก่อนเขียนทับแบบ atomic — ทั้งหมด best-effort ไม่ throw ถ้าพลาด
+  (ไม่กระทบผลอัปเดตหลัก) และไม่สั่ง restart Apache เอง เพราะ PHP/cURL อ่านเนื้อหาไฟล์นี้
+  ใหม่ทุกครั้งที่เชื่อมต่ออยู่แล้ว (พาธใน php.ini ไม่ได้เปลี่ยน ไม่เหมือนแก้ค่า ini เอง)
+
 ## 2026.09.19.2135
 - **แก้บั๊ก 403 Forbidden ตลอดในหน้า `drugs_alert.php`** (ปุ่มส่งซ้ำทันที/Requeue/ล้าง Error
   กด ไม่ผ่านทุกครั้ง) — `drugs_alert_queue_action.php` คำนวณ `DRUGS_ALERT_UI_ACTION_TOKEN`
