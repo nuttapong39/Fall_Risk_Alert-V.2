@@ -72,8 +72,34 @@ try {
     $ZipUrl     = 'https://github.com/nuttapong39/Fall_Risk_Alert-V.2/archive/refs/heads/master.zip'
     $TmpZip     = Join-Path $env:TEMP "medalert_update_$Stamp.zip"
     $TmpExtract = Join-Path $env:TEMP "medalert_update_extract_$Stamp"
-    Invoke-WebRequest -Uri $ZipUrl -OutFile $TmpZip -UseBasicParsing
-    Expand-Archive -Path $TmpZip -DestinationPath $TmpExtract -Force
+
+    # ดาวน์โหลด+แตกไฟล์ ZIP มี retry — เน็ตบางที่ (เช่น รพ. หลังพร็อกซี/ไฟร์วอลล์) ตัดคอนเนกชัน
+    # ที่ค้างนานกลางทางไฟล์ใหญ่บ่อย (เจอจริง: หลุดตอนนาทีที่ 14 ด้วย "connection was closed
+    # unexpectedly") — ใช้ retry ไม่ใช่เพิ่ม timeout เพราะสาเหตุคือ connection reset ไม่ใช่ timeout
+    $maxAttempts = 4
+    $lastError   = $null
+    $downloadOk  = $false
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+      try {
+        if ($attempt -gt 1) {
+          Set-Status 'running' "ดาวน์โหลด ZIP ไม่สำเร็จ กำลังลองใหม่ (ครั้งที่ $attempt/$maxAttempts)..." 2
+        }
+        Remove-Item -LiteralPath $TmpZip -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $TmpExtract -Recurse -Force -ErrorAction SilentlyContinue
+        Invoke-WebRequest -Uri $ZipUrl -OutFile $TmpZip -UseBasicParsing
+        Expand-Archive -Path $TmpZip -DestinationPath $TmpExtract -Force
+        $downloadOk = $true
+        break
+      } catch {
+        $lastError = $_.Exception.Message
+        Add-Content -LiteralPath $LogFile -Value "[$(Get-Date -Format 's')] [warn] ดาวน์โหลด/แตกไฟล์ ZIP ล้มเหลว (ครั้งที่ $attempt/$maxAttempts): $lastError"
+        if ($attempt -lt $maxAttempts) { Start-Sleep -Seconds (10 * $attempt) }
+      }
+    }
+    if (!$downloadOk) {
+      throw "ดาวน์โหลด ZIP จาก GitHub ล้มเหลวหลังลองแล้ว $maxAttempts ครั้ง ($lastError) — ตรวจการเชื่อมต่ออินเทอร์เน็ต/proxy ของเครื่องนี้ หรือติดตั้ง git แล้วให้ระบบใช้ git fetch แทน (ข้อมูลน้อยกว่ามาก)"
+    }
+
     $SrcRoot = Get-ChildItem -Path $TmpExtract -Directory | Select-Object -First 1
     if (!$SrcRoot) { throw 'แตกไฟล์ ZIP แล้วไม่พบโฟลเดอร์โค้ด' }
 
