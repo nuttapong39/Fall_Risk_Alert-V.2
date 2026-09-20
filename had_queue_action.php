@@ -85,6 +85,51 @@ if (!isset($_POST['token']) || $_POST['token'] !== HAD_UI_ACTION_TOKEN) {
   http_response_code(403); exit('Forbidden');
 }
 
+/* ══ บันทึกช่วงเวลาแจ้งเตือน (Alert Window) ═══════════════════════════════════
+ * ตำแหน่งสำคัญ: ต้องอยู่ "หลัง" ตรวจ token (สาขานี้เขียนไฟล์ลง secrets/ ต้องกัน CSRF)
+ * แต่ "ก่อน" บล็อก $ids ด้านล่าง — เพราะการบันทึกหน้าต่างเวลาไม่ได้ทำกับแถวในคิว
+ * จึงไม่มี ids[] ส่งมาด้วย ถ้าวางหลังจากนั้นจะโดน redirect ?msg=no_ids ทุกครั้ง
+ */
+if ($action === 'save_window') {
+  // ไฟล์นี้ (ต่างจาก module_filter_action.php) ไม่ได้ require auth_guard ไว้ที่หัวไฟล์
+  // แต่สาขานี้เขียน config ลง secrets/ จึงบังคับ login เฉพาะตรงนี้ — ห้ามย้ายไปหัวไฟล์
+  // ไม่งั้น import_hosxp ที่เป็น AJAX จะได้ HTML ของ login.php กลับไปเข้า r.json() แล้วพัง
+  require_once __DIR__ . '/auth_guard.php';
+
+  $enabled = isset($_POST['win_enabled']);            // checkbox ไม่ติ๊ก = ไม่ส่งค่ามาเลย
+  $winStart = aw_norm_time($_POST['win_start'] ?? '');
+  $winEnd   = aw_norm_time($_POST['win_end']   ?? '');
+
+  // validate ก่อนแตะไฟล์เสมอ — ค่าเพี้ยนแม้ช่องเดียวก็ไม่เขียนทับของเดิม
+  if ($winStart === null || $winEnd === null) {
+    header('Location: had_queue_ui.php?msg=win_bad'); exit;
+  }
+
+  // ขั้นตอนอ่าน-merge-สำรอง-เขียน ด้านล่างเดินตามรอย module_filter_action.php โดยตั้งใจ
+  // ไม่ดึงออกมาเป็น helper ร่วมกัน เพราะจะต้องไปแก้ไฟล์เดิมที่ใช้งานได้ดีอยู่แล้ว และสองที่นี้
+  // ต่างกันตรงวิธีเขียนจริง (ที่นี่ใช้ tmp+rename, ที่โน่นเขียนทับตรงๆ) ดู docs/adr/0003
+  $awFile   = ALERT_WINDOWS_FILE;
+  $awStored = is_readable($awFile) ? json_decode(@file_get_contents($awFile), true) : [];
+  if (!is_array($awStored)) $awStored = [];           // ไฟล์เสีย = เริ่มใหม่ ไม่โยน exception ใส่ผู้ใช้
+
+  // เก็บ start/end ไว้เสมอแม้ปิดสวิตช์ — เปิดกลับมาจะได้ไม่ต้องกรอกเวลาใหม่
+  $awStored['had']   = ['enabled' => $enabled, 'start' => $winStart, 'end' => $winEnd];
+  $awStored['_meta'] = ['updated_at' => date('Y-m-d H:i:s')];
+
+  if (!is_dir(dirname($awFile))) @mkdir(dirname($awFile), 0775, true);
+  if (is_file($awFile)) @copy($awFile, $awFile . '.bak');
+
+  // เขียนลง .tmp แล้ว rename (atomic ในไดรฟ์เดียวกันบน NTFS) — worker อ่านไฟล์นี้ทุก 5 นาที
+  // ถ้าบังเอิญอ่านตอนเขียนค้างครึ่งไฟล์ json_decode จะพัง แล้วตกไปใช้ default = ส่ง 24 ชม.
+  $awJson = json_encode($awStored, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+  $awTmp  = $awFile . '.tmp';
+  $awOk   = (@file_put_contents($awTmp, $awJson) !== false) && @rename($awTmp, $awFile);
+  if (!$awOk) @unlink($awTmp);
+
+  header('Location: had_queue_ui.php?msg=' . ($awOk ? ($enabled ? 'win_saved' : 'win_off') : 'win_err'));
+  exit;
+}
+
 $ids = isset($_POST['ids']) ? (array)$_POST['ids'] : [];
 $ids = array_values(array_filter($ids, fn($x) => ctype_digit((string)$x)));
 if (!$ids) { header('Location: had_queue_ui.php?msg=no_ids'); exit; }

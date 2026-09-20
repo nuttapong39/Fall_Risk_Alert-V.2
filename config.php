@@ -20,6 +20,10 @@ require_once __DIR__ . '/site_config_loader.php';
 // โหลดเงื่อนไขดึงข้อมูลราย module จาก secrets/module_filters.json (default=ค่าปัจจุบัน)
 require_once __DIR__ . '/module_filters_loader.php';
 
+// โหลดช่วงเวลาแจ้งเตือน (Alert Window) ราย module จาก secrets/alert_windows.json
+// จำกัดเฉพาะขั้น Send ของ worker — default = ปิด = ส่งตลอด 24 ชม. (พฤติกรรมเดิม)
+require_once __DIR__ . '/alert_window_loader.php';
+
 // โหลดเลขเวอร์ชันปัจจุบันจากไฟล์ VERSION → APP_VERSION
 require_once __DIR__ . '/version_loader.php';
 

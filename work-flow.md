@@ -62,6 +62,7 @@ Queue UI (<mod>_queue_ui.php) ให้ผู้ใช้ดู Pending/Sent แ
 | Queue UI | `had_queue_ui.php` |
 | Action handler (resend/requeue/clear) | `had_queue_action.php` |
 | Flex payload builder | `flex_builders.php` (`buildHadPayload()`) |
+| ช่วงเวลาแจ้งเตือน (เฉพาะ HAD) | `alert_window_loader.php` + `secrets/alert_windows.json` (ดู §6b) |
 
 ทุกโมดูลตามรูปแบบเดียวกัน ต่างกันแค่ชื่อไฟล์ตาม module — ดูตารางเต็มที่
 [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md)
@@ -72,11 +73,31 @@ Queue UI (<mod>_queue_ui.php) ให้ผู้ใช้ดู Pending/Sent แ
 - **Requeue ไม่ส่งเอง** — แค่ reset `status=0, attempt=0` กลับไปเป็น Pending รอ Cron
   worker รอบถัดไปมาส่งจริง → ถ้า module นั้นไม่มี scheduled task ใน `task/` ติดตั้งอยู่จริง
   Requeue จะค้าง Pending ตลอดไป (เช็ค Task Scheduler ก่อนสงสัยว่า Requeue พัง)
+- **เฉพาะ HAD: คิวค้าง Pending อาจมาจาก Alert Window ไม่ใช่ Cron** — ถ้า
+  `secrets/alert_windows.json` เปิดใช้อยู่และตอนนี้อยู่นอกช่วง worker จะข้ามขั้น Send
+  โดยตั้งใจ (Ingest ยังวิ่งปกติ) ดูบรรทัด `SKIP SEND:` ใน `logs/had_task_run.log`
+  หรือแถบสถานะบนหน้า `had_queue_ui.php` ก่อนไล่หาสาเหตุอื่น (ดู §3b และ `docs/adr/0003`)
 - **MOPH key ต้องอ้าง constant เฉพาะโมดูล** (`<MOD>_CLIENT_KEY`/`<MOD>_SECRET_KEY` จาก
   `moph_keys_loader.php`) ห้ามอ้าง `MOPH_CLIENT_KEY` ตรงๆ ในโค้ด module ใหม่ — ไม่งั้น key
   เฉพาะโมดูลที่ตั้งในหน้า `moph_keys_admin.php` จะไม่มีผล (เคยพลาดกับ covid มาแล้ว)
 - **Module worker ต้อง `require config.php` ก่อน define constant ใดๆ เสมอ** — เคยพลาด
   (dengue เจอ 401 เพราะ define key ก่อน config.php โหลด)
+
+## 3b. Alert Window — จำกัดเวลาส่ง (ตอนนี้มีเฉพาะ HAD)
+
+ปกติทุกโมดูลส่งทันทีที่ Cron เจอ Pending ตลอด 24 ชม. แต่ HAD ตั้ง **ช่วงเวลาแจ้งเตือน**
+(เช่น 16:30-08:00 ข้ามเที่ยงคืน) ได้จากปุ่มในหน้า `had_queue_ui.php` เก็บที่
+`secrets/alert_windows.json` อ่านผ่าน `alert_window_loader.php`
+
+- **กั้นเฉพาะขั้น Send — Ingest ยังวิ่งทั้งวัน** คิวจึงขึ้นเป็น Pending ระหว่างวันตามจริง
+  แล้วไหลออกทีเดียวตอนหน้าต่างเปิด (Dashboard จะเห็นยอด "รอส่ง" ไต่ขึ้นทุกวัน — ไม่ใช่บั๊ก)
+- **Cron ไม่ถูกแตะ** ยังวิ่งทุก 5 นาที 24 ชม. เหมือนเดิม เพราะการแก้ scheduled task
+  ต้องใช้ UAC ซึ่งหน้าเว็บสั่งไม่ได้ — worker กั้นตัวเองแทน (เหตุผลเต็มใน `docs/adr/0003`)
+- **default = ปิด = ส่ง 24 ชม. เหมือนเดิม** และ fail-open ทุกทาง (ไฟล์หาย/JSON เสีย/ค่าผิดรูป
+  /`start == end` → ส่ง 24 ชม. ไม่ใช่เงียบ) — ระบบแจ้งเตือนทางการแพทย์ควรพลาดไปทาง "แจ้งเกิน"
+- **ปุ่ม "ส่งซ้ำทันที" ไม่ถูกจำกัด** (คนละ path — อยู่ใน `had_queue_action.php`) แค่เตือนก่อนยืนยัน
+- ถ้าจะทำโมดูลอื่นตาม: store เป็น module-keyed อยู่แล้ว เพิ่ม key ใน `ALERT_WINDOW_DEFAULTS`
+  + ปุ่ม/modal ในหน้านั้น + gate รอบการเรียก `*_send_pending()` ของ worker
 
 ## 4. Telegram Mirror — แยก path จาก MOPH, ไม่ครบทุก module
 

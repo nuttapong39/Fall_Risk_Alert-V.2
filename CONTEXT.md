@@ -84,6 +84,10 @@ _Avoid_: ส่งแล้ว, done, completed, delivered
 เกณฑ์คัดกรองผู้ป่วยในขั้นตอน Ingest ของแต่ละ Alert Module เช่น ICD-10 code, ประเภทสิทธิ์ผู้ป่วย (pttype), หรือ lab item code
 _Avoid_: criteria, filter, เงื่อนไขคัดกรอง, rule
 
+**Alert Window**:
+ช่วงเวลาในหนึ่งวันที่ Alert Module ได้รับอนุญาตให้ Send (เช่น 16:30-08:00 ซึ่งข้ามเที่ยงคืน) ภาษาไทยใช้ว่า "ช่วงเวลาแจ้งเตือน" ตามชื่อปุ่มในหน้า Queue UI เป็นนโยบายของขั้น Send ล้วน ๆ คนละเรื่องกับ Condition ซึ่งเป็นเกณฑ์คัดกรองผู้ป่วยในขั้น Ingest จึงเก็บแยกไฟล์ที่ secrets/alert_windows.json — นอกช่วงเวลา Ingest ยังทำงานตามปกติ รายการจึงค้างเป็น Pending แล้วไหลออกเมื่อหน้าต่างเปิด ไม่มีผลกับการสั่งส่งเองจากหน้า Queue UI ค่าเริ่มต้นคือปิด = ส่งตลอด 24 ชม. ปัจจุบันมีเฉพาะ HAD Alert
+_Avoid_: Condition, ช่วงส่ง, เวลาส่ง, schedule, quiet hours, time window
+
 **Source Query**:
 คำสั่ง SQL SELECT ที่ implement การอ่านข้อมูลจาก HOSxP ในขั้น Ingest ของ Alert Module หนึ่ง เป็นตัวแทนของ Condition ในรูป SQL มี provider เดียวต่อ module (รวมศูนย์ ไม่ copy ซ้ำหลายไฟล์) และเลือกภาษา SQL ตาม engine ของ HOSxP ที่เชื่อมอยู่ (MySQL V3 หรือ PostgreSQL XE4)
 _Avoid_: ingest query, select query, HOSxP query, source select

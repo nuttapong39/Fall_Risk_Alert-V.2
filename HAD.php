@@ -58,6 +58,9 @@ function had_out(string $line): void {
 
 had_out("=== HAD START (mode={$mode} {$start}..{$end}" . ($isDry ? ' DRYRUN' : '') . ") ===");
 had_out('รหัสยา (icode): ' . implode(', ', module_filter('had')['icodes'] ?? []));
+// log บรรทัดนี้เฉพาะตอนเปิดใช้ — รพ. ส่วนใหญ่ปิดไว้ (default) จะได้ไม่มีบรรทัดเพิ่มใน log เปล่าๆ
+// (worker วิ่งทุก 5 นาที = 288 รอบ/วัน ทุกบรรทัดที่เพิ่มคือ 288 บรรทัด/วัน และ log ไม่มี rotation)
+if (alert_window('had')['enabled']) had_out('ช่วงเวลาแจ้งเตือน: ' . alert_window_summary('had'));
 
 /* ══ INGEST ══════════════════════════════════════════════════════════════ */
 function had_ingest(PDO $db, string $start, string $end): array {
@@ -95,7 +98,9 @@ function had_ingest(PDO $db, string $start, string $end): array {
 }
 
 /* ══ SEND ════════════════════════════════════════════════════════════════ */
-function had_send_pending(PDO $db, int $limit = 50, int $maxTry = 8, int $cooldownMin = 1): array {
+// $limit ผูกกับ AW_SEND_LIMIT (alert_window_loader.php) ที่เดียว — ห้ามเขียนเลขซ้ำตรงนี้
+// เพราะโมดัล "ช่วงเวลาแจ้งเตือน" เอาเลขนี้ไปคำนวณโชว์ว่าส่งได้กี่รายการ/วัน ถ้าแยกกันจะโกหกผู้ใช้
+function had_send_pending(PDO $db, int $limit = AW_SEND_LIMIT, int $maxTry = 8, int $cooldownMin = 1): array {
   $q = $db->prepare(
     "SELECT * FROM had_queue
      WHERE status = 0
@@ -173,7 +178,20 @@ try {
     if (count($rows) > 20) had_out('  ... (แสดง 20 แถวแรก)');
   } else {
     if ($mode === 'ingest' || $mode === 'both') had_ingest($dbcon, $start, $end);
-    if ($mode === 'send'   || $mode === 'both') had_send_pending($dbcon);
+    if ($mode === 'send'   || $mode === 'both') {
+      /* ── Alert Window — กั้นเฉพาะขั้น Send เท่านั้น (ดู docs/adr/0003) ──────────
+         Ingest ด้านบนยังวิ่งทั้งวันโดยตั้งใจ: หน้า Queue UI/Dashboard จะได้เห็นคนไข้
+         ของวันนี้เป็น "รอส่ง" ตามจริง แล้วคิวค่อยไหลออกทีเดียวตอนหน้าต่างเปิด
+         บังคับที่นี่ ไม่ใช่ที่ Cron เพราะการแก้ scheduled task ต้องใช้สิทธิ์
+         Administrator/UAC (ดู task/install_tasks.bat) ซึ่งหน้าเว็บสั่งเองไม่ได้
+         หมายเหตุ: ปุ่ม "ส่งซ้ำทันที" ในหน้า Queue UI ไม่ผ่านทางนี้ จึงไม่ถูกจำกัด */
+      if (!alert_window_is_open('had')) {
+        had_out('SKIP SEND: นอกช่วงเวลาแจ้งเตือน (' . alert_window_summary('had') . ') — '
+              . 'คิวค้างไว้ก่อน จะเริ่มส่งอีกครั้งเวลา ' . alert_window_next_open('had') . ' น.');
+      } else {
+        had_send_pending($dbcon, AW_SEND_LIMIT);
+      }
+    }
   }
   had_out('=== HAD DONE ===');
 } catch (Throwable $e) {

@@ -89,11 +89,17 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - `partials/filter_modal.php` — ปุ่ม "แก้ไขเงื่อนไขดึงข้อมูล" + modal (schema-driven) ที่ฝังในทุกหน้า `*_queue_ui.php`/`patient.php`/`sexual.php`/`Leptospira.php`/`scrubtyphus.php`/`drugitems01.php`
 - แก้ได้ผ่านหน้าเว็บ ไม่ต้องแตะโค้ด — มีผลทั้ง worker อัตโนมัติและปุ่ม Import (ใช้ store เดียวกัน)
 
+### 5c) ช่วงเวลาแจ้งเตือน (Alert Window) — เฉพาะ HAD
+- `alert_window_loader.php` — default (ฝังในตัว, `enabled=false` = ส่ง 24 ชม. เหมือนเดิม) + `alert_window($mod)`/`alert_window_is_open($mod)`/`alert_window_summary($mod)` + ค่าคงที่ `AW_SEND_LIMIT`/`AW_CRON_MIN` ที่ใช้คำนวณความจุการส่ง
+- เก็บค่าที่ `secrets/alert_windows.json` — **แยกจาก `module_filters.json` โดยตั้งใจ** เพราะเป็นนโยบายของขั้น Send ไม่ใช่ Condition (เกณฑ์คัดกรองขั้น Ingest)
+- บันทึกผ่าน `had_queue_action.php?action=save_window` (ปุ่ม + modal ในหน้า `had_queue_ui.php`)
+- `HAD.php` ข้ามเฉพาะขั้น Send เมื่ออยู่นอกช่วง — Ingest ยังวิ่งทั้งวัน และ Cron ไม่ถูกแตะ (ดู `docs/adr/0003`)
+
 ### 6) Schema — root (`*.sql`)
 - `users.sql` + `<mod>_queue.sql` (12) — ตัวช่วย `db_config_admin.php` deploy ให้อัตโนมัติ
 
 ### 7) Config / secrets — `secrets/` (🔒 gitignore)
-- `db_config.json` · `moph_keys.json` · `site_config.json` · `flex_themes.json` · `module_filters.json` (ตัวจริง — per-install)
+- `db_config.json` · `moph_keys.json` · `site_config.json` · `flex_themes.json` · `module_filters.json` · `alert_windows.json` (ตัวจริง — per-install)
 - `*.example.json` — template (อยู่ใน git)
 
 ### 8) Layout / assets

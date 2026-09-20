@@ -71,6 +71,10 @@ if (isset($_GET['msg'])) {
     'imported'   => "success:Sync จาก HOSxP สำเร็จ " . (int)($_GET['imported'] ?? 0) . " รายการ (ใหม่ " . (int)($_GET['new'] ?? 0) . " รายการ)",
     'no_ids'     => "warning:ยังไม่ได้เลือกรายการ",
     'bad_action' => "danger:คำสั่งไม่ถูกต้อง",
+    'win_saved'  => "success:บันทึกช่วงเวลาแจ้งเตือนแล้ว — มีผลกับรอบส่งอัตโนมัติถัดไป",
+    'win_off'    => "success:ปิดช่วงเวลาแจ้งเตือนแล้ว — กลับไปส่งอัตโนมัติตลอด 24 ชม.",
+    'win_bad'    => "danger:เวลาไม่ถูกต้อง (ต้องเป็น HH:MM แบบ 24 ชม.) — ยังไม่บันทึก ใช้ค่าเดิมต่อไป",
+    'win_err'    => "danger:บันทึกช่วงเวลาไม่สำเร็จ — ตรวจสิทธิ์เขียนโฟลเดอร์ secrets/",
     'err'        => "danger:เกิดข้อผิดพลาด: " . htmlspecialchars((string)($_GET['detail'] ?? '')),
     default      => '',
   };
@@ -78,6 +82,11 @@ if (isset($_GET['msg'])) {
 
 $icodesNow = module_filter('had')['icodes'] ?? [];
 $cfgSummary = $icodesNow ? implode(', ', $icodesNow) : '(ยังไม่ได้ตั้งเงื่อนไข)';
+
+/* ช่วงเวลาแจ้งเตือน (Alert Window) — จำกัดเฉพาะการส่งอัตโนมัติของ worker (ดู docs/adr/0003) */
+$win     = alert_window('had');
+$winOpen = alert_window_is_open('had');
+$winSum  = alert_window_summary('had');
 
 $PAGE_TITLE = 'HAD Alert';
 $PAGE_KEY   = 'had';
@@ -105,6 +114,11 @@ require_once __DIR__ . '/partials/header.php';
   <h1><span class="msi me-2" style="color:#0E7490">medication_liquid</span><?= htmlspecialchars($PAGE_TITLE) ?></h1>
   <div class="d-flex gap-2 flex-wrap">
     <?= filter_edit_button('had') ?>
+    <button type="button" data-bs-toggle="modal" data-bs-target="#hadWindowModal"
+            class="btn btn-sm <?= !$win['enabled'] ? 'btn-outline-secondary' : ($winOpen ? 'btn-outline-success' : 'btn-outline-danger') ?>"
+            title="จำกัดเวลาส่งอัตโนมัติ (ไม่กระทบปุ่มส่งซ้ำทันที)">
+      <span class="msi me-1">schedule</span>ช่วงเวลาแจ้งเตือน
+    </button>
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#hadSyncModal">
       <span class="msi me-1">sync</span>Sync จาก HOSxP
     </button>
@@ -137,6 +151,19 @@ require_once __DIR__ . '/partials/header.php';
   <span class="msi" style="font-size:1rem;color:#0E7490">tune</span>
   <span>รหัสยา (icode) ที่ใช้ดึงข้อมูลตอนนี้: <b><?= htmlspecialchars($cfgSummary) ?></b>
     — แก้ได้ที่ปุ่ม "แก้ไขเงื่อนไขดึงข้อมูล"</span>
+</div>
+
+<div class="alert <?= ($win['enabled'] && !$winOpen) ? 'alert-warning' : 'alert-light' ?> border d-flex align-items-start gap-2"
+     style="border-radius:10px;font-size:.83rem">
+  <span class="msi" style="font-size:1rem;color:#0E7490">schedule</span>
+  <span>ช่วงเวลาแจ้งเตือน (เฉพาะการส่งอัตโนมัติ): <b><?= htmlspecialchars($winSum) ?></b>
+    <?php if ($win['enabled'] && !$winOpen): ?>
+      — <b class="text-danger">ขณะนี้อยู่นอกช่วง</b> รายการที่ขึ้น "รอส่ง" จะถูกส่งเมื่อถึง
+      <b><?= htmlspecialchars($win['start']) ?> น.</b> (การดึงข้อมูลจาก HOSxP ยังทำงานตามปกติ)
+    <?php elseif ($win['enabled']): ?>
+      — ขณะนี้<b class="text-success">อยู่ในช่วง</b> ส่งอัตโนมัติตามปกติ
+    <?php endif; ?>
+    — แก้ได้ที่ปุ่ม "ช่วงเวลาแจ้งเตือน" · เวลาเครื่องเซิร์ฟเวอร์ตอนนี้ <b><?= date('H:i') ?> น.</b></span>
 </div>
 
 <div class="row g-3 mb-3">
@@ -263,6 +290,62 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
+<!-- Alert Window modal — ตั้งช่วงเวลาที่อนุญาตให้ worker ส่งอัตโนมัติ (ดู docs/adr/0003) -->
+<div class="modal fade" id="hadWindowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="had_queue_action.php" autocomplete="off">
+        <input type="hidden" name="token"  value="<?= htmlspecialchars(HAD_UI_ACTION_TOKEN) ?>">
+        <input type="hidden" name="action" value="save_window">
+        <div class="modal-header">
+          <h5 class="modal-title"><span class="msi me-2" style="color:#0E7490">schedule</span>ช่วงเวลาแจ้งเตือน</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info py-2 d-flex align-items-start gap-2" style="font-size:.83rem;border-radius:10px">
+            <span class="msi" style="font-size:1rem">info</span>
+            <span>จำกัดเฉพาะ<b>การส่งอัตโนมัติ</b>เท่านั้น · การดึงข้อมูลจาก HOSxP ยังทำงานทั้งวัน
+              (คนไข้จะขึ้น "รอส่ง" ระหว่างวันแล้วไหลออกเมื่อถึงเวลา) ·
+              ปุ่ม "<b>ส่งซ้ำทันที</b>" ในหน้านี้<b>ใช้ได้ตลอดเวลา</b> ไม่ถูกจำกัด</span>
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" role="switch" value="1"
+                   id="hadWinEnabled" name="win_enabled" <?= $win['enabled'] ? 'checked' : '' ?>>
+            <label class="form-check-label" for="hadWinEnabled">เปิดใช้ช่วงเวลาแจ้งเตือน
+              <span class="text-muted" style="font-size:.82rem">(ปิด = ส่งตลอด 24 ชม. เหมือนเดิม)</span>
+            </label>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem">เริ่มส่ง (รวมนาทีนี้)</label>
+              <input type="time" id="hadWinStart" name="win_start" class="form-control form-control-sm"
+                     value="<?= htmlspecialchars($win['start']) ?>" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem">หยุดส่ง (ไม่รวมนาทีนี้)</label>
+              <input type="time" id="hadWinEnd" name="win_end" class="form-control form-control-sm"
+                     value="<?= htmlspecialchars($win['end']) ?>" required>
+            </div>
+          </div>
+          <div class="form-text" style="font-size:.75rem">
+            ตั้งเวลาเริ่มช้ากว่าเวลาหยุดได้ = ข้ามเที่ยงคืน (เช่น 16:30 → 08:00) ·
+            ตั้งเริ่ม = หยุด คือเปิดตลอด 24 ชม. ·
+            เวลาเริ่มส่งจริงอาจช้ากว่าที่ตั้งได้ถึง <?= AW_CRON_MIN ?> นาที เพราะระบบวิ่งรอบละ <?= AW_CRON_MIN ?> นาที
+          </div>
+
+          <div id="hadWinCalc" class="alert py-2 mt-3" style="font-size:.83rem;border-radius:10px"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary btn-sm"><span class="msi me-1">save</span>บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <?php render_filter_modal('had'); ?>
 
 <?php
@@ -271,6 +354,11 @@ $EXTRA_FOOTER = '
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 <script>
+/* ค่าจากฝั่ง PHP — ต้องเป็นตัวเลขชุดเดียวกับที่ worker ใช้จริง (ดู alert_window_loader.php) */
+var HAD_WIN_LIMIT = ' . AW_SEND_LIMIT . ', HAD_WIN_CRON = ' . AW_CRON_MIN . ';
+var HAD_WIN_ON    = ' . ($win['enabled'] ? 'true' : 'false') . ';
+var HAD_WIN_SMIN  = ' . aw_minutes($win['start']) . ', HAD_WIN_EMIN = ' . aw_minutes($win['end']) . ';
+var HAD_WIN_TXT   = ' . json_encode($winSum, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
 $(function () {
   $("#tblHad").DataTable({
     pageLength: 25, order: [[7, "desc"]],
@@ -295,13 +383,31 @@ document.getElementById("hadCancel").addEventListener("click", function () {
   document.querySelectorAll(".hadchk, #hadAll").forEach(function (c) { c.checked = false; });
   hadUpdate();
 });
+/* คำนวณใหม่จากนาฬิกา "เบราว์เซอร์" ตอนคลิก ไม่ใช้ค่าที่ PHP คำนวณไว้ตอน render
+   เพราะห้องยามักเปิดหน้านี้ค้างไว้ข้ามเวลา 16:30 พอดี (เป็นกะที่ฟีเจอร์นี้ออกแบบมาเพื่อ) */
+function hadWinOpenNow() {
+  if (!HAD_WIN_ON) return true;
+  if (HAD_WIN_SMIN === HAD_WIN_EMIN) return true;
+  var d = new Date(), n = d.getHours() * 60 + d.getMinutes();
+  return (HAD_WIN_SMIN < HAD_WIN_EMIN)
+    ? (n >= HAD_WIN_SMIN && n < HAD_WIN_EMIN)
+    : (n >= HAD_WIN_SMIN || n < HAD_WIN_EMIN);
+}
+
 document.querySelectorAll("#hadBar [data-act]").forEach(function (b) {
   b.addEventListener("click", function () {
     var n = document.querySelectorAll(".hadchk:checked").length;
     if (!n) return;
+    var body = "ดำเนินการกับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)";
+    /* เตือนเฉพาะ send_now — requeue/clear_error ไม่ได้ยิง LINE ออกไปจริง */
+    if (b.dataset.act === "send_now" && !hadWinOpenNow()) {
+      body += "<div class=\'mt-2 text-danger\' style=\'font-size:.85rem\'>"
+            + "⚠ ขณะนี้อยู่<b>นอกช่วงเวลาแจ้งเตือน</b> (" + HAD_WIN_TXT + ")<br>"
+            + "การกดปุ่มนี้จะ<b>ยิง LINE ออกไปทันที</b> ไม่รอถึงเวลาที่ตั้งไว้</div>";
+    }
     Swal.fire({
       title: this.dataset.label, icon: "question", showCancelButton: true,
-      html: "ดำเนินการกับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)",
+      html: body,
       confirmButtonText: "ยืนยัน", cancelButtonText: "ยกเลิก", reverseButtons: true
     }).then(function (r) {
       if (!r.isConfirmed) return;
@@ -310,6 +416,60 @@ document.querySelectorAll("#hadBar [data-act]").forEach(function (b) {
     });
   });
 });
+
+/* ตัวคำนวณความจุสดในโมดัลช่วงเวลา — ความจุ = (ความยาวช่วง ÷ รอบ Cron) × LIMIT ต่อรอบ
+   โดยเลขทั้งสองตัวมาจาก AW_CRON_MIN / AW_SEND_LIMIT ที่ worker ใช้จริง (ฝังมาข้างบน)
+   กับดักที่ต้องกัน: ตั้งช่วงสั้นเกินไปแล้วคิวล้นจะไม่มี error ให้เห็นเลย
+   เพราะแถวส่วนเกินไม่เคยถูก SELECT ออกมา ช่อง attempt จึงไม่ขยับ */
+function hadWinCalc() {
+  var box = document.getElementById("hadWinCalc");
+  if (!box) return;
+  var on = document.getElementById("hadWinEnabled").checked;
+  var s  = document.getElementById("hadWinStart").value;
+  var e  = document.getElementById("hadWinEnd").value;
+  if (!on) {
+    box.className = "alert alert-secondary py-2 mt-3";
+    box.innerHTML = "ปิดอยู่ — ระบบส่งอัตโนมัติ<b>ตลอด 24 ชม.</b> (พฤติกรรมเดิม)";
+    return;
+  }
+  if (!s || !e) {
+    box.className = "alert alert-secondary py-2 mt-3";
+    box.innerHTML = "กรอกเวลาให้ครบทั้งสองช่อง";
+    return;
+  }
+  var sm = +s.slice(0, 2) * 60 + +s.slice(3, 5);
+  var em = +e.slice(0, 2) * 60 + +e.slice(3, 5);
+  var mins = (sm === em) ? 1440 : (em > sm ? em - sm : 1440 - sm + em);
+  var runs = Math.floor(mins / HAD_WIN_CRON);
+  var cap  = runs * HAD_WIN_LIMIT;
+  var note = (sm === em) ? " <b>(= เปิดตลอด 24 ชม.)</b>" : (sm > em ? " (ข้ามเที่ยงคืน)" : "");
+
+  var html = "ช่วงนี้ยาว <b>" + (mins / 60).toFixed(1) + " ชม.</b>" + note
+           + " ≈ <b>" + runs.toLocaleString("en-US") + " รอบ</b> (รอบละ " + HAD_WIN_CRON + " นาที)"
+           + " ≈ ส่งได้ <b>~" + cap.toLocaleString("en-US") + " รายการ/วัน</b>";
+
+  if (mins < HAD_WIN_CRON) {
+    box.className = "alert alert-danger py-2 mt-3";
+    html += "<div class=\'mt-1\'>⚠ ช่วงสั้นกว่ารอบการทำงาน (" + HAD_WIN_CRON + " นาที) — "
+          + "<b>อาจไม่มีรอบไหนตกอยู่ในช่วงนี้เลย = ไม่ส่งอะไรทั้งวัน</b></div>";
+  } else if (mins < 30) {
+    box.className = "alert alert-warning py-2 mt-3";
+    html += "<div class=\'mt-1\'>⚠ ช่วงสั้นกว่า 30 นาที — ถ้ามีคิวเกิน " + cap.toLocaleString("en-US")
+          + " รายการ/วัน คิวจะสะสมข้ามวันไปเรื่อยๆ และ<b>จะไม่เห็น error</b> "
+          + "เพราะรายการส่วนเกินไม่เคยถูกหยิบมาส่ง</div>";
+  } else {
+    box.className = "alert alert-success py-2 mt-3";
+  }
+  box.innerHTML = html;
+}
+["hadWinStart", "hadWinEnd", "hadWinEnabled"].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", hadWinCalc);
+  el.addEventListener("change", hadWinCalc);
+});
+document.getElementById("hadWindowModal").addEventListener("shown.bs.modal", hadWinCalc);
+hadWinCalc();
 
 function hadSync() {
   var btn = document.getElementById("hadSyncBtn"), ic = document.getElementById("hadSyncIcon"),

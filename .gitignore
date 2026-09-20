@@ -5,7 +5,9 @@ secrets/site_config.json
 secrets/flex_themes.json
 secrets/module_filters.json
 secrets/moph_endpoint.json
+secrets/alert_windows.json
 secrets/*.bak
+secrets/*.tmp
 *.env
 .env
 .env.*
@@ -16,6 +18,7 @@ secrets/*.bak
 !secrets/flex_themes.example.json
 !secrets/module_filters.example.json
 !secrets/moph_endpoint.example.json
+!secrets/alert_windows.example.json
 
 # --- Logs ---
 logs/
