@@ -261,6 +261,12 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; }
   background: var(--blue-100); color: var(--blue);
   padding: 1px 7px; border-radius: 999px;
 }
+/* ตัวนับ "release note ที่ยังไม่ได้อ่าน" — ต้องสะดุดตากว่าป้าย "Feature หลัก" สีฟ้า
+   จึงใช้สีแดง + ตัวเลขกลมๆ (ค่าถูกเติมด้วย JS ท้าย sidebar, เริ่มต้นเป็น hidden ไม่มีกะพริบ) */
+.nav-badge.is-new {
+  background: var(--red); color: #fff;
+  font-size: .6rem; min-width: 17px; padding: 1px 5px; text-align: center;
+}
 
 .nav-section-label {
   padding: 14px 8px 4px;
@@ -686,6 +692,7 @@ a.nav-item.logout-item:hover .nav-ic {
         </a>
         <a href="about.php" class="nav-item<?= ckh_active('about', $PAGE_KEY) ?>">
           <span class="nav-ic"><span class="msi">info</span></span><span>เกี่ยวกับระบบ</span>
+          <span class="nav-badge is-new" id="navAboutBadge" hidden></span>
         </a>
       </div>
     </div>
@@ -704,6 +711,24 @@ a.nav-item.logout-item:hover .nav-ic {
       if (g.querySelector('.nav-item.active')) c = false;  // กลุ่มที่มีหน้า active → เปิดเสมอ
       g.classList.toggle('collapsed', c);
     });
+  })();
+
+  /* badge "มีอะไรใหม่ยังไม่ได้อ่าน" บนเมนูเกี่ยวกับระบบ
+     นับเฉพาะรีลีสที่ใหม่กว่าเวอร์ชันที่เบราว์เซอร์นี้เคยเปิดอ่านล่าสุด
+     - เทียบเป็นข้อความ (YYYY.MM.DD.HHMM zero-pad อยู่แล้ว เรียงข้อความ = เรียงเวลา)
+     - ไม่เคยอ่าน → นับทั้งหมด · localStorage ใช้ไม่ได้ → ไม่โชว์ badge (ห้ามทำ sidebar พัง)
+     - function_exists guard เพราะ header.php ไม่ได้ require config.php เอง */
+  (function(){
+    var rel = <?= json_encode(function_exists('release_notes_versions') ? release_notes_versions() : [], JSON_UNESCAPED_UNICODE) ?>;
+    var el  = document.getElementById('navAboutBadge');
+    if (!el || !rel.length) return;
+    var seen = '';
+    try { seen = localStorage.getItem('ckh-seen-release') || ''; } catch(e){ return; }
+    var n = rel.filter(function(v){ return v > seen; }).length;
+    if (!n) return;
+    el.textContent = n > 9 ? '9+' : String(n);
+    el.title = 'มี ' + n + ' รุ่นที่ยังไม่ได้อ่าน';
+    el.hidden = false;
   })();
   </script>
 

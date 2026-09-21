@@ -49,6 +49,7 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 - `covid_lib.php` — utility (row_to_utf8, extract_moph_message_id ฯลฯ)
 - `telegram_lib.php` — ส่ง Telegram mirror
 - `version_loader.php` — โหลด `VERSION` (root) → `APP_VERSION`
+- `release_notes_loader.php` — `release_notes_versions()` อ่าน `data-version` จาก `docs/release-notes.html` (single source of truth) → ใช้ทำ badge "ยังไม่ได้อ่าน" บนเมนูเกี่ยวกับระบบ · ไฟล์หาย = คืน `[]` ไม่มี badge
 - `db_migrate.php` — `deploy_missing_schema()` (glob `*_queue.sql` + `users.sql`, idempotent) ใช้โดยปุ่ม "Setup MedAlert_DB" และตอนอัปเดตเวอร์ชัน
 
 ### 2) หน้าเว็บ (Entry points — เปิดด้วย URL, **ต้องอยู่ root**)
@@ -108,7 +109,8 @@ run_<mod>.bat   →   <worker>.php   →   <mod>_queue (ตาราง)   →  
 
 ### 9) เอกสาร — root + `docs/`
 - root (มาตรฐาน คงไว้): `README.md` `INSTALL.md` `CLAUDE.md` `CONTEXT.md` `composer.json`
-- `docs/`: `install-guide.html` (คู่มือภาพ) · `PROJECT-STRUCTURE.md` (ไฟล์นี้) · `adr/` · `agents/` · `ui-ux.md` · `UX_REVIEW.md` · `techstack.txt` · `lab_alert_new.txt`
+- `docs/`: `release-notes.html` (มีอะไรใหม่ — เพิ่ม `<section data-version>` ต่อ 1 รีลีส) · `install-guide.html` + `update-guide.html` (คู่มือภาพ) · `PROJECT-STRUCTURE.md` (ไฟล์นี้) · `adr/` · `agents/` · `ui-ux.md` · `UX_REVIEW.md` · `techstack.txt` · `lab_alert_new.txt`
+- ทั้ง 3 ไฟล์ `.html` ข้างบนถูกฝังเป็นแท็บในหน้า `about.php` ผ่าน `<iframe>` (มี design system ของตัวเอง ไม่ inline กันคลาสชน)
 
 ### 10) Archive (ของเก่า เก็บอ้างอิง) — `archive/`
 - `preview_*.html` (mockup เก่า) · `*Auto Sender.xml` (Task export รุ่นเก่า — ชุดจริงอยู่ใน `task/`)

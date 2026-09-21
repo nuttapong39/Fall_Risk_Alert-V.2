@@ -27,6 +27,10 @@ require_once __DIR__ . '/alert_window_loader.php';
 // โหลดเลขเวอร์ชันปัจจุบันจากไฟล์ VERSION → APP_VERSION
 require_once __DIR__ . '/version_loader.php';
 
+// โหลดรายการเวอร์ชันที่มี release note จาก docs/release-notes.html
+// ใช้ทำ badge "มีของใหม่ยังไม่ได้อ่าน" บนเมนูเกี่ยวกับระบบ
+require_once __DIR__ . '/release_notes_loader.php';
+
 // โหลด endpoint ของ MOPH Alert API จาก secrets/moph_endpoint.json → MOPH_API_URL
 require_once __DIR__ . '/moph_endpoint_loader.php';
 

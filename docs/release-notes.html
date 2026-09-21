@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>มีอะไรใหม่ · MedAlert</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&amp;family=Sarabun:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap">
+<!--
+  release-notes.html — "มีอะไรใหม่" ของ MedAlert
+  แสดงในแอปผ่านแท็บแรกของหน้า about.php (iframe) และเปิดตรงๆ ก็ได้
+
+  *** วิธีเพิ่มรีลีสใหม่ (อ่านก่อนแก้) ***
+  1. ก๊อป <section class="rel"> ทั้งก้อนของรีลีสล่าสุด มาวางไว้ "บนสุด" ของ #releases
+  2. แก้ data-version="YYYY.MM.DD.HHMM" ให้ตรงกับไฟล์ VERSION เป๊ะ
+     -> release_notes_loader.php อ่าน attribute นี้ไปนับ badge "ยังไม่ได้อ่าน" บน sidebar
+        ไฟล์นี้จึงเป็น single source of truth ไม่ต้องไปแก้รายการเวอร์ชันที่อื่นอีก
+  3. เขียนด้วยภาษาที่เจ้าหน้าที่ รพ. อ่านรู้เรื่อง — บอกว่า "ใช้ยังไง / อยู่ตรงไหนของระบบ"
+     ไม่ใช่ภาษา commit (รายละเอียดเชิงเทคนิคอยู่ใน CHANGELOG.md อยู่แล้ว)
+-->
+<style>
+:root{
+  --ground:#f6f8fb; --surface:#ffffff; --surface-2:#f1f5f9;
+  --ink:#0f172a; --ink-2:#334155; --muted:#64748b; --faint:#94a3b8;
+  --border:#e2e8f0; --border-2:#cbd5e1;
+  --blue:#1d4ed8; --blue-ink:#1e40af; --blue-soft:#eff6ff; --blue-line:#dbeafe;
+  --green:#059669; --green-soft:#ecfdf5; --green-line:#a7f3d0;
+  --amber:#d97706; --amber-soft:#fffbeb; --amber-line:#fde68a;
+  --red:#dc2626; --red-soft:#fef2f2; --red-line:#fecaca;
+  --violet:#7c3aed; --violet-soft:#f5f3ff; --violet-line:#ddd6fe;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 20px rgba(15,23,42,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+    --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+    --border:#26344b; --border-2:#334155;
+    --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+    --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+    --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+    --violet:#a78bfa; --violet-soft:rgba(167,139,250,.12); --violet-line:rgba(167,139,250,.3);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0b1220; --surface:#151f32; --surface-2:#1e293b;
+  --ink:#e8eef7; --ink-2:#cbd5e1; --muted:#94a3b8; --faint:#64748b;
+  --border:#26344b; --border-2:#334155;
+  --blue:#60a5fa; --blue-ink:#93c5fd; --blue-soft:rgba(96,165,250,.12); --blue-line:rgba(96,165,250,.28);
+  --green:#34d399; --green-soft:rgba(52,211,153,.10); --green-line:rgba(52,211,153,.3);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.10); --amber-line:rgba(251,191,36,.3);
+  --red:#f87171; --red-soft:rgba(248,113,113,.10); --red-line:rgba(248,113,113,.32);
+  --violet:#a78bfa; --violet-soft:rgba(167,139,250,.12); --violet-line:rgba(167,139,250,.3);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 20px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:20px}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Sarabun",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.72; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.k{font-family:"Kanit",system-ui,sans-serif}
+h2,h3{text-wrap:balance; line-height:1.3}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--blue); outline-offset:2px; border-radius:4px}
+
+.wrap{max-width:860px; margin:0 auto; padding:0 20px}
+
+/* ── hero ─────────────────────────────────────────────── */
+.hero{padding:44px 0 26px}
+.eyebrow{font-family:"Kanit"; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.72rem; color:var(--blue); display:flex; align-items:center; gap:8px}
+.eyebrow::before{content:""; width:22px; height:2px; background:var(--blue); border-radius:2px}
+.hero h1{font-size:clamp(1.8rem,4.2vw,2.6rem); font-weight:700; margin:.35em 0 .25em; letter-spacing:-.01em}
+.hero h1 em{font-style:normal; color:var(--blue)}
+.hero .sub{font-size:1.06rem; color:var(--ink-2); max-width:58ch; margin:0}
+
+/* ── release card ─────────────────────────────────────── */
+#releases{padding-bottom:10px}
+.rel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:24px 26px; margin:0 0 20px}
+.rel-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:4px}
+.ver{display:inline-flex; align-items:center; gap:6px; font-family:"JetBrains Mono"; font-weight:700;
+  font-size:.78rem; padding:4px 11px; border-radius:999px;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--ink-2)}
+.rel:first-child .ver{background:var(--blue); border-color:var(--blue); color:#fff}
+.tag{display:inline-flex; align-items:center; gap:5px; font-family:"Kanit"; font-weight:600; font-size:.74rem;
+  padding:3px 10px; border-radius:999px; border:1px solid}
+.tag.new{background:var(--green-soft); border-color:var(--green-line); color:var(--green)}
+.tag.fix{background:var(--red-soft); border-color:var(--red-line); color:var(--red)}
+.tag.imp{background:var(--violet-soft); border-color:var(--violet-line); color:var(--violet)}
+.rel-date{margin-left:auto; font-size:.78rem; color:var(--faint); font-family:"JetBrains Mono"}
+.rel h2{font-size:1.32rem; font-weight:700; margin:.15em 0 .35em}
+.rel .lead{color:var(--ink-2); margin:0 0 4px; max-width:64ch}
+
+.where{display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start;
+  background:var(--blue-soft); border:1px solid var(--blue-line); border-radius:11px;
+  padding:12px 15px; margin:16px 0; font-size:.93rem}
+.where .ic{width:24px; height:24px; border-radius:7px; background:var(--blue); color:#fff;
+  display:grid; place-items:center; font-size:.78rem; margin-top:2px}
+.where b{font-family:"Kanit"; font-weight:600}
+.path{font-family:"JetBrains Mono"; font-size:.82em; background:var(--surface);
+  border:1px solid var(--border); border-radius:6px; padding:.1em .45em; white-space:nowrap}
+
+.pts{list-style:none; padding:0; margin:14px 0 0; display:grid; gap:9px}
+.pts li{display:flex; align-items:flex-start; gap:10px; font-size:.95rem; color:var(--ink-2)}
+.pts li::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--blue);
+  flex:0 0 auto; margin-top:.62em}
+.pts li b{color:var(--ink); font-weight:600}
+
+.note{display:grid; grid-template-columns:auto 1fr; gap:11px; padding:13px 15px; border-radius:11px;
+  border:1px solid var(--amber-line); background:var(--amber-soft); font-size:.92rem; margin:16px 0 0}
+.note .ic{width:24px; height:24px; border-radius:7px; background:var(--amber); color:#fff;
+  display:grid; place-items:center; font-size:.8rem; margin-top:1px}
+.note b{font-family:"Kanit"; font-weight:600}
+.note.ok{background:var(--green-soft); border-color:var(--green-line)}
+.note.ok .ic{background:var(--green)}
+
+code.inl{background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+  padding:.08em .42em; font-size:.86em; color:var(--blue-ink)}
+
+footer{padding:28px 0 56px; margin-top:8px; border-top:1px solid var(--border);
+  color:var(--muted); font-size:.85rem}
+footer b{font-family:"Kanit"; color:var(--ink)}
+
+@media (max-width:560px){
+  .rel{padding:20px 17px}
+  .rel-date{margin-left:0; width:100%}
+  .where{grid-template-columns:1fr} .where .ic{display:none}
+  .path{white-space:normal; word-break:break-all}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Release Notes</div>
+    <h1>มีอะไรใหม่ใน <em>MedAlert</em></h1>
+    <p class="sub">สรุปสิ่งที่เปลี่ยนในแต่ละรุ่น เขียนให้เจ้าหน้าที่อ่านเข้าใจ — ของใหม่สุดอยู่บนสุดเสมอ</p>
+  </header>
+
+  <div id="releases">
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <section class="rel" data-version="2026.09.21.1338">
+      <div class="rel-head">
+        <span class="ver">2026.09.21.1338</span>
+        <span class="tag new">✦ ของใหม่</span>
+        <span class="rel-date">21 ก.ย. 2569</span>
+      </div>
+      <h2>หน้านี้เอง — รู้ได้แล้วว่าอัปเดตแต่ละรอบได้อะไรมา</h2>
+      <p class="lead">เดิมเวลาอัปเดตระบบจะรู้แค่ว่าเลขเวอร์ชันเปลี่ยน แต่ไม่มีทางรู้ว่ามีอะไรใหม่บ้าง
+        ตอนนี้มีหน้า "มีอะไรใหม่" สรุปให้ทุกรุ่น พร้อมตัวเลขแจ้งเตือนบนเมนูเมื่อมีของที่ยังไม่ได้อ่าน</p>
+
+      <div class="where">
+        <div class="ic k">→</div>
+        <div><b>อยู่ตรงไหน:</b> เมนู <b>เกี่ยวกับระบบ</b> (ล่างสุดของแถบซ้าย) → แท็บ
+          <span class="path">มีอะไรใหม่</span> — จะมีตัวเลขสีแดงบนเมนูถ้ายังมีรุ่นที่ยังไม่ได้เปิดอ่าน</div>
+      </div>
+
+      <ul class="pts">
+        <li><b>ตัวเลขบอกจำนวนรุ่นที่ยังไม่ได้อ่าน</b> — รพ. ที่ข้ามมาหลายเวอร์ชันจะเห็นเลขมากกว่า 1
+          เปิดหน้านี้ครั้งเดียวก็หายไปเอง ไม่ต้องกดปุ่มอะไรเพิ่ม</li>
+        <li><b>ไม่ต้องต่ออินเทอร์เน็ต</b> — คนละเรื่องกับการ์ด "เวอร์ชันระบบ" ในหน้าตั้งค่า
+          ที่ไว้เช็คว่ามีเวอร์ชันใหม่ให้ดาวน์โหลดหรือยัง</li>
+        <li><b>จำแยกตามเบราว์เซอร์</b> — ถ้าเปิดจากเครื่องอื่นหรือล้างข้อมูลเบราว์เซอร์ ตัวเลขจะกลับมาอีกครั้ง</li>
+      </ul>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <section class="rel" data-version="2026.09.21.0018">
+      <div class="rel-head">
+        <span class="ver">2026.09.21.0018</span>
+        <span class="tag new">✦ ของใหม่</span>
+        <span class="rel-date">21 ก.ย. 2569</span>
+      </div>
+      <h2>ตั้งช่วงเวลาแจ้งเตือนของ HAD Alert ได้เอง</h2>
+      <p class="lead">เดิม HAD Alert ยิงเข้า LINE ทันทีที่เจอรายการใหม่ ตลอด 24 ชั่วโมง ตอนนี้ห้องยา
+        กำหนดเองได้ว่าจะให้แจ้งช่วงไหนของวัน เช่น เฉพาะนอกเวลาราชการ 16:30 – 08:00 (ข้ามเที่ยงคืนได้)</p>
+
+      <div class="where">
+        <div class="ic k">→</div>
+        <div><b>อยู่ตรงไหน:</b> เมนู <b>HAD Alert</b> → ปุ่ม <span class="path">ช่วงเวลาแจ้งเตือน</span>
+          ที่แถบด้านบน (อยู่ข้างปุ่ม "แก้ไขเงื่อนไขดึงข้อมูล")</div>
+      </div>
+
+      <ul class="pts">
+        <li><b>จำกัดเฉพาะการส่งอัตโนมัติ</b> — การดึงข้อมูลจาก HOSxP ยังทำงานทั้งวันเหมือนเดิม
+          รายการจะขึ้นเป็น "รอส่ง" ระหว่างวันแล้วไหลออกพร้อมกันเมื่อถึงเวลาที่ตั้งไว้</li>
+        <li><b>ปุ่ม "ส่งซ้ำทันที" ใช้ได้ตลอดเวลา</b> ไม่ถูกจำกัด — มีเคสด่วนนอกเวลาก็กดส่งได้เลย
+          ระบบจะขึ้นเตือนให้ทราบก่อนยืนยันว่าตอนนี้อยู่นอกช่วงที่ตั้งไว้</li>
+        <li><b>บอกความจุให้เห็นก่อนบันทึก</b> — ตอนเลือกเวลา ระบบคำนวณให้ทันทีว่าช่วงนั้นส่งได้กี่รายการต่อวัน
+          และเตือนถ้าตั้งช่วงสั้นเกินไปจนคิวอาจตกค้าง</li>
+        <li><b>ค่าเริ่มต้นคือปิดไว้</b> — ถ้าไม่ตั้งอะไรเลย ระบบยังส่งตลอด 24 ชั่วโมงเหมือนเดิมทุกประการ</li>
+      </ul>
+
+      <div class="note"><div class="ic k">!</div><div>ฟีเจอร์นี้มีเฉพาะ <b>HAD Alert</b> โมดูลเดียวเท่านั้น
+        โมดูลอื่นยังแจ้งเตือนทันทีตลอด 24 ชั่วโมงตามเดิม</div></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <section class="rel" data-version="2026.09.19.2257">
+      <div class="rel-head">
+        <span class="ver">2026.09.19.2257</span>
+        <span class="tag fix">⚑ แก้ปัญหา</span>
+        <span class="rel-date">19 ก.ย. 2569</span>
+      </div>
+      <h2>แก้อาการส่งแจ้งเตือนไม่ออก เพราะใบรับรองความปลอดภัยหมดอายุ</h2>
+      <p class="lead">บาง รพ. กดส่งแล้วขึ้นข้อความ
+        <code class="inl">SSL certificate problem: unable to get local issuer certificate</code>
+        ส่งเข้า LINE ไม่ได้เลยทั้งระบบ ตอนนี้ระบบดูแลให้อัตโนมัติแล้ว</p>
+
+      <div class="where">
+        <div class="ic k">→</div>
+        <div><b>ต้องทำอะไรไหม:</b> ไม่ต้อง — ทุกครั้งที่กด <span class="path">อัปเดตระบบ</span>
+          ในหน้าตั้งค่า ระบบจะดึงชุดใบรับรองล่าสุดมาให้เองโดยอัตโนมัติ</div>
+      </div>
+
+      <ul class="pts">
+        <li><b>สาเหตุ:</b> ไฟล์ใบรับรอง (CA bundle) ที่ติดมากับโปรแกรม XAMPP บนเครื่องเซิร์ฟเวอร์
+          เป็นของเก่าค้างตั้งแต่ปี 2022 จึงไม่รู้จักใบรับรองรุ่นใหม่ที่ปลายทางใช้อยู่</li>
+        <li><b>อาการที่เจอ:</b> ไม่ได้กระทบแค่ MedAlert — ระบบอื่นบนเครื่องเดียวกันที่ต้องต่อออกอินเทอร์เน็ต
+          ก็ใช้งานไม่ได้เหมือนกัน</li>
+        <li><b>ถ้ายังเจออาการนี้อยู่</b> ให้กดอัปเดตระบบอีก 1 รอบ แล้วลองส่งใหม่</li>
+      </ul>
+
+      <div class="note ok"><div class="ic k">✓</div><div>ระบบจะ<b>สำรองไฟล์เดิมไว้ก่อนเสมอ</b>
+        และถ้าดาวน์โหลดไม่สำเร็จจะข้ามไปเฉยๆ ไม่ทำให้การอัปเดตล้มเหลว</div></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <section class="rel" data-version="2026.09.19.1344">
+      <div class="rel-head">
+        <span class="ver">2026.09.19.1344</span>
+        <span class="tag new">✦ ของใหม่</span>
+        <span class="rel-date">19 ก.ย. 2569</span>
+      </div>
+      <h2>โมดูลใหม่: Drug Alert — เภสัชเลือกยาที่เฝ้าระวังเองได้</h2>
+      <p class="lead">โมดูลแจ้งเตือนตัวที่ 13 ของ MedAlert จุดต่างคือ <b>เภสัชกรเลือกรายการยาเองได้จากหน้าเว็บ</b>
+        ไม่ต้องรอให้ IT เข้าไปแก้รหัสยาในโค้ดเหมือนโมดูลยาเดิม</p>
+
+      <div class="where">
+        <div class="ic k">→</div>
+        <div><b>อยู่ตรงไหน:</b> เมนู <b>Drug Alert</b> ในกลุ่ม "งานสนับสนุน" →
+          การ์ด <span class="path">รายการยาที่เฝ้าระวัง</span> บนสุดของหน้า</div>
+      </div>
+
+      <ul class="pts">
+        <li><b>ค้นยาแบบพิมพ์ปุ๊บเจอปั๊บ</b> — พิมพ์ชื่อยาหรือรหัสยาอย่างน้อย 2 ตัวอักษร
+          ระบบค้นจากคลังยาของ HOSxP ให้ทันที แล้วกดเพิ่มเป็นรายการได้เลย</li>
+        <li><b>เห็นจำนวนก่อนตัดสินใจ</b> — ยาที่เพิ่งเพิ่มเข้าไปจะบอกให้เห็นว่าจ่ายไปกี่รายเมื่อวานกับวันนี้
+          จะได้รู้ว่าเปิดแล้วจะมีแจ้งเตือนมากน้อยแค่ไหน</li>
+        <li><b>เลือกดูยาที่เลิกใช้แล้วก็ได้</b> — มีช่องติ๊ก "รวมยาที่เลิกใช้แล้ว" สำหรับกรณีต้องย้อนดูข้อมูลเก่า</li>
+        <li><b>ไม่ตั้งค่า = ไม่แจ้งอะไรเลย</b> — โมดูลนี้ไม่มีรายการยาฝังมาให้ล่วงหน้า
+          ต้องเลือกยาเองก่อนถึงจะเริ่มทำงาน (กันแจ้งเตือนผิดเคสตั้งแต่วันแรก)</li>
+      </ul>
+    </section>
+
+  </div>
+
+  <footer>
+    <div><b>MedAlert</b> — ระบบแจ้งเตือนผู้ป่วยกลุ่มเสี่ยง</div>
+    <p style="margin:.35em 0 0">เปิดหน้านี้ได้จากเมนู <b>เกี่ยวกับระบบ</b> → แท็บ <b>มีอะไรใหม่</b> ·
+      รายละเอียดเชิงเทคนิคของทุกรุ่นอยู่ใน <code class="inl">CHANGELOG.md</code> ·
+      วิธีอัปเดตระบบดูได้ที่แท็บ <b>คู่มืออัปเดต</b></p>
+  </footer>
+
+</div>
+
+</body>
+</html>
