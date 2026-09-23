@@ -2,10 +2,14 @@
 /**
  * had_queue_action.php — endpoint ของหน้า had_queue_ui.php
  *   action=import_hosxp : AJAX (JSON) — sync จาก HOSxP เข้า had_queue
- *   action=send_now     : ส่งซ้ำทันที (bypass cooldown)
- *   action=requeue      : รีเซ็ต status=0 attempt=0
+ *   action=send_now     : ส่งซ้ำทันที (bypass cooldown ทั้ง maxTry — ทางแมนนวลทางเดียว
+ *                          สำหรับแถวนอกช่วงเวลาแจ้งเตือน)
  *   action=clear_error  : ล้างข้อความ error
- * 3 ตัวหลังต้องมี token + ids[] แล้ว redirect กลับ UI พร้อม ?msg=
+ * 2 ตัวหลังต้องมี token + ids[] แล้ว redirect กลับ UI พร้อม ?msg=
+ *
+ * ไม่มี action=requeue โดยตั้งใจ (เฉพาะโมดูลนี้) — Re-queue เดิมแค่ reset status/attempt
+ * ไม่แตะ created_at เลย ถ้าใช้กับแถวที่ created_at ตกนอกช่วงเวลาแจ้งเตือน จะกลายเป็นปุ่มที่
+ * กดแล้วไม่มีผล (ยังค้าง Pending ตลอดไปเหมือนเดิม) ดู docs/adr/0004
  */
 require_once __DIR__ . '/config.php';          // ← ต้องมาก่อน define คีย์เสมอ
 date_default_timezone_set('Asia/Bangkok');
@@ -225,15 +229,7 @@ function had_send_one(PDO $db, int $id): array {
 try {
   $place = implode(',', array_fill(0, count($ids), '?'));
 
-  if ($action === 'requeue') {
-    $st = $dbcon->prepare("UPDATE had_queue
-                           SET status=0, attempt=0, last_attempt_at=NULL, last_error=NULL,
-                               out_ref=NULL, line_message_id=NULL, sent_at=NULL
-                           WHERE id IN ($place)");
-    $st->execute($ids);
-    header('Location: had_queue_ui.php?msg=requeued&affected=' . $st->rowCount()); exit;
-
-  } elseif ($action === 'clear_error') {
+  if ($action === 'clear_error') {
     $st = $dbcon->prepare("UPDATE had_queue SET last_error=NULL WHERE id IN ($place)");
     $st->execute($ids);
     header('Location: had_queue_ui.php?msg=cleared&affected=' . $st->rowCount()); exit;

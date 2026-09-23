@@ -66,7 +66,6 @@ if (isset($_GET['msg'])) {
   $fa  = (int)($_GET['fail'] ?? 0);
   $flash = match ($_GET['msg']) {
     'sendnow'    => "success:ส่งสำเร็จ {$ok} รายการ" . ($fa > 0 ? " / ล้มเหลว {$fa} รายการ" : ''),
-    'requeued'   => "success:Requeue แล้ว {$aff} รายการ (รอ worker รอบถัดไป หรือกดส่งซ้ำทันที)",
     'cleared'    => "success:ล้าง Error แล้ว {$aff} รายการ",
     'imported'   => "success:Sync จาก HOSxP สำเร็จ " . (int)($_GET['imported'] ?? 0) . " รายการ (ใหม่ " . (int)($_GET['new'] ?? 0) . " รายการ)",
     'no_ids'     => "warning:ยังไม่ได้เลือกรายการ",
@@ -83,7 +82,7 @@ if (isset($_GET['msg'])) {
 $icodesNow = module_filter('had')['icodes'] ?? [];
 $cfgSummary = $icodesNow ? implode(', ', $icodesNow) : '(ยังไม่ได้ตั้งเงื่อนไข)';
 
-/* ช่วงเวลาแจ้งเตือน (Alert Window) — จำกัดเฉพาะการส่งอัตโนมัติของ worker (ดู docs/adr/0003) */
+/* ช่วงเวลาแจ้งเตือน (Alert Window) — จำกัดเฉพาะการส่งอัตโนมัติของ worker (ดู docs/adr/0004, เดิม 0003) */
 $win     = alert_window('had');
 $winOpen = alert_window_is_open('had');
 $winSum  = alert_window_summary('had');
@@ -257,7 +256,6 @@ require_once __DIR__ . '/partials/header.php';
   <span class="msi" style="color:#fbbf24">checklist</span>
   <span id="hadCount">0 รายการที่เลือก</span>
   <button type="button" class="btn btn-success btn-sm" data-act="send_now"    data-label="ส่งซ้ำทันที"><span class="msi">send</span> ส่งซ้ำทันที</button>
-  <button type="button" class="btn btn-warning btn-sm" data-act="requeue"     data-label="Requeue"><span class="msi">refresh</span> Requeue</button>
   <button type="button" class="btn btn-danger  btn-sm" data-act="clear_error" data-label="ล้าง Error"><span class="msi">backspace</span> ล้าง Error</button>
   <button type="button" class="btn btn-outline-light btn-sm" id="hadCancel"><span class="msi">close</span></button>
 </div>
@@ -290,7 +288,7 @@ require_once __DIR__ . '/partials/header.php';
   </div>
 </div>
 
-<!-- Alert Window modal — ตั้งช่วงเวลาที่อนุญาตให้ worker ส่งอัตโนมัติ (ดู docs/adr/0003) -->
+<!-- Alert Window modal — ตั้งช่วงเวลาที่อนุญาตให้ worker ส่งอัตโนมัติ (ดู docs/adr/0004, เดิม 0003) -->
 <div class="modal fade" id="hadWindowModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -305,8 +303,9 @@ require_once __DIR__ . '/partials/header.php';
           <div class="alert alert-info py-2 d-flex align-items-start gap-2" style="font-size:.83rem;border-radius:10px">
             <span class="msi" style="font-size:1rem">info</span>
             <span>จำกัดเฉพาะ<b>การส่งอัตโนมัติ</b>เท่านั้น · การดึงข้อมูลจาก HOSxP ยังทำงานทั้งวัน
-              (คนไข้จะขึ้น "รอส่ง" ระหว่างวันแล้วไหลออกเมื่อถึงเวลา) ·
-              ปุ่ม "<b>ส่งซ้ำทันที</b>" ในหน้านี้<b>ใช้ได้ตลอดเวลา</b> ไม่ถูกจำกัด</span>
+              แต่ <b>auto-send เฉพาะรายการที่เกิดขึ้นในช่วงเวลานี้เท่านั้น</b> —
+              รายการที่เกิดนอกช่วงจะค้าง "รอส่ง" ตลอดไป ไม่ไหลออกเองแม้หน้าต่างจะเปิดรอบถัดไป ·
+              ต้องกดปุ่ม "<b>ส่งซ้ำทันที</b>" เองเท่านั้น (<b>ใช้ได้ตลอดเวลา</b> ไม่ถูกจำกัด)</span>
           </div>
 
           <div class="form-check form-switch mb-3">
@@ -399,7 +398,7 @@ document.querySelectorAll("#hadBar [data-act]").forEach(function (b) {
     var n = document.querySelectorAll(".hadchk:checked").length;
     if (!n) return;
     var body = "ดำเนินการกับ " + n + " รายการที่เลือก (เฉพาะแถวในหน้าปัจจุบัน)";
-    /* เตือนเฉพาะ send_now — requeue/clear_error ไม่ได้ยิง LINE ออกไปจริง */
+    /* เตือนเฉพาะ send_now — clear_error ไม่ได้ยิง LINE ออกไปจริง */
     if (b.dataset.act === "send_now" && !hadWinOpenNow()) {
       body += "<div class=\'mt-2 text-danger\' style=\'font-size:.85rem\'>"
             + "⚠ ขณะนี้อยู่<b>นอกช่วงเวลาแจ้งเตือน</b> (" + HAD_WIN_TXT + ")<br>"

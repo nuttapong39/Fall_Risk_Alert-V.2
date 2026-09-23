@@ -144,6 +144,32 @@ if (!function_exists('alert_window_summary')) {
   }
 }
 
+if (!function_exists('alert_window_sql_condition')) {
+  /**
+   * คืน [SQL WHERE fragment, named params] ที่กรองว่าเวลาของวัน (TIME) ของ $column
+   * ตกอยู่ในช่วงเวลาที่ตั้งไว้หรือไม่ — ตรรกะเดียวกับ alert_window_is_open() ทุกประการ
+   * (รวมเคสข้ามเที่ยงคืน) แต่เทียบกับเวลาของ "แถว" แทน "ตอนนี้" (ดู docs/adr/0004)
+   *
+   * enabled=false หรือ start==end (เปิดตลอด 24 ชม.) → คืน ['1=1', []] ไม่กรองอะไร (fail-open)
+   * $column ต้องเป็นชื่อคอลัมน์ที่ควบคุมเองในโค้ด ห้ามรับจาก user input โดยตรง (ไม่ผ่าน bind)
+   */
+  function alert_window_sql_condition(string $mod, string $column, string $paramPrefix = 'aw'): array {
+    $w = alert_window($mod);
+    if (!$w['enabled']) return ['1=1', []];
+    $s = aw_minutes($w['start']);
+    $e = aw_minutes($w['end']);
+    if ($s === $e) return ['1=1', []];
+
+    $pStart = ":{$paramPrefix}_start";
+    $pEnd   = ":{$paramPrefix}_end";
+    $params = [$pStart => $w['start'] . ':00', $pEnd => $w['end'] . ':00'];
+    $sql = ($s < $e)
+      ? "TIME({$column}) >= {$pStart} AND TIME({$column}) < {$pEnd}"
+      : "(TIME({$column}) >= {$pStart} OR TIME({$column}) < {$pEnd})";
+    return [$sql, $params];
+  }
+}
+
 if (!function_exists('alert_window_next_open')) {
   /** เวลาที่หน้าต่างจะเปิดรอบถัดไป ("16:30") — คืน null ถ้าเปิดอยู่แล้ว */
   function alert_window_next_open(string $mod): ?string {

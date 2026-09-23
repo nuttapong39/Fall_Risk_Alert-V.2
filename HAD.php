@@ -101,14 +101,19 @@ function had_ingest(PDO $db, string $start, string $end): array {
 // $limit ผูกกับ AW_SEND_LIMIT (alert_window_loader.php) ที่เดียว — ห้ามเขียนเลขซ้ำตรงนี้
 // เพราะโมดัล "ช่วงเวลาแจ้งเตือน" เอาเลขนี้ไปคำนวณโชว์ว่าส่งได้กี่รายการ/วัน ถ้าแยกกันจะโกหกผู้ใช้
 function had_send_pending(PDO $db, int $limit = AW_SEND_LIMIT, int $maxTry = 8, int $cooldownMin = 1): array {
+  // กรอง Alert Window ต่อแถว (created_at) ตรงนี้เอง — ไม่ใช่ทีหลังใน PHP หลัง fetch —
+  // กัน starvation: ถ้ากรองทีหลัง แถวเก่านอกช่วง (id น้อย) จะบัง ORDER BY id ASC LIMIT
+  // ไว้ทุกรอบ จนแถวใหม่ในช่วงเวลาไม่มีวันถูกดึงมาส่งเลย (ดู docs/adr/0004)
+  [$winSql, $winParams] = alert_window_sql_condition('had', 'created_at', 'aw');
   $q = $db->prepare(
     "SELECT * FROM had_queue
      WHERE status = 0
        AND attempt < :maxtry
        AND (last_attempt_at IS NULL OR last_attempt_at < DATE_SUB(NOW(), INTERVAL :cd MINUTE))
+       AND ({$winSql})
      ORDER BY id ASC LIMIT {$limit}"
   );
-  $q->execute([':maxtry' => $maxTry, ':cd' => $cooldownMin]);
+  $q->execute(array_merge([':maxtry' => $maxTry, ':cd' => $cooldownMin], $winParams));
   $queue = $q->fetchAll(PDO::FETCH_ASSOC);
   had_out('Send: to process ' . count($queue) . " rows (cooldown={$cooldownMin}m, maxTry={$maxTry})");
 
@@ -179,15 +184,18 @@ try {
   } else {
     if ($mode === 'ingest' || $mode === 'both') had_ingest($dbcon, $start, $end);
     if ($mode === 'send'   || $mode === 'both') {
-      /* ── Alert Window — กั้นเฉพาะขั้น Send เท่านั้น (ดู docs/adr/0003) ──────────
+      /* ── Alert Window — กั้นเฉพาะขั้น Send เท่านั้น (ดู docs/adr/0004, เดิม 0003) ──
          Ingest ด้านบนยังวิ่งทั้งวันโดยตั้งใจ: หน้า Queue UI/Dashboard จะได้เห็นคนไข้
-         ของวันนี้เป็น "รอส่ง" ตามจริง แล้วคิวค่อยไหลออกทีเดียวตอนหน้าต่างเปิด
+         ของวันนี้เป็น "รอส่ง" ตามจริง — เฉพาะแถวที่ created_at ตกอยู่ในช่วงเวลาเท่านั้น
+         ที่ auto-send ได้ (กรองต่อแถวใน had_send_pending() เอง) แถวนอกช่วงจะค้าง
+         Pending ตลอดไปแม้หน้าต่างจะเปิดในรอบถัดไปก็ตาม ต้องสั่งส่งเองทาง "ส่งซ้ำทันที"
          บังคับที่นี่ ไม่ใช่ที่ Cron เพราะการแก้ scheduled task ต้องใช้สิทธิ์
          Administrator/UAC (ดู task/install_tasks.bat) ซึ่งหน้าเว็บสั่งเองไม่ได้
          หมายเหตุ: ปุ่ม "ส่งซ้ำทันที" ในหน้า Queue UI ไม่ผ่านทางนี้ จึงไม่ถูกจำกัด */
       if (!alert_window_is_open('had')) {
         had_out('SKIP SEND: นอกช่วงเวลาแจ้งเตือน (' . alert_window_summary('had') . ') — '
-              . 'คิวค้างไว้ก่อน จะเริ่มส่งอีกครั้งเวลา ' . alert_window_next_open('had') . ' น.');
+              . 'คิวค้างไว้ก่อน จะเริ่มตรวจส่งอีกครั้งเวลา ' . alert_window_next_open('had') . ' น. '
+              . '(เฉพาะแถวที่เกิดในช่วงเวลาเท่านั้นที่จะถูกส่งอัตโนมัติ)');
       } else {
         had_send_pending($dbcon, AW_SEND_LIMIT);
       }

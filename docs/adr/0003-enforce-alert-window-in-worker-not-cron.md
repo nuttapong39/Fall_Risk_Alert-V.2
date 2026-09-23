@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0004
 ---
 
 # บังคับ Alert Window ที่ Worker ไม่ใช่ที่ Cron
