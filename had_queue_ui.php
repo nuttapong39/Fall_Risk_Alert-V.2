@@ -360,7 +360,7 @@ var HAD_WIN_SMIN  = ' . aw_minutes($win['start']) . ', HAD_WIN_EMIN = ' . aw_min
 var HAD_WIN_TXT   = ' . json_encode($winSum, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
 $(function () {
   $("#tblHad").DataTable({
-    pageLength: 25, order: [[7, "desc"]],
+    pageLength: 25, order: [[8, "desc"]],
     columnDefs: [{ orderable: false, targets: 0 }],
     language: { search: "ค้นหา:", lengthMenu: "แสดง _MENU_ แถว", info: "_START_-_END_ จาก _TOTAL_",
                 paginate: { previous: "ก่อนหน้า", next: "ถัดไป" }, zeroRecords: "ไม่พบข้อมูล", emptyTable: "ยังไม่มีข้อมูลในคิว" }
