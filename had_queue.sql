@@ -31,6 +31,9 @@ CREATE TABLE `had_queue` (
   `icode`       varchar(20)  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `drug_name`   varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `vstdate`     date         NULL DEFAULT NULL,
+  -- Rx Time = rxdate+rxtime จาก HOSxP (ยาเดิมจ่ายหลายครั้งในวันเดียว = เก็บเวลาล่าสุด) ใช้ตัดสิน
+  -- Alert Window แทน created_at (docs/adr/0005) · นิยามต้องตรงกับ db_migrate_required_columns()
+  `rx_at`       datetime     NULL DEFAULT NULL,
   `qty`         decimal(10,2) NULL DEFAULT NULL,
   `sum_price`   decimal(10,2) NULL DEFAULT NULL,
 

@@ -16,6 +16,7 @@ require_once __DIR__ . '/config.php';          // ← ต้องมาก่�
 require_once __DIR__ . '/flex_builders.php';
 require_once __DIR__ . '/covid_lib.php';       // row_to_utf8(), extract_moph_message_id()
 require_once __DIR__ . '/sources/had_source.php';
+require_once __DIR__ . '/db_migrate.php';      // db_column_exists() — include ไม่รัน migration (entrypoint เฉพาะ CLI ของตัวเอง)
 date_default_timezone_set('Asia/Bangkok');
 mb_internal_encoding('UTF-8');
 
@@ -62,17 +63,39 @@ had_out('รหัสยา (icode): ' . implode(', ', module_filter('had')['ico
 // (worker วิ่งทุก 5 นาที = 288 รอบ/วัน ทุกบรรทัดที่เพิ่มคือ 288 บรรทัด/วัน และ log ไม่มี rotation)
 if (alert_window('had')['enabled']) had_out('ช่วงเวลาแจ้งเตือน: ' . alert_window_summary('had'));
 
+/* ── มีคอลัมน์ rx_at แล้วหรือยัง (docs/adr/0005) — ตรวจอย่างเดียว ไม่แก้ schema เอง ─────────
+   ถ้า migrate ไม่ผ่านที่ รพ. ไหน worker ต้องไม่พังทั้งโมดูล (HAD เงียบทั้ง รพ.) — ทำงานแบบเดิม
+   ด้วยเวลาเข้าคิวแทน แล้วเตือนใน log ทุกรอบจนกว่าจะมีคนแก้ */
+function had_has_rx(PDO $db): bool {
+  static $has = null;
+  if ($has === null) {
+    $has = db_column_exists($db, 'had_queue', 'rx_at');
+    if (!$has) had_out('✗ ไม่มีคอลัมน์ had_queue.rx_at — รัน php db_migrate.php หรือกด Setup MedAlert_DB '
+                     . '(ระหว่างนี้ตัดสินช่วงเวลาแจ้งเตือนด้วยเวลาเข้าคิวแทนเวลาสั่งยา)');
+  }
+  return $has;
+}
+
 /* ══ INGEST ══════════════════════════════════════════════════════════════ */
 function had_ingest(PDO $db, string $start, string $end): array {
   $rows = had_source_rows($start, $end);
   had_out('HOSxP: พบ ' . count($rows) . ' รายการ');
+  if (isset($GLOBALS['HAD_SOURCE_RX_FALLBACK'])) {
+    had_out('⚠ ดึงเวลาสั่งยา (rxdate/rxtime) จาก HOSxP ไม่ได้ ใช้เวลาเข้าคิวแทน: '
+          . mb_substr((string)$GLOBALS['HAD_SOURCE_RX_FALLBACK'], 0, 200));
+  }
 
+  /* upsert ชุดเดียวกับ action import_hosxp ใน had_queue_action.php — แก้ที่หนึ่งต้องแก้อีกที่
+     rx_at: ยาเดิมจ่ายหลายครั้งในวันเดียวถูกรวมเป็นแถวเดียว (unique hn+icode+vstdate) → เก็บ
+     เวลาล่าสุดเสมอไม่ว่าแถวจาก HOSxP มาลำดับไหน · COALESCE กัน GREATEST() คืน NULL เมื่อมีฝั่งหนึ่งว่าง */
+  $hasRx = had_has_rx($db);
   $ins = $db->prepare(
     "INSERT INTO had_queue
-       (hn, fullname, cid, hometel, age, sex, address, icode, drug_name, vstdate, qty, sum_price)
-     VALUES (:hn,:fn,:cid,:tel,:age,:sex,:addr,:code,:dn,:vd,:qty,:price)
+       (hn, fullname, cid, hometel, age, sex, address, icode, drug_name, vstdate, qty, sum_price" . ($hasRx ? ', rx_at' : '') . ")
+     VALUES (:hn,:fn,:cid,:tel,:age,:sex,:addr,:code,:dn,:vd,:qty,:price" . ($hasRx ? ',:rx' : '') . ")
      ON DUPLICATE KEY UPDATE
        fullname=VALUES(fullname), drug_name=VALUES(drug_name), qty=VALUES(qty), sum_price=VALUES(sum_price)"
+     . ($hasRx ? ', rx_at=GREATEST(COALESCE(rx_at, VALUES(rx_at)), COALESCE(VALUES(rx_at), rx_at))' : '')
   );
   $exist = $db->prepare("SELECT id FROM had_queue WHERE hn=? AND icode=? AND vstdate=?");
 
@@ -84,13 +107,15 @@ function had_ingest(PDO $db, string $start, string $end): array {
     if ($hn === '' || $vd === '') { $skipped++; continue; }
     $exist->execute([$hn, (string)($r['icode'] ?? ''), $vd]);
     if (!$exist->fetch()) { $new++; had_out("NEW hn={$hn} icode={$r['icode']} date={$vd} = {$r['drug_name']}"); }
-    $ins->execute([
+    $params = [
       ':hn'=>$hn, ':fn'=>$r['fullname'] ?? '', ':cid'=>$r['cid'] ?? '', ':tel'=>$r['hometel'] ?? '',
       ':age'=>is_numeric($r['age'] ?? null) ? (int)$r['age'] : null, ':sex'=>$r['sex'] ?? '',
       ':addr'=>$r['address'] ?? '', ':code'=>$r['icode'] ?? '', ':dn'=>$r['drug_name'] ?? '', ':vd'=>$vd,
       ':qty'=>is_numeric($r['qty'] ?? null) ? $r['qty'] : null,
       ':price'=>is_numeric($r['sum_price'] ?? null) ? $r['sum_price'] : null,
-    ]);
+    ];
+    if ($hasRx) $params[':rx'] = $r['rx_at'] ?? null;
+    $ins->execute($params);
     $imported++;
   }
   had_out("Upsert: imported={$imported} new={$new} skipped={$skipped}");
@@ -101,10 +126,11 @@ function had_ingest(PDO $db, string $start, string $end): array {
 // $limit ผูกกับ AW_SEND_LIMIT (alert_window_loader.php) ที่เดียว — ห้ามเขียนเลขซ้ำตรงนี้
 // เพราะโมดัล "ช่วงเวลาแจ้งเตือน" เอาเลขนี้ไปคำนวณโชว์ว่าส่งได้กี่รายการ/วัน ถ้าแยกกันจะโกหกผู้ใช้
 function had_send_pending(PDO $db, int $limit = AW_SEND_LIMIT, int $maxTry = 8, int $cooldownMin = 1): array {
-  // กรอง Alert Window ต่อแถว (created_at) ตรงนี้เอง — ไม่ใช่ทีหลังใน PHP หลัง fetch —
-  // กัน starvation: ถ้ากรองทีหลัง แถวเก่านอกช่วง (id น้อย) จะบัง ORDER BY id ASC LIMIT
-  // ไว้ทุกรอบ จนแถวใหม่ในช่วงเวลาไม่มีวันถูกดึงมาส่งเลย (ดู docs/adr/0004)
-  [$winSql, $winParams] = alert_window_sql_condition('had', 'created_at', 'aw');
+  // กรอง Alert Window ต่อแถวด้วย Rx Time (เวลาสั่งยาจริง, ไม่มีค่าใช้เวลาเข้าคิวแทน) ตรงนี้เอง —
+  // ไม่ใช่ทีหลังใน PHP หลัง fetch — กัน starvation: ถ้ากรองทีหลัง แถวเก่านอกช่วง (id น้อย) จะบัง
+  // ORDER BY id ASC LIMIT ไว้ทุกรอบ จนแถวใหม่ในช่วงเวลาไม่มีวันถูกดึงมาส่งเลย (docs/adr/0005)
+  $winCol = had_has_rx($db) ? 'COALESCE(rx_at, created_at)' : 'created_at';
+  [$winSql, $winParams] = alert_window_sql_condition('had', $winCol, 'aw');
   $q = $db->prepare(
     "SELECT * FROM had_queue
      WHERE status = 0
@@ -175,20 +201,23 @@ try {
   if ($isDry) {
     $rows = had_source_rows($start, $end);
     had_out('DRYRUN: HOSxP พบ ' . count($rows) . ' รายการ (ไม่เขียน queue ไม่ส่งแจ้งเตือน)');
+    if (isset($GLOBALS['HAD_SOURCE_RX_FALLBACK'])) had_out('⚠ ดึงเวลาสั่งยาไม่ได้: ' . mb_substr((string)$GLOBALS['HAD_SOURCE_RX_FALLBACK'], 0, 200));
     foreach (array_slice($rows, 0, 20) as $r) {
       $r = row_to_utf8($r);
-      had_out(sprintf('  hn=%s icode=%s drug=%s date=%s',
-        $r['hn'] ?? '-', $r['icode'] ?? '-', $r['drug_name'] ?? '-', $r['vstdate'] ?? '-'));
+      had_out(sprintf('  hn=%s icode=%s drug=%s date=%s rx=%s',
+        $r['hn'] ?? '-', $r['icode'] ?? '-', $r['drug_name'] ?? '-', $r['vstdate'] ?? '-', $r['rx_at'] ?? '-'));
     }
     if (count($rows) > 20) had_out('  ... (แสดง 20 แถวแรก)');
   } else {
     if ($mode === 'ingest' || $mode === 'both') had_ingest($dbcon, $start, $end);
     if ($mode === 'send'   || $mode === 'both') {
-      /* ── Alert Window — กั้นเฉพาะขั้น Send เท่านั้น (ดู docs/adr/0004, เดิม 0003) ──
+      /* ── Alert Window — กั้นเฉพาะขั้น Send เท่านั้น (ดู docs/adr/0005, เดิม 0004/0003) ──
          Ingest ด้านบนยังวิ่งทั้งวันโดยตั้งใจ: หน้า Queue UI/Dashboard จะได้เห็นคนไข้
-         ของวันนี้เป็น "รอส่ง" ตามจริง — เฉพาะแถวที่ created_at ตกอยู่ในช่วงเวลาเท่านั้น
-         ที่ auto-send ได้ (กรองต่อแถวใน had_send_pending() เอง) แถวนอกช่วงจะค้าง
+         ของวันนี้เป็น "รอส่ง" ตามจริง — เฉพาะแถวที่ Rx Time (เวลาสั่งยาจริงใน HOSxP) ตกอยู่
+         ในช่วงเวลาเท่านั้นที่ auto-send ได้ (กรองต่อแถวใน had_send_pending() เอง) แถวนอกช่วงจะค้าง
          Pending ตลอดไปแม้หน้าต่างจะเปิดในรอบถัดไปก็ตาม ต้องสั่งส่งเองทาง "ส่งซ้ำทันที"
+         แถวที่ Rx Time อยู่ในช่วงแต่เข้าคิวหลังหน้าต่างปิด (เช่นสั่ง 07:58 ดึงได้ 08:00) จะถูกส่ง
+         ตอนหน้าต่างเปิดรอบถัดไป — ช้าแต่ไม่หาย (ตั้งใจ)
          บังคับที่นี่ ไม่ใช่ที่ Cron เพราะการแก้ scheduled task ต้องใช้สิทธิ์
          Administrator/UAC (ดู task/install_tasks.bat) ซึ่งหน้าเว็บสั่งเองไม่ได้
          หมายเหตุ: ปุ่ม "ส่งซ้ำทันที" ในหน้า Queue UI ไม่ผ่านทางนี้ จึงไม่ถูกจำกัด */

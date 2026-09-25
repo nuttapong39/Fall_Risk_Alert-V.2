@@ -43,6 +43,55 @@ if (!function_exists('deploy_missing_schema')) {
       try { $pdo->exec($sqlText); $steps[] = "✓ deploy {$sf}"; }
       catch (Throwable $e) { $steps[] = "✗ {$sf}: " . $e->getMessage(); }
     }
+    // CREATE TABLE IF NOT EXISTS ไม่เพิ่มคอลัมน์ใหม่ให้ตารางที่มีอยู่แล้ว — ต้องเติมแยก
+    foreach (ensure_missing_columns($pdo) as $line) { $steps[] = $line; }
+    return $steps;
+  }
+}
+
+if (!function_exists('db_column_exists')) {
+  function db_column_exists(PDO $pdo, string $table, string $column): bool {
+    $st = $pdo->prepare("SELECT 1 FROM information_schema.COLUMNS
+                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+    $st->execute([$table, $column]);
+    return (bool)$st->fetchColumn();
+  }
+}
+
+if (!function_exists('db_migrate_required_columns')) {
+  /**
+   * คอลัมน์ที่เพิ่มทีหลังให้ตารางที่ รพ. สร้างไปแล้ว — นิยามต้องตรงกับไฟล์ *_queue.sql เป๊ะ
+   * (ติดตั้งใหม่ได้คอลัมน์จาก .sql, ติดตั้งเก่าได้จาก ALTER ตรงนี้)
+   */
+  function db_migrate_required_columns(): array {
+    return [
+      'had_queue' => ['rx_at' => 'DATETIME NULL DEFAULT NULL AFTER `vstdate`'],   // docs/adr/0005
+    ];
+  }
+}
+
+if (!function_exists('ensure_missing_columns')) {
+  /**
+   * เพิ่มคอลัมน์ที่ขาด (idempotent) — เช็ค information_schema ก่อน แทน ADD COLUMN IF NOT EXISTS
+   * เพราะ MySQL 8 ไม่รองรับไวยากรณ์นั้น (MariaDB รองรับ) · เงียบถ้ามีครบแล้ว กัน log อัปเดตรก
+   * $spec มีไว้ให้ทดสอบกับตาราง scratch ได้ — โค้ดจริงไม่ส่ง
+   */
+  function ensure_missing_columns(PDO $pdo, ?array $spec = null): array {
+    $steps = [];
+    $tbl = $pdo->prepare("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+    foreach ($spec ?? db_migrate_required_columns() as $table => $cols) {
+      $tbl->execute([$table]);
+      if (!$tbl->fetchColumn()) continue;   // ตารางยังไม่มี = จะถูกสร้างจาก .sql ที่มีคอลัมน์ครบแล้ว
+      foreach ($cols as $col => $def) {
+        try {
+          if (db_column_exists($pdo, $table, $col)) continue;
+          $pdo->exec("ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$def}");
+          $steps[] = "✓ เพิ่มคอลัมน์ {$table}.{$col}";
+        } catch (Throwable $e) {
+          $steps[] = "✗ เพิ่มคอลัมน์ {$table}.{$col} ไม่สำเร็จ: " . $e->getMessage();
+        }
+      }
+    }
     return $steps;
   }
 }

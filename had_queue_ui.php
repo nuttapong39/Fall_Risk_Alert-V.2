@@ -104,6 +104,12 @@ $EXTRA_HEAD = '
   #hadSyncResult{display:none;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:10px}
   #hadSyncResult.ok{background:#dcfce7;color:#166534} #hadSyncResult.err{background:#fee2e2;color:#991b1b}
   .msi-spin{animation:hadspin 1s linear infinite} @keyframes hadspin{to{transform:rotate(360deg)}}
+  /* สถานะช่วงเวลาแจ้งเตือนของแถวรอส่ง (docs/adr/0005) — มีจุดนำหน้าด้วย ไม่พึ่งสีอย่างเดียว */
+  .had-t{display:inline-block;border-radius:999px;padding:2px 9px;font-weight:600;white-space:nowrap;cursor:help}
+  .had-t::before{content:"\25CF\00a0"}
+  .had-t-in{background:#dcfce7;color:#166534}
+  .had-t-out{background:#ffedd5;color:#9a3412}
+  .had-t-q{background:#f1f5f9;color:#475569;font-weight:500}
 </style>';
 
 require_once __DIR__ . '/partials/header.php';
@@ -157,10 +163,12 @@ require_once __DIR__ . '/partials/header.php';
   <span class="msi" style="font-size:1rem;color:#0E7490">schedule</span>
   <span>ช่วงเวลาแจ้งเตือน (เฉพาะการส่งอัตโนมัติ): <b><?= htmlspecialchars($winSum) ?></b>
     <?php if ($win['enabled'] && !$winOpen): ?>
-      — <b class="text-danger">ขณะนี้อยู่นอกช่วง</b> รายการที่ขึ้น "รอส่ง" จะถูกส่งเมื่อถึง
-      <b><?= htmlspecialchars($win['start']) ?> น.</b> (การดึงข้อมูลจาก HOSxP ยังทำงานตามปกติ)
+      — <b class="text-danger">ขณะนี้อยู่นอกช่วง</b> จะเริ่มส่งอัตโนมัติอีกครั้ง
+      <b><?= htmlspecialchars($win['start']) ?> น.</b> เฉพาะรายการ<b>ที่สั่งยาในช่วงเวลา</b> (ไฮไลต์สีเขียว)
+      — รายการสีส้มต้องกด "ส่งซ้ำทันที" เอง (การดึงข้อมูลจาก HOSxP ยังทำงานตามปกติ)
     <?php elseif ($win['enabled']): ?>
-      — ขณะนี้<b class="text-success">อยู่ในช่วง</b> ส่งอัตโนมัติตามปกติ
+      — ขณะนี้<b class="text-success">อยู่ในช่วง</b> ส่งอัตโนมัติเฉพาะรายการที่สั่งยาในช่วงเวลา (สีเขียว)
+      รายการสีส้มต้องกด "ส่งซ้ำทันที" เอง
     <?php endif; ?>
     — แก้ได้ที่ปุ่ม "ช่วงเวลาแจ้งเตือน" · เวลาเครื่องเซิร์ฟเวอร์ตอนนี้ <b><?= date('H:i') ?> น.</b></span>
 </div>
@@ -240,7 +248,27 @@ require_once __DIR__ . '/partials/header.php';
             <td><code><?= htmlspecialchars(to_utf8_had($r['icode'])) ?></code></td>
             <td><b style="color:#0E7490"><?= htmlspecialchars(to_utf8_had($r['drug_name'])) ?></b></td>
             <td><?= $r['qty'] !== null ? number_format((float)$r['qty'], 2) : '-' ?></td>
-            <td><?= htmlspecialchars((string)$r['vstdate']) ?></td>
+            <?php
+              /* วันที่รับยา: Rx Time ถ้ามี · ไม่มีใช้ vstdate + เวลาเข้าคิว (created_at อาจเป็นวันที่
+                 import คนละวันกับวันรับยา) — worker ตัดสินช่วงเวลาด้วยค่าเดียวกันนี้ (docs/adr/0005) */
+              $isRx  = !empty($r['rx_at']);
+              $winTs = strtotime($isRx ? (string)$r['rx_at'] : (string)$r['created_at']) ?: 0;
+              $dtTxt = $isRx ? date('Y-m-d H:i', $winTs) : ((string)$r['vstdate'] . ($winTs ? ' ' . date('H:i', $winTs) : ''));
+              $dtCls = ''; $dtTip = '';
+              if ((int)$r['status'] === 0 && $win['enabled'] && $winTs) {
+                $inWin = alert_window_is_open('had', $winTs);
+                if (!$isRx) {
+                  $dtCls = 'had-t had-t-q';
+                  $dtTip = 'เวลาเข้าคิว ' . date('Y-m-d H:i', $winTs) . ' (ไม่มีเวลาสั่งยาจาก HOSxP) — '
+                         . ($inWin ? 'ในช่วงเวลา ระบบส่งอัตโนมัติ' : 'นอกช่วงเวลา ต้องกดส่งซ้ำทันทีเอง');
+                } elseif ($inWin) {
+                  $dtCls = 'had-t had-t-in';  $dtTip = 'ในช่วงเวลาแจ้งเตือน — ระบบส่งอัตโนมัติ';
+                } else {
+                  $dtCls = 'had-t had-t-out'; $dtTip = 'นอกช่วงเวลาแจ้งเตือน — ต้องกดส่งซ้ำทันทีเอง';
+                }
+              }
+            ?>
+            <td data-order="<?= (int)(strtotime($dtTxt) ?: 0) ?>"><?php if ($dtCls): ?><span class="<?= $dtCls ?>" title="<?= htmlspecialchars($dtTip) ?>"><?= htmlspecialchars($dtTxt) ?></span><?php else: ?><?= htmlspecialchars($dtTxt) ?><?php endif; ?></td>
             <td><?= $r['last_error']
                   ? '<span class="text-danger" style="font-size:.78rem">' . htmlspecialchars(mb_substr(to_utf8_had($r['last_error']), 0, 80)) . '</span>'
                   : '<span class="text-muted">-</span>' ?></td>
@@ -303,8 +331,8 @@ require_once __DIR__ . '/partials/header.php';
           <div class="alert alert-info py-2 d-flex align-items-start gap-2" style="font-size:.83rem;border-radius:10px">
             <span class="msi" style="font-size:1rem">info</span>
             <span>จำกัดเฉพาะ<b>การส่งอัตโนมัติ</b>เท่านั้น · การดึงข้อมูลจาก HOSxP ยังทำงานทั้งวัน
-              แต่ <b>auto-send เฉพาะรายการที่เกิดขึ้นในช่วงเวลานี้เท่านั้น</b> —
-              รายการที่เกิดนอกช่วงจะค้าง "รอส่ง" ตลอดไป ไม่ไหลออกเองแม้หน้าต่างจะเปิดรอบถัดไป ·
+              แต่ <b>auto-send เฉพาะรายการที่เวลาสั่งยาใน HOSxP อยู่ในช่วงเวลานี้เท่านั้น</b> —
+              รายการที่สั่งนอกช่วงจะค้าง "รอส่ง" ตลอดไป ไม่ไหลออกเองแม้หน้าต่างจะเปิดรอบถัดไป ·
               ต้องกดปุ่ม "<b>ส่งซ้ำทันที</b>" เองเท่านั้น (<b>ใช้ได้ตลอดเวลา</b> ไม่ถูกจำกัด)</span>
           </div>
 

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0005
 ---
 
 # Alert Window ตัดสินด้วย created_at ต่อแถว ไม่ใช่ flush ทั้ง backlog ตอนหน้าต่างเปิด

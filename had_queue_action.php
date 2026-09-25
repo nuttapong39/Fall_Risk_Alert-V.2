@@ -8,8 +8,8 @@
  * 2 ตัวหลังต้องมี token + ids[] แล้ว redirect กลับ UI พร้อม ?msg=
  *
  * ไม่มี action=requeue โดยตั้งใจ (เฉพาะโมดูลนี้) — Re-queue เดิมแค่ reset status/attempt
- * ไม่แตะ created_at เลย ถ้าใช้กับแถวที่ created_at ตกนอกช่วงเวลาแจ้งเตือน จะกลายเป็นปุ่มที่
- * กดแล้วไม่มีผล (ยังค้าง Pending ตลอดไปเหมือนเดิม) ดู docs/adr/0004
+ * ไม่แตะเวลาที่ใช้ตัดสินช่วงเวลาแจ้งเตือน (Rx Time / created_at) ถ้าใช้กับแถวที่สั่งยานอกช่วง
+ * จะกลายเป็นปุ่มที่กดแล้วไม่มีผล (ยังค้าง Pending ตลอดไปเหมือนเดิม) ดู docs/adr/0004, 0005
  */
 require_once __DIR__ . '/config.php';          // ← ต้องมาก่อน define คีย์เสมอ
 date_default_timezone_set('Asia/Bangkok');
@@ -30,15 +30,19 @@ if ($action === 'import_hosxp') {
 
   try {
     require_once __DIR__ . '/sources/had_source.php';
+    require_once __DIR__ . '/db_migrate.php';   // db_column_exists() — ตรวจอย่างเดียว (docs/adr/0005)
     $rows = had_source_rows($start, $end);
 
     // UNIQUE (hn, icode, vstdate) — คนไข้รับยา HAD ต่างชนิดวันเดียวกันได้
+    // upsert ชุดเดียวกับ had_ingest() ใน HAD.php — แก้ที่หนึ่งต้องแก้อีกที่ (rx_at = เวลาล่าสุดชนะ)
+    $hasRx = db_column_exists($dbcon, 'had_queue', 'rx_at');
     $ins = $dbcon->prepare(
       "INSERT INTO had_queue
-         (hn, fullname, cid, hometel, age, sex, address, icode, drug_name, vstdate, qty, sum_price)
-       VALUES (:hn,:fn,:cid,:tel,:age,:sex,:addr,:code,:dn,:vd,:qty,:price)
+         (hn, fullname, cid, hometel, age, sex, address, icode, drug_name, vstdate, qty, sum_price" . ($hasRx ? ', rx_at' : '') . ")
+       VALUES (:hn,:fn,:cid,:tel,:age,:sex,:addr,:code,:dn,:vd,:qty,:price" . ($hasRx ? ',:rx' : '') . ")
        ON DUPLICATE KEY UPDATE
          fullname=VALUES(fullname), drug_name=VALUES(drug_name), qty=VALUES(qty), sum_price=VALUES(sum_price)"
+       . ($hasRx ? ', rx_at=GREATEST(COALESCE(rx_at, VALUES(rx_at)), COALESCE(VALUES(rx_at), rx_at))' : '')
     );
     $exist = $dbcon->prepare("SELECT id FROM had_queue WHERE hn=? AND icode=? AND vstdate=?");
 
@@ -52,7 +56,7 @@ if ($action === 'import_hosxp') {
       $exist->execute([$hn, (string)($r['icode'] ?? ''), $vd]);
       $isNew = !$exist->fetch();
 
-      $ins->execute([
+      $params = [
         ':hn'    => $hn,
         ':fn'    => $r['fullname'] ?? '',
         ':cid'   => $r['cid'] ?? '',
@@ -65,7 +69,9 @@ if ($action === 'import_hosxp') {
         ':vd'    => $vd,
         ':qty'   => is_numeric($r['qty'] ?? null) ? $r['qty'] : null,
         ':price' => is_numeric($r['sum_price'] ?? null) ? $r['sum_price'] : null,
-      ]);
+      ];
+      if ($hasRx) $params[':rx'] = $r['rx_at'] ?? null;
+      $ins->execute($params);
       $imported++;
       if ($isNew) $newRows++;
     }
